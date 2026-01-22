@@ -8,6 +8,7 @@ import { provideEffects } from '@ngrx/effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
 
 import { routes } from './app.routes';
+import { tenantInterceptor } from '@core/interceptors/tenant.interceptor';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { errorInterceptor } from '@core/interceptors/error.interceptor';
 import { authReducer } from '@core/store/auth/auth.reducer';
@@ -23,7 +24,7 @@ export const appConfig: ApplicationConfig = {
     ),
     provideAnimationsAsync(),
     provideHttpClient(
-      withInterceptors([authInterceptor, errorInterceptor])
+      withInterceptors([tenantInterceptor, authInterceptor, errorInterceptor])
     ),
     provideStore({ auth: authReducer }),
     provideEffects([AuthEffects]),
