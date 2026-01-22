@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -66,101 +66,97 @@ import { EmployeeService, EmployeeListItem, EmploymentStatus, Department } from 
           <mat-label>Department</mat-label>
           <mat-select [formControl]="departmentControl">
             <mat-option [value]="null">All</mat-option>
-            @for (dept of departments(); track dept.id) {
-              <mat-option [value]="dept.id">{{ dept.name }}</mat-option>
-            }
+            <mat-option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }}</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
 
       <!-- Table -->
-      @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner></mat-spinner>
-        </div>
-      } @else {
-        <div class="table-container">
-          <table mat-table [dataSource]="employees()" class="employees-table">
-            <ng-container matColumnDef="employeeNumber">
-              <th mat-header-cell *matHeaderCellDef>Employee #</th>
-              <td mat-cell *matCellDef="let employee">{{ employee.employeeNumber }}</td>
-            </ng-container>
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner></mat-spinner>
+      </div>
 
-            <ng-container matColumnDef="fullName">
-              <th mat-header-cell *matHeaderCellDef>Name</th>
-              <td mat-cell *matCellDef="let employee">
-                <a [routerLink]="[employee.id]" class="employee-link">{{ employee.fullName }}</a>
-              </td>
-            </ng-container>
+      <div *ngIf="!loading" class="table-container">
+        <table mat-table [dataSource]="employees" class="employees-table">
+          <ng-container matColumnDef="employeeNumber">
+            <th mat-header-cell *matHeaderCellDef>Employee #</th>
+            <td mat-cell *matCellDef="let employee">{{ employee.employeeNumber }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef>Email</th>
-              <td mat-cell *matCellDef="let employee">{{ employee.email }}</td>
-            </ng-container>
+          <ng-container matColumnDef="fullName">
+            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <td mat-cell *matCellDef="let employee">
+              <a [routerLink]="[employee.id]" class="employee-link">{{ employee.fullName }}</a>
+            </td>
+          </ng-container>
 
-            <ng-container matColumnDef="departmentName">
-              <th mat-header-cell *matHeaderCellDef>Department</th>
-              <td mat-cell *matCellDef="let employee">{{ employee.departmentName || '-' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let employee">{{ employee.email }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="jobTitle">
-              <th mat-header-cell *matHeaderCellDef>Job Title</th>
-              <td mat-cell *matCellDef="let employee">{{ employee.jobTitle || '-' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="departmentName">
+            <th mat-header-cell *matHeaderCellDef>Department</th>
+            <td mat-cell *matCellDef="let employee">{{ employee.departmentName || '-' }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
-              <td mat-cell *matCellDef="let employee">
-                <mat-chip [class]="'status-' + employee.status.toLowerCase()">
-                  {{ employee.status }}
-                </mat-chip>
-              </td>
-            </ng-container>
+          <ng-container matColumnDef="jobTitle">
+            <th mat-header-cell *matHeaderCellDef>Job Title</th>
+            <td mat-cell *matCellDef="let employee">{{ employee.jobTitle || '-' }}</td>
+          </ng-container>
 
-            <ng-container matColumnDef="hireDate">
-              <th mat-header-cell *matHeaderCellDef>Hire Date</th>
-              <td mat-cell *matCellDef="let employee">{{ employee.hireDate | date:'mediumDate' }}</td>
-            </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let employee">
+              <mat-chip [class]="'status-' + employee.status.toLowerCase()">
+                {{ employee.status }}
+              </mat-chip>
+            </td>
+          </ng-container>
 
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let employee">
-                <button mat-icon-button [matMenuTriggerFor]="menu">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-                <mat-menu #menu="matMenu">
-                  <a mat-menu-item [routerLink]="[employee.id]">
-                    <mat-icon>visibility</mat-icon>
-                    <span>View</span>
-                  </a>
-                  <a mat-menu-item [routerLink]="[employee.id, 'edit']">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit</span>
-                  </a>
-                </mat-menu>
-              </td>
-            </ng-container>
+          <ng-container matColumnDef="hireDate">
+            <th mat-header-cell *matHeaderCellDef>Hire Date</th>
+            <td mat-cell *matCellDef="let employee">{{ employee.hireDate | date:'mediumDate' }}</td>
+          </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let employee">
+              <button mat-icon-button [matMenuTriggerFor]="menu">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <a mat-menu-item [routerLink]="[employee.id]">
+                  <mat-icon>visibility</mat-icon>
+                  <span>View</span>
+                </a>
+                <a mat-menu-item [routerLink]="[employee.id, 'edit']">
+                  <mat-icon>edit</mat-icon>
+                  <span>Edit</span>
+                </a>
+              </mat-menu>
+            </td>
+          </ng-container>
 
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell no-data" [attr.colspan]="displayedColumns.length">
-                No employees found
-              </td>
-            </tr>
-          </table>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
 
-          <mat-paginator
-            [length]="totalElements()"
-            [pageSize]="pageSize()"
-            [pageIndex]="pageIndex()"
-            [pageSizeOptions]="[10, 20, 50]"
-            (page)="onPageChange($event)"
-            showFirstLastButtons>
-          </mat-paginator>
-        </div>
-      }
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell no-data" [attr.colspan]="displayedColumns.length">
+              No employees found
+            </td>
+          </tr>
+        </table>
+
+        <mat-paginator
+          [length]="totalElements"
+          [pageSize]="pageSize"
+          [pageIndex]="pageIndex"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="onPageChange($event)"
+          showFirstLastButtons>
+        </mat-paginator>
+      </div>
     </div>
   `,
   styles: [`
@@ -238,21 +234,19 @@ import { EmployeeService, EmployeeListItem, EmploymentStatus, Department } from 
       padding: 24px;
       color: #666;
     }
-  `],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  `]
 })
 export class EmployeesListComponent implements OnInit {
   private readonly employeeService = inject(EmployeeService);
-  private readonly cdr = inject(ChangeDetectorRef);
 
   displayedColumns = ['employeeNumber', 'fullName', 'email', 'departmentName', 'jobTitle', 'status', 'hireDate', 'actions'];
 
-  employees = signal<EmployeeListItem[]>([]);
-  departments = signal<Department[]>([]);
-  loading = signal(true);
-  totalElements = signal(0);
-  pageIndex = signal(0);
-  pageSize = signal(20);
+  employees: EmployeeListItem[] = [];
+  departments: Department[] = [];
+  loading = true;
+  totalElements = 0;
+  pageIndex = 0;
+  pageSize = 20;
 
   searchControl = new FormControl('');
   statusControl = new FormControl<EmploymentStatus | null>(null);
@@ -262,7 +256,6 @@ export class EmployeesListComponent implements OnInit {
     this.loadDepartments();
     this.loadEmployees();
 
-    // Setup search debounce
     this.searchControl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged()
@@ -273,23 +266,21 @@ export class EmployeesListComponent implements OnInit {
   }
 
   loadEmployees(): void {
-    this.loading.set(true);
+    this.loading = true;
     this.employeeService.searchEmployees(
-      this.pageIndex(),
-      this.pageSize(),
+      this.pageIndex,
+      this.pageSize,
       this.statusControl.value ?? undefined,
       this.departmentControl.value ?? undefined,
       this.searchControl.value ?? undefined
     ).subscribe({
       next: (response) => {
-        this.employees.set(response.content);
-        this.totalElements.set(response.totalElements);
-        this.loading.set(false);
-        this.cdr.markForCheck();
+        this.employees = response.content;
+        this.totalElements = response.totalElements;
+        this.loading = false;
       },
       error: () => {
-        this.loading.set(false);
-        this.cdr.markForCheck();
+        this.loading = false;
       }
     });
   }
@@ -297,15 +288,14 @@ export class EmployeesListComponent implements OnInit {
   loadDepartments(): void {
     this.employeeService.getDepartments().subscribe({
       next: (departments) => {
-        this.departments.set(departments);
-        this.cdr.markForCheck();
+        this.departments = departments;
       }
     });
   }
 
   onPageChange(event: PageEvent): void {
-    this.pageIndex.set(event.pageIndex);
-    this.pageSize.set(event.pageSize);
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
     this.loadEmployees();
   }
 }
