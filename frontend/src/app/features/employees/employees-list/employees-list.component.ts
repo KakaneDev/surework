@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -243,6 +243,7 @@ import { EmployeeService, EmployeeListItem, EmploymentStatus, Department } from 
 })
 export class EmployeesListComponent implements OnInit {
   private readonly employeeService = inject(EmployeeService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   displayedColumns = ['employeeNumber', 'fullName', 'email', 'departmentName', 'jobTitle', 'status', 'hireDate', 'actions'];
 
@@ -284,16 +285,21 @@ export class EmployeesListComponent implements OnInit {
         this.employees.set(response.content);
         this.totalElements.set(response.totalElements);
         this.loading.set(false);
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading.set(false);
+        this.cdr.markForCheck();
       }
     });
   }
 
   loadDepartments(): void {
     this.employeeService.getDepartments().subscribe({
-      next: (departments) => this.departments.set(departments)
+      next: (departments) => {
+        this.departments.set(departments);
+        this.cdr.markForCheck();
+      }
     });
   }
 
