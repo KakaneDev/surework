@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: notification-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+server:
+  port: 8087
+
+# Logging
+logging:
+  level:
+    com.surework.notification: DEBUG

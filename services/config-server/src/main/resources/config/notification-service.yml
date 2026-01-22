@@ -1,0 +1,34 @@
+# Notification Service specific configuration
+server:
+  port: 8087
+
+spring:
+  kafka:
+    consumer:
+      group-id: notification-service
+
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:false}
+          starttls:
+            enable: ${SMTP_STARTTLS:false}
+
+# Notification Service configuration
+surework:
+  notification:
+    email:
+      from: noreply@surework.co.za
+      from-name: SureWork
+      retry-attempts: 3
+      retry-delay: 5s
+    templates:
+      path: classpath:/templates/email/
+    rate-limit:
+      emails-per-minute: 100
+      sms-per-minute: 50

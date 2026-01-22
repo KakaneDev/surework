@@ -1,0 +1,30 @@
+# HR Service specific configuration
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surework}
+    username: ${DATABASE_USERNAME:surework}
+    password: ${DATABASE_PASSWORD:surework}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  kafka:
+    consumer:
+      group-id: hr-service
+
+# HR Service configuration
+surework:
+  hr:
+    leave:
+      annual-days: 21
+      sick-days: 30
+      sick-leave-cycle-months: 36
+      family-responsibility-days: 3
+    employee:
+      number-prefix: EMP
+      number-padding: 6

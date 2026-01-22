@@ -1,0 +1,92 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: time-attendance-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_time_attendance
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: time-attendance-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.surework.common.messaging.event"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    com.surework: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# South African BCEA Time & Attendance Configuration
+surework:
+  time-attendance:
+    # Standard working hours per BCEA
+    standard-hours-per-day: 9
+    standard-hours-per-week: 45
+    max-hours-per-week: 48  # Including overtime
+
+    # Overtime rules per BCEA Section 10
+    overtime:
+      max-per-day: 3
+      max-per-week: 10
+      rate-weekday: 1.5     # Time and a half
+      rate-sunday: 2.0      # Double time
+      rate-public-holiday: 2.0
+
+    # Break rules per BCEA Section 14
+    breaks:
+      meal-break-after-hours: 5
+      meal-break-duration-minutes: 60
+      rest-period-hours: 12  # Between work periods
+
+    # Night work per BCEA Section 17 (18:00 - 06:00)
+    night-work:
+      start-hour: 18
+      end-hour: 6
+      allowance-percentage: 10
+
+    # Clock settings
+    clock:
+      grace-period-minutes: 5
+      auto-clock-out-hours: 12  # Auto clock out if forgotten
+      round-to-nearest-minutes: 15

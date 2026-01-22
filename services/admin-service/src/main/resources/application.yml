@@ -1,0 +1,171 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: admin-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_admin
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: admin-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Eureka Client Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# SureWork Admin Configuration
+surework:
+  admin:
+    # JWT Configuration
+    jwt:
+      secret: ${JWT_SECRET:surework-jwt-secret-key-for-development-only-change-in-production}
+      expiration-hours: 8
+      refresh-expiration-days: 7
+
+    # Password Policy
+    password:
+      min-length: 8
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special: true
+      expiry-days: 90
+      history-count: 5
+      max-attempts: 5
+      lockout-minutes: 30
+
+    # Session Management
+    session:
+      max-concurrent: 3
+      idle-timeout-minutes: 30
+      absolute-timeout-hours: 12
+
+    # Multi-tenancy
+    tenancy:
+      schema-per-tenant: true
+      default-schema: public
+      system-schema: surework_system
+
+    # Audit Logging
+    audit:
+      enabled: true
+      retention-days: 365
+      log-request-body: false
+      log-response-body: false
+      sensitive-fields:
+        - password
+        - token
+        - secret
+        - creditCard
+
+    # System Limits
+    limits:
+      max-users-per-tenant: 500
+      max-roles-per-tenant: 50
+      max-api-keys-per-tenant: 10
+
+    # Default Roles
+    default-roles:
+      - code: SUPER_ADMIN
+        name: Super Administrator
+        permissions: ALL
+      - code: TENANT_ADMIN
+        name: Tenant Administrator
+        permissions: TENANT_ALL
+      - code: HR_MANAGER
+        name: HR Manager
+        permissions: HR_READ,HR_WRITE,EMPLOYEE_READ,EMPLOYEE_WRITE,LEAVE_APPROVE
+      - code: PAYROLL_ADMIN
+        name: Payroll Administrator
+        permissions: PAYROLL_READ,PAYROLL_WRITE,PAYROLL_PROCESS
+      - code: FINANCE_MANAGER
+        name: Finance Manager
+        permissions: FINANCE_READ,FINANCE_WRITE,ACCOUNTING_READ,ACCOUNTING_WRITE
+      - code: DEPARTMENT_MANAGER
+        name: Department Manager
+        permissions: EMPLOYEE_READ,LEAVE_APPROVE,TIME_APPROVE
+      - code: EMPLOYEE
+        name: Employee
+        permissions: SELF_READ,SELF_WRITE,LEAVE_REQUEST,TIME_ENTRY
+
+    # South African Compliance Settings
+    compliance:
+      popi-act:
+        enabled: true
+        data-retention-years: 7
+        consent-required: true
+      bcea:
+        enabled: true
+      eea:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.surework.admin: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

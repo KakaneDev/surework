@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: tenant-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+server:
+  port: 8081
+
+# Logging
+logging:
+  level:
+    com.surework.tenant: DEBUG

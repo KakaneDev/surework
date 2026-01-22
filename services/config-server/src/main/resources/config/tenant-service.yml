@@ -1,0 +1,23 @@
+# Tenant Service specific configuration
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surework}
+    username: ${DATABASE_USERNAME:surework}
+    password: ${DATABASE_PASSWORD:surework}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+# Tenant management
+surework:
+  tenant:
+    schema-prefix: tenant_
+    max-tenants-per-instance: 100
+    provisioning:
+      async: true
+      timeout: 60s

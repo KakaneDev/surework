@@ -1,0 +1,1380 @@
+openapi: 3.1.0
+info:
+  title: SureWork Accounting Service API
+  description: General Ledger, Journal Entries, Bank Reconciliation, and VAT (Module C)
+  version: 1.0.0
+  contact:
+    name: SureWork API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: Accounts
+    description: Chart of Accounts management
+  - name: Journal Entries
+    description: General Ledger entries
+  - name: Bank Accounts
+    description: Bank account and reconciliation
+  - name: Invoices
+    description: Sales and purchase invoices
+  - name: Reports
+    description: Financial reports (VAT201)
+  - name: Dashboard
+    description: Labour cost dashboard
+
+paths:
+  /accounts:
+    get:
+      tags: [Accounts]
+      operationId: listAccounts
+      summary: List chart of accounts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by account code or name
+      responses:
+        '200':
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountResponse'
+
+    post:
+      tags: [Accounts]
+      operationId: createAccount
+      summary: Create new account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '409':
+          description: Account code already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /accounts/{accountId}:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Accounts]
+      operationId: getAccount
+      summary: Get account details with balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Accounts]
+      operationId: updateAccount
+      summary: Update account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccountRequest'
+      responses:
+        '200':
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot modify system account
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /journal-entries:
+    get:
+      tags: [Journal Entries]
+      operationId: listJournalEntries
+      summary: List journal entries
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [MANUAL, PAYROLL, INVOICE, BANK_FEED]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, POSTED, REVERSED]
+      responses:
+        '200':
+          description: Page of journal entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryPage'
+
+    post:
+      tags: [Journal Entries]
+      operationId: createJournalEntry
+      summary: Create manual journal entry
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJournalEntryRequest'
+      responses:
+        '201':
+          description: Journal entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryResponse'
+        '400':
+          description: Debits and credits do not balance
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /journal-entries/{entryId}:
+    parameters:
+      - name: entryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Journal Entries]
+      operationId: getJournalEntry
+      summary: Get journal entry with line items
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Journal entry details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /journal-entries/{entryId}/post:
+    parameters:
+      - name: entryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Journal Entries]
+      operationId: postJournalEntry
+      summary: Post draft journal entry
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Journal entry posted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Entry already posted or immutable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /journal-entries/{entryId}/reverse:
+    parameters:
+      - name: entryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Journal Entries]
+      operationId: reverseJournalEntry
+      summary: Create reversal entry
+      description: Creates a new entry with opposite debits/credits. Immutable (payroll-generated) entries cannot be reversed directly.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseJournalEntryRequest'
+      responses:
+        '201':
+          description: Reversal entry created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot reverse immutable entry (use payroll rollback)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /bank-accounts:
+    get:
+      tags: [Bank Accounts]
+      operationId: listBankAccounts
+      summary: List connected bank accounts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bank accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BankAccountResponse'
+
+    post:
+      tags: [Bank Accounts]
+      operationId: createBankAccount
+      summary: Add bank account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBankAccountRequest'
+      responses:
+        '201':
+          description: Bank account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+
+  /bank-accounts/{bankAccountId}:
+    parameters:
+      - name: bankAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Bank Accounts]
+      operationId: getBankAccount
+      summary: Get bank account details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bank account details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bank-accounts/{bankAccountId}/connect:
+    parameters:
+      - name: bankAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Bank Accounts]
+      operationId: connectBankAccount
+      summary: Initiate Open Banking connection
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Connection initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankConnectionResponse'
+
+  /bank-accounts/{bankAccountId}/sync:
+    parameters:
+      - name: bankAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Bank Accounts]
+      operationId: syncBankAccount
+      summary: Trigger manual bank feed sync
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatusResponse'
+
+  /bank-accounts/{bankAccountId}/transactions:
+    parameters:
+      - name: bankAccountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Bank Accounts]
+      operationId: listBankTransactions
+      summary: List bank transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [UNMATCHED, MATCHED, MANUALLY_RECONCILED]
+      responses:
+        '200':
+          description: Bank transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankTransactionPage'
+
+  /bank-transactions/{transactionId}:
+    parameters:
+      - name: transactionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Bank Accounts]
+      operationId: getBankTransaction
+      summary: Get bank transaction with match suggestions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bank transaction with suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankTransactionDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bank-transactions/{transactionId}/match:
+    parameters:
+      - name: transactionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Bank Accounts]
+      operationId: matchBankTransaction
+      summary: Match transaction to journal entry
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchTransactionRequest'
+      responses:
+        '200':
+          description: Transaction matched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankTransactionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bank-transactions/{transactionId}/create-entry:
+    parameters:
+      - name: transactionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Bank Accounts]
+      operationId: createEntryFromTransaction
+      summary: Create journal entry from unmatched transaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEntryFromTransactionRequest'
+      responses:
+        '201':
+          description: Journal entry created and matched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntryResponse'
+
+  /invoices:
+    get:
+      tags: [Invoices]
+      operationId: listInvoices
+      summary: List invoices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [SALES, PURCHASE]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, SENT, PAID, OVERDUE, CANCELLED]
+      responses:
+        '200':
+          description: Invoices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoicePage'
+
+    post:
+      tags: [Invoices]
+      operationId: createInvoice
+      summary: Create invoice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceRequest'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+
+  /invoices/{invoiceId}:
+    parameters:
+      - name: invoiceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Invoices]
+      operationId: getInvoice
+      summary: Get invoice details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /invoices/{invoiceId}/mark-paid:
+    parameters:
+      - name: invoiceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Invoices]
+      operationId: markInvoicePaid
+      summary: Mark invoice as paid
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkPaidRequest'
+      responses:
+        '200':
+          description: Invoice marked paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceResponse'
+
+  /reports/vat201:
+    get:
+      tags: [Reports]
+      operationId: generateVat201
+      summary: Generate VAT201 report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: VAT201 report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vat201Response'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /reports/trial-balance:
+    get:
+      tags: [Reports]
+      operationId: getTrialBalance
+      summary: Get trial balance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: asOfDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Trial balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrialBalanceResponse'
+
+  /dashboard/labour-cost:
+    get:
+      tags: [Dashboard]
+      operationId: getLabourCostDashboard
+      summary: Get real-time labour cost dashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Labour cost summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabourCostDashboardResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        errorCode:
+          type: string
+      required: [title, status]
+
+    CreateAccountRequest:
+      type: object
+      properties:
+        accountCode:
+          type: string
+          maxLength: 20
+        name:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        subType:
+          type: string
+          enum: [CURRENT_ASSET, FIXED_ASSET, CURRENT_LIABILITY, LONG_TERM_LIABILITY, RETAINED_EARNINGS, OPERATING_REVENUE, OTHER_REVENUE, COST_OF_SALES, OPERATING_EXPENSE]
+        parentAccountId:
+          type: string
+          format: uuid
+        vatApplicable:
+          type: boolean
+          default: false
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+      required: [accountCode, name, type, subType]
+
+    UpdateAccountRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        vatApplicable:
+          type: boolean
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+
+    AccountResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountCode:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE]
+        subType:
+          type: string
+        parentAccountId:
+          type: string
+          format: uuid
+        balance:
+          type: number
+          format: decimal
+        systemAccount:
+          type: boolean
+        vatApplicable:
+          type: boolean
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+      required: [id, accountCode, name, type, subType, balance, systemAccount]
+
+    CreateJournalEntryRequest:
+      type: object
+      properties:
+        postingDate:
+          type: string
+          format: date
+        description:
+          type: string
+          maxLength: 255
+        lineItems:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/JournalLineItemRequest'
+      required: [postingDate, lineItems]
+
+    JournalLineItemRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        debit:
+          type: number
+          format: decimal
+        credit:
+          type: number
+          format: decimal
+        description:
+          type: string
+          maxLength: 255
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+      required: [accountId]
+
+    ReverseJournalEntryRequest:
+      type: object
+      properties:
+        postingDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 255
+      required: [postingDate, reason]
+
+    JournalEntryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entryNumber:
+          type: string
+        postingDate:
+          type: string
+          format: date
+        description:
+          type: string
+        source:
+          type: string
+          enum: [MANUAL, PAYROLL, INVOICE, BANK_FEED]
+        sourceReferenceId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [DRAFT, POSTED, REVERSED]
+        immutable:
+          type: boolean
+        reversalOfId:
+          type: string
+          format: uuid
+        reversedById:
+          type: string
+          format: uuid
+        totalDebit:
+          type: number
+          format: decimal
+        totalCredit:
+          type: number
+          format: decimal
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalLineItemResponse'
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, entryNumber, postingDate, source, status, immutable, totalDebit, totalCredit, lineItems, createdAt]
+
+    JournalLineItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        accountCode:
+          type: string
+        accountName:
+          type: string
+        debit:
+          type: number
+          format: decimal
+        credit:
+          type: number
+          format: decimal
+        description:
+          type: string
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+        vatAmount:
+          type: number
+          format: decimal
+      required: [id, accountId, accountCode, accountName]
+
+    JournalEntryPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/JournalEntryResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    CreateBankAccountRequest:
+      type: object
+      properties:
+        bankName:
+          type: string
+          maxLength: 100
+        accountNumber:
+          type: string
+          maxLength: 30
+        branchCode:
+          type: string
+          maxLength: 10
+        type:
+          type: string
+          enum: [CURRENT, SAVINGS, CREDIT]
+        linkedAccountId:
+          type: string
+          format: uuid
+          description: GL account to link
+      required: [bankName, accountNumber, type, linkedAccountId]
+
+    BankAccountResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bankName:
+          type: string
+        accountNumber:
+          type: string
+        accountNumberMasked:
+          type: string
+          description: "****1234"
+        branchCode:
+          type: string
+        type:
+          type: string
+          enum: [CURRENT, SAVINGS, CREDIT]
+        linkedAccountId:
+          type: string
+          format: uuid
+        connectionStatus:
+          type: string
+          enum: [CONNECTED, DISCONNECTED, PENDING, FAILED]
+        lastSyncAt:
+          type: string
+          format: date-time
+        lastSyncError:
+          type: string
+      required: [id, bankName, accountNumberMasked, type, linkedAccountId, connectionStatus]
+
+    BankConnectionResponse:
+      type: object
+      properties:
+        authorizationUrl:
+          type: string
+          format: uri
+          description: URL to redirect user for bank authorization
+        expiresAt:
+          type: string
+          format: date-time
+      required: [authorizationUrl, expiresAt]
+
+    SyncStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, FAILED]
+        message:
+          type: string
+        transactionsImported:
+          type: integer
+      required: [status]
+
+    BankTransactionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bankAccountId:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+        transactionDate:
+          type: string
+          format: date
+        amount:
+          type: number
+          format: decimal
+        description:
+          type: string
+        reference:
+          type: string
+        direction:
+          type: string
+          enum: [DEBIT, CREDIT]
+        reconciliationStatus:
+          type: string
+          enum: [UNMATCHED, MATCHED, MANUALLY_RECONCILED]
+        matchedJournalEntryId:
+          type: string
+          format: uuid
+        matchConfidence:
+          type: number
+          format: decimal
+      required: [id, bankAccountId, transactionDate, amount, direction, reconciliationStatus]
+
+    BankTransactionDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/BankTransactionResponse'
+        - type: object
+          properties:
+            matchSuggestions:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchSuggestion'
+
+    MatchSuggestion:
+      type: object
+      properties:
+        journalEntryId:
+          type: string
+          format: uuid
+        entryNumber:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          format: decimal
+        confidence:
+          type: number
+          format: decimal
+          description: 0-100
+      required: [journalEntryId, entryNumber, amount, confidence]
+
+    BankTransactionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankTransactionResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    MatchTransactionRequest:
+      type: object
+      properties:
+        journalEntryId:
+          type: string
+          format: uuid
+      required: [journalEntryId]
+
+    CreateEntryFromTransactionRequest:
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+          description: Contra account for the entry
+        description:
+          type: string
+          maxLength: 255
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED, EXEMPT]
+      required: [accountId]
+
+    CreateInvoiceRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [SALES, PURCHASE]
+        customerOrSupplierName:
+          type: string
+          maxLength: 100
+        vatNumber:
+          type: string
+          maxLength: 20
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        lineItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/InvoiceLineItemRequest'
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED]
+          default: STANDARD
+      required: [type, customerOrSupplierName, invoiceDate, dueDate, lineItems]
+
+    InvoiceLineItemRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: number
+          format: decimal
+        unitPrice:
+          type: number
+          format: decimal
+        accountId:
+          type: string
+          format: uuid
+      required: [description, quantity, unitPrice, accountId]
+
+    MarkPaidRequest:
+      type: object
+      properties:
+        paymentDate:
+          type: string
+          format: date
+        bankTransactionId:
+          type: string
+          format: uuid
+          description: Optional link to bank transaction
+      required: [paymentDate]
+
+    InvoiceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+        type:
+          type: string
+          enum: [SALES, PURCHASE]
+        customerOrSupplierName:
+          type: string
+        vatNumber:
+          type: string
+        invoiceDate:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        subtotal:
+          type: number
+          format: decimal
+        vatAmount:
+          type: number
+          format: decimal
+        total:
+          type: number
+          format: decimal
+        status:
+          type: string
+          enum: [DRAFT, SENT, PAID, OVERDUE, CANCELLED]
+        vatType:
+          type: string
+          enum: [STANDARD, ZERO_RATED]
+        journalEntryId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, invoiceNumber, type, customerOrSupplierName, invoiceDate, dueDate, subtotal, vatAmount, total, status, createdAt]
+
+    InvoicePage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    Vat201Response:
+      type: object
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        outputVat:
+          type: number
+          format: decimal
+          description: VAT on sales (Standard rated)
+        inputVat:
+          type: number
+          format: decimal
+          description: VAT on purchases (Standard rated)
+        netVat:
+          type: number
+          format: decimal
+          description: Output - Input (positive = payable)
+        standardRatedSales:
+          type: number
+          format: decimal
+        zeroRatedSales:
+          type: number
+          format: decimal
+        standardRatedPurchases:
+          type: number
+          format: decimal
+        zeroRatedPurchases:
+          type: number
+          format: decimal
+        generatedAt:
+          type: string
+          format: date-time
+      required: [periodStart, periodEnd, outputVat, inputVat, netVat, generatedAt]
+
+    TrialBalanceResponse:
+      type: object
+      properties:
+        asOfDate:
+          type: string
+          format: date
+        accounts:
+          type: array
+          items:
+            type: object
+            properties:
+              accountCode:
+                type: string
+              accountName:
+                type: string
+              type:
+                type: string
+              debit:
+                type: number
+                format: decimal
+              credit:
+                type: number
+                format: decimal
+        totalDebit:
+          type: number
+          format: decimal
+        totalCredit:
+          type: number
+          format: decimal
+        balanced:
+          type: boolean
+      required: [asOfDate, accounts, totalDebit, totalCredit, balanced]
+
+    LabourCostDashboardResponse:
+      type: object
+      properties:
+        asOfDate:
+          type: string
+          format: date-time
+        totalEmployees:
+          type: integer
+        activeEmployees:
+          type: integer
+        monthlyBreakdown:
+          type: object
+          properties:
+            baseSalary:
+              type: number
+              format: decimal
+            uifEmployer:
+              type: number
+              format: decimal
+            sdl:
+              type: number
+              format: decimal
+            pensionEmployer:
+              type: number
+              format: decimal
+            toolsOfTrade:
+              type: number
+              format: decimal
+            totalLabourCost:
+              type: number
+              format: decimal
+        departmentBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              department:
+                type: string
+              employeeCount:
+                type: integer
+              totalCost:
+                type: number
+                format: decimal
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              month:
+                type: string
+              totalCost:
+                type: number
+                format: decimal
+      required: [asOfDate, totalEmployees, activeEmployees, monthlyBreakdown]

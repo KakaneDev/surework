@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: hr-service
+  config:
+    import: optional:configserver:http://localhost:8888
+
+server:
+  port: 8083
+
+# Logging
+logging:
+  level:
+    com.surework.hr: DEBUG

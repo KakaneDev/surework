@@ -31,7 +31,25 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Reference: `.specify/memory/constitution.md`
+
+| Check | Principle | Status | Notes |
+|-------|-----------|--------|-------|
+| Monorepo Structure | I | [ ] | Verify monorepo layout compliance |
+| Service Structure | II | [ ] | Package layout per service |
+| Java 21 Features | III | [ ] | Records, sealed interfaces, pattern matching |
+| API Design | IV | [ ] | URL versioning, ProblemDetail errors |
+| Service Layer | V | [ ] | CQRS interfaces, transaction boundaries |
+| Exception Handling | VI | [ ] | Base hierarchy, global handler |
+| Database Standards | VII | [ ] | BaseEntity, Flyway migrations |
+| Security | VIII | [ ] | JWT auth, MFA, role-based access |
+| Testing Strategy | IX | [ ] | Unit, integration, architecture tests |
+| Observability | X | [ ] | Health probes, metrics, logging |
+| Configuration | XI | [ ] | Profile-based, externalized secrets |
+| Communication | XII | [ ] | REST clients, Kafka events |
+| Containers | XIII | [ ] | Multi-stage Dockerfile |
+| Kubernetes | XIV | [ ] | Deployment, Service, HPA |
+| Frontend | XV | [ ] | Angular structure, interceptors |
 
 ## Project Structure
 

@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: accounting-service
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_accounting}
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Africa/Johannesburg
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: accounting-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.surework.*
+
+server:
+  port: ${SERVER_PORT:8084}
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    db:
+      enabled: true
+
+# Application-specific configuration
+surework:
+  accounting:
+    # South African VAT rate
+    vat-rate: 0.15
+    # Financial year end (month)
+    financial-year-end-month: 2
+    # Default currency
+    default-currency: ZAR
+    # Decimal precision for amounts
+    amount-precision: 2
+
+logging:
+  level:
+    com.surework: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG

@@ -1,0 +1,1200 @@
+openapi: 3.1.0
+info:
+  title: SureWork Recruitment Service API
+  description: Applicant Tracking System, Candidates, and Background Checks (Module D)
+  version: 1.0.0
+  contact:
+    name: SureWork API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: Job Postings
+    description: Job posting management
+  - name: Candidates
+    description: Candidate pipeline management
+  - name: Background Checks
+    description: Background verification
+  - name: Interviews
+    description: Interview scheduling
+
+paths:
+  /job-postings:
+    get:
+      tags: [Job Postings]
+      operationId: listJobPostings
+      summary: List job postings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, OPEN, CLOSED, ON_HOLD]
+        - name: department
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job postings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingPage'
+
+    post:
+      tags: [Job Postings]
+      operationId: createJobPosting
+      summary: Create job posting
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobPostingRequest'
+      responses:
+        '201':
+          description: Job posting created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingResponse'
+
+  /job-postings/{postingId}:
+    parameters:
+      - name: postingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Job Postings]
+      operationId: getJobPosting
+      summary: Get job posting details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Job posting details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Job Postings]
+      operationId: updateJobPosting
+      summary: Update job posting
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobPostingRequest'
+      responses:
+        '200':
+          description: Job posting updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingResponse'
+
+  /job-postings/{postingId}/publish:
+    parameters:
+      - name: postingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Job Postings]
+      operationId: publishJobPosting
+      summary: Publish job posting (set to OPEN)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Job posting published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingResponse'
+
+  /job-postings/{postingId}/close:
+    parameters:
+      - name: postingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Job Postings]
+      operationId: closeJobPosting
+      summary: Close job posting
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Job posting closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobPostingResponse'
+
+  /job-postings/{postingId}/post-external:
+    parameters:
+      - name: postingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Job Postings]
+      operationId: postToExternalBoard
+      summary: Post job to external job board
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostExternalRequest'
+      responses:
+        '200':
+          description: Posted to external board
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalPostingResponse'
+
+  /job-postings/{postingId}/candidates:
+    parameters:
+      - name: postingId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Candidates]
+      operationId: listCandidatesForJob
+      summary: List candidates for job posting
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [APPLIED, SCREENING, INTERVIEW, OFFER, HIRED, REJECTED, WITHDRAWN]
+      responses:
+        '200':
+          description: Candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidatePage'
+
+  /candidates:
+    get:
+      tags: [Candidates]
+      operationId: listCandidates
+      summary: List all candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [APPLIED, SCREENING, INTERVIEW, OFFER, HIRED, REJECTED, WITHDRAWN]
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+      responses:
+        '200':
+          description: Candidates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidatePage'
+
+    post:
+      tags: [Candidates]
+      operationId: createCandidate
+      summary: Create candidate application
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCandidateRequest'
+      responses:
+        '201':
+          description: Candidate created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+
+  /candidates/{candidateId}:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Candidates]
+      operationId: getCandidate
+      summary: Get candidate details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Candidate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Candidates]
+      operationId: updateCandidate
+      summary: Update candidate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCandidateRequest'
+      responses:
+        '200':
+          description: Candidate updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+
+  /candidates/{candidateId}/advance:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Candidates]
+      operationId: advanceCandidate
+      summary: Advance candidate to next stage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvanceCandidateRequest'
+      responses:
+        '200':
+          description: Candidate advanced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+        '422':
+          description: Invalid status transition
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /candidates/{candidateId}/reject:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Candidates]
+      operationId: rejectCandidate
+      summary: Reject candidate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectCandidateRequest'
+      responses:
+        '200':
+          description: Candidate rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+
+  /candidates/{candidateId}/hire:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Candidates]
+      operationId: hireCandidate
+      summary: Mark candidate as hired (triggers HR data transfer)
+      description: Sets status to HIRED and initiates data transfer to HR module for onboarding
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HireCandidateRequest'
+      responses:
+        '200':
+          description: Candidate hired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+        '422':
+          description: Missing required information for hire
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /candidates/{candidateId}/resume:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Candidates]
+      operationId: downloadResume
+      summary: Download candidate resume
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resume file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/msword:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [Candidates]
+      operationId: uploadResume
+      summary: Upload candidate resume
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        '200':
+          description: Resume uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+
+  /candidates/{candidateId}/background-checks:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Background Checks]
+      operationId: listCandidateBackgroundChecks
+      summary: List background checks for candidate
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Background checks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackgroundCheckResponse'
+
+    post:
+      tags: [Background Checks]
+      operationId: initiateBackgroundCheck
+      summary: Initiate background check
+      description: Requires candidate consent. Integrates with MIE/LexisNexis.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitiateBackgroundCheckRequest'
+      responses:
+        '201':
+          description: Background check initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundCheckResponse'
+        '422':
+          description: Consent not provided
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /background-checks/{checkId}:
+    parameters:
+      - name: checkId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Background Checks]
+      operationId: getBackgroundCheck
+      summary: Get background check details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Background check details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackgroundCheckResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /candidates/{candidateId}/interviews:
+    parameters:
+      - name: candidateId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Interviews]
+      operationId: listCandidateInterviews
+      summary: List interviews for candidate
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Interviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InterviewResponse'
+
+    post:
+      tags: [Interviews]
+      operationId: scheduleInterview
+      summary: Schedule interview
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleInterviewRequest'
+      responses:
+        '201':
+          description: Interview scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewResponse'
+
+  /interviews/{interviewId}:
+    parameters:
+      - name: interviewId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Interviews]
+      operationId: getInterview
+      summary: Get interview details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Interview details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Interviews]
+      operationId: updateInterview
+      summary: Update interview (reschedule, add feedback)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInterviewRequest'
+      responses:
+        '200':
+          description: Interview updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewResponse'
+
+  /interviews/{interviewId}/complete:
+    parameters:
+      - name: interviewId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Interviews]
+      operationId: completeInterview
+      summary: Mark interview as completed with feedback
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteInterviewRequest'
+      responses:
+        '200':
+          description: Interview completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterviewResponse'
+
+  /consent/data-retention:
+    post:
+      tags: [Candidates]
+      operationId: renewDataRetentionConsent
+      summary: Renew POPIA data retention consent
+      description: Extends data retention by 12 months from consent date
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenewConsentRequest'
+      responses:
+        '200':
+          description: Consent renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        errorCode:
+          type: string
+      required: [title, status]
+
+    CreateJobPostingRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        department:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        requirements:
+          type: string
+        employmentType:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME, CONTRACT]
+        location:
+          type: string
+          maxLength: 100
+        salaryMin:
+          type: number
+          format: decimal
+        salaryMax:
+          type: number
+          format: decimal
+      required: [title, employmentType]
+
+    UpdateJobPostingRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        department:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        requirements:
+          type: string
+        location:
+          type: string
+          maxLength: 100
+        salaryMin:
+          type: number
+          format: decimal
+        salaryMax:
+          type: number
+          format: decimal
+
+    PostExternalRequest:
+      type: object
+      properties:
+        board:
+          type: string
+          enum: [LINKEDIN, INDEED, CAREERS24, PNET]
+      required: [board]
+
+    ExternalPostingResponse:
+      type: object
+      properties:
+        board:
+          type: string
+        postId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, EXPIRED, FAILED]
+        postedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+          format: uri
+      required: [board, status]
+
+    JobPostingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        department:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: string
+        employmentType:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME, CONTRACT]
+        location:
+          type: string
+        salaryMin:
+          type: number
+          format: decimal
+        salaryMax:
+          type: number
+          format: decimal
+        status:
+          type: string
+          enum: [DRAFT, OPEN, CLOSED, ON_HOLD]
+        openDate:
+          type: string
+          format: date
+        closeDate:
+          type: string
+          format: date
+        candidateCount:
+          type: integer
+        externalPostings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPostingResponse'
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, employmentType, status, createdAt]
+
+    JobPostingPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobPostingResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    CreateCandidateRequest:
+      type: object
+      properties:
+        jobPostingId:
+          type: string
+          format: uuid
+        saIdNumber:
+          type: string
+          pattern: '^\d{13}$'
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+        backgroundCheckConsent:
+          type: boolean
+          default: false
+        dataRetentionConsent:
+          type: boolean
+          default: false
+          description: POPIA consent for 12-month data retention
+      required: [jobPostingId, firstName, lastName, email]
+
+    UpdateCandidateRequest:
+      type: object
+      properties:
+        saIdNumber:
+          type: string
+          pattern: '^\d{13}$'
+        phoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+        notes:
+          type: string
+          maxLength: 500
+        backgroundCheckConsent:
+          type: boolean
+
+    AdvanceCandidateRequest:
+      type: object
+      properties:
+        targetStatus:
+          type: string
+          enum: [SCREENING, INTERVIEW, OFFER]
+        notes:
+          type: string
+          maxLength: 500
+      required: [targetStatus]
+
+    RejectCandidateRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+      required: [reason]
+
+    HireCandidateRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        department:
+          type: string
+          maxLength: 100
+        jobTitle:
+          type: string
+          maxLength: 100
+        monthlySalary:
+          type: number
+          format: decimal
+        contractType:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME]
+      required: [startDate, monthlySalary, contractType]
+
+    CandidateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jobPostingId:
+          type: string
+          format: uuid
+        jobTitle:
+          type: string
+        saIdNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE]
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        status:
+          type: string
+          enum: [APPLIED, SCREENING, INTERVIEW, OFFER, HIRED, REJECTED, WITHDRAWN]
+        hasResume:
+          type: boolean
+        backgroundCheckConsent:
+          type: boolean
+        backgroundCheckConsentAt:
+          type: string
+          format: date-time
+        dataRetentionConsent:
+          type: boolean
+        dataRetentionConsentAt:
+          type: string
+          format: date-time
+        dataRetentionExpiresAt:
+          type: string
+          format: date
+        notes:
+          type: string
+        convertedEmployeeId:
+          type: string
+          format: uuid
+          description: Set when status = HIRED
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, jobPostingId, firstName, lastName, email, status, createdAt]
+
+    CandidatePage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CandidateResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    InitiateBackgroundCheckRequest:
+      type: object
+      properties:
+        checkType:
+          type: string
+          enum: [CRIMINAL, CREDIT, QUALIFICATION, REFERENCE]
+        provider:
+          type: string
+          enum: [MIE, LEXISNEXIS]
+          default: MIE
+      required: [checkType]
+
+    BackgroundCheckResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        candidateId:
+          type: string
+          format: uuid
+        checkType:
+          type: string
+          enum: [CRIMINAL, CREDIT, QUALIFICATION, REFERENCE]
+        provider:
+          type: string
+        externalReferenceId:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED, FAILED]
+        initiatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum: [CLEAR, ADVERSE, INCONCLUSIVE]
+        resultSummary:
+          type: string
+        failureReason:
+          type: string
+        retryCount:
+          type: integer
+        nextRetryAt:
+          type: string
+          format: date-time
+      required: [id, candidateId, checkType, provider, status, initiatedAt]
+
+    ScheduleInterviewRequest:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 15
+          maximum: 480
+          default: 60
+        type:
+          type: string
+          enum: [PHONE, VIDEO, IN_PERSON, PANEL]
+        location:
+          type: string
+          maxLength: 255
+          description: Physical address or video link
+        interviewerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required: [scheduledAt, type]
+
+    UpdateInterviewRequest:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        location:
+          type: string
+          maxLength: 255
+        interviewerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CompleteInterviewRequest:
+      type: object
+      properties:
+        rating:
+          type: number
+          format: decimal
+          minimum: 1
+          maximum: 5
+        feedback:
+          type: string
+        outcome:
+          type: string
+          enum: [PASS, FAIL, UNDECIDED]
+      required: [outcome]
+
+    InterviewResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        candidateId:
+          type: string
+          format: uuid
+        candidateName:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        type:
+          type: string
+          enum: [PHONE, VIDEO, IN_PERSON, PANEL]
+        location:
+          type: string
+        interviewerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        interviewerNames:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [SCHEDULED, COMPLETED, CANCELLED, NO_SHOW]
+        rating:
+          type: number
+          format: decimal
+        feedback:
+          type: string
+        outcome:
+          type: string
+          enum: [PASS, FAIL, UNDECIDED]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, candidateId, scheduledAt, type, status, createdAt]
+
+    RenewConsentRequest:
+      type: object
+      properties:
+        candidateId:
+          type: string
+          format: uuid
+      required: [candidateId]

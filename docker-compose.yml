@@ -1,0 +1,370 @@
+version: '3.8'
+
+# SureWork ERP Platform - Docker Compose Configuration
+# For local development and testing
+
+services:
+  # ==================== Infrastructure ====================
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: surework-postgres
+    environment:
+      POSTGRES_USER: surework
+      POSTGRES_PASSWORD: surework
+      POSTGRES_DB: surework
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surework"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - surework-network
+
+  # Redis (for caching and rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: surework-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - surework-network
+
+  # Apache Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: surework-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - surework-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: surework-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - surework-network
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: surework-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: surework
+      MINIO_ROOT_PASSWORD: surework123
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - surework-network
+
+  # ==================== Service Discovery ====================
+
+  # Eureka Service Registry
+  eureka-server:
+    build:
+      context: ./services/eureka-server
+      dockerfile: Dockerfile
+    container_name: surework-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - surework-network
+
+  # ==================== API Gateway ====================
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: surework-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      EUREKA_URI: http://eureka-server:8761/eureka
+      REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:-surework-jwt-secret-key-change-in-production}
+    depends_on:
+      - eureka-server
+      - redis
+    networks:
+      - surework-network
+
+  # ==================== Microservices ====================
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ./services/admin-service
+      dockerfile: Dockerfile
+    container_name: surework-admin
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_admin
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_SECRET: ${JWT_SECRET:-surework-jwt-secret-key-change-in-production}
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Employee Service
+  employee-service:
+    build:
+      context: ./services/employee-service
+      dockerfile: Dockerfile
+    container_name: surework-employee
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_employee
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Leave Service
+  leave-service:
+    build:
+      context: ./services/leave-service
+      dockerfile: Dockerfile
+    container_name: surework-leave
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_leave
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Payroll Service
+  payroll-service:
+    build:
+      context: ./services/payroll-service
+      dockerfile: Dockerfile
+    container_name: surework-payroll
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_payroll
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Accounting Service
+  accounting-service:
+    build:
+      context: ./services/accounting-service
+      dockerfile: Dockerfile
+    container_name: surework-accounting
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_accounting
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Recruitment Service
+  recruitment-service:
+    build:
+      context: ./services/recruitment-service
+      dockerfile: Dockerfile
+    container_name: surework-recruitment
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_recruitment
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Time & Attendance Service
+  time-attendance-service:
+    build:
+      context: ./services/time-attendance-service
+      dockerfile: Dockerfile
+    container_name: surework-time
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_time
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Document Service
+  document-service:
+    build:
+      context: ./services/document-service
+      dockerfile: Dockerfile
+    container_name: surework-document
+    ports:
+      - "8089:8089"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_document
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: surework
+      S3_SECRET_KEY: surework123
+      S3_BUCKET: surework-documents
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+      - minio
+    networks:
+      - surework-network
+
+  # Reporting Service
+  reporting-service:
+    build:
+      context: ./services/reporting-service
+      dockerfile: Dockerfile
+    container_name: surework-reporting
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_reporting
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+# ==================== Networks ====================
+networks:
+  surework-network:
+    driver: bridge
+
+# ==================== Volumes ====================
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

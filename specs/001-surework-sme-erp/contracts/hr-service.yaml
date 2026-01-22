@@ -1,0 +1,1072 @@
+openapi: 3.1.0
+info:
+  title: SureWork HR Service API
+  description: Employee, Leave, and Asset management (Module A)
+  version: 1.0.0
+  contact:
+    name: SureWork API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: Employees
+    description: Employee lifecycle management
+  - name: Leave
+    description: Leave balances and requests
+  - name: Assets
+    description: Employee asset assignment
+  - name: Contracts
+    description: Employment contracts and eSign
+
+paths:
+  /employees:
+    get:
+      tags: [Employees]
+      operationId: listEmployees
+      summary: List employees with filtering
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, TERMINATED, ON_LEAVE]
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, email, or ID number
+      responses:
+        '200':
+          description: Page of employees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Employees]
+      operationId: createEmployee
+      summary: Onboard new employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEmployeeRequest'
+      responses:
+        '201':
+          description: Employee created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Duplicate SA ID number
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /employees/{employeeId}:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    get:
+      tags: [Employees]
+      operationId: getEmployee
+      summary: Get employee details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Employee details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Employees]
+      operationId: updateEmployee
+      summary: Update employee details
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmployeeRequest'
+      responses:
+        '200':
+          description: Employee updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /employees/{employeeId}/terminate:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    post:
+      tags: [Employees]
+      operationId: terminateEmployee
+      summary: Terminate employee (triggers payroll exclusion)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminateEmployeeRequest'
+      responses:
+        '200':
+          description: Employee terminated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot terminate - active payroll run in progress
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /employees/{employeeId}/leave-balances:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    get:
+      tags: [Leave]
+      operationId: getLeaveBalances
+      summary: Get employee leave balances
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taxYear
+          in: query
+          schema:
+            type: integer
+          description: Tax year (default current)
+      responses:
+        '200':
+          description: Leave balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeaveBalanceResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /employees/{employeeId}/leave-requests:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    get:
+      tags: [Leave]
+      operationId: getEmployeeLeaveRequests
+      summary: Get employee leave requests
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+      responses:
+        '200':
+          description: Leave requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestPage'
+
+    post:
+      tags: [Leave]
+      operationId: createLeaveRequest
+      summary: Submit leave request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeaveRequestRequest'
+      responses:
+        '201':
+          description: Leave request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: Insufficient leave balance
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /leave-requests:
+    get:
+      tags: [Leave]
+      operationId: listLeaveRequests
+      summary: List all leave requests (for managers)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+        - name: department
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leave requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestPage'
+
+  /leave-requests/{requestId}:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Leave]
+      operationId: getLeaveRequest
+      summary: Get leave request details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Leave request details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /leave-requests/{requestId}/approve:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Leave]
+      operationId: approveLeaveRequest
+      summary: Approve leave request
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Leave request approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot approve - already processed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /leave-requests/{requestId}/reject:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Leave]
+      operationId: rejectLeaveRequest
+      summary: Reject leave request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectLeaveRequestRequest'
+      responses:
+        '200':
+          description: Leave request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /employees/{employeeId}/assets:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    get:
+      tags: [Assets]
+      operationId: getEmployeeAssets
+      summary: Get assets assigned to employee
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Employee assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeAssetResponse'
+
+    post:
+      tags: [Assets]
+      operationId: assignAsset
+      summary: Assign asset to employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignAssetRequest'
+      responses:
+        '201':
+          description: Asset assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeAssetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /employees/{employeeId}/assets/{assetId}/return:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Assets]
+      operationId: returnAsset
+      summary: Mark asset as returned
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Asset returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeAssetResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /employees/{employeeId}/contracts:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+
+    get:
+      tags: [Contracts]
+      operationId: getEmployeeContracts
+      summary: Get employee contracts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Employee contracts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmploymentContractResponse'
+
+    post:
+      tags: [Contracts]
+      operationId: createContract
+      summary: Create employment contract for signing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContractRequest'
+      responses:
+        '201':
+          description: Contract created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentContractResponse'
+
+  /contracts/{contractId}/sign:
+    parameters:
+      - name: contractId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Contracts]
+      operationId: signContract
+      summary: Digitally sign employment contract
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignContractRequest'
+      responses:
+        '200':
+          description: Contract signed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmploymentContractResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Contract already signed or expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /utils/parse-sa-id:
+    post:
+      tags: [Employees]
+      operationId: parseSaId
+      summary: Parse SA ID number to extract DOB and gender
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                saIdNumber:
+                  type: string
+                  pattern: '^\d{13}$'
+              required: [saIdNumber]
+      responses:
+        '200':
+          description: Parsed ID information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParsedSaIdResponse'
+        '400':
+          description: Invalid ID number
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    EmployeeId:
+      name: employeeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        errorCode:
+          type: string
+      required: [title, status]
+
+    CreateEmployeeRequest:
+      type: object
+      properties:
+        saIdNumber:
+          type: string
+          pattern: '^\d{13}$'
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+        race:
+          type: string
+          enum: [AFRICAN, COLOURED, INDIAN, WHITE]
+        occupationalLevel:
+          type: string
+          enum: [TOP_MANAGEMENT, SENIOR, SKILLED, SEMI_SKILLED, UNSKILLED]
+        hireDate:
+          type: string
+          format: date
+        contractType:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME]
+        department:
+          type: string
+          maxLength: 100
+        jobTitle:
+          type: string
+          maxLength: 100
+        managerId:
+          type: string
+          format: uuid
+        monthlySalary:
+          type: number
+          format: decimal
+          minimum: 0
+        bankName:
+          type: string
+          maxLength: 50
+        bankAccountNumber:
+          type: string
+          maxLength: 20
+        bankBranchCode:
+          type: string
+          maxLength: 10
+        taxNumber:
+          type: string
+          maxLength: 20
+      required:
+        - saIdNumber
+        - firstName
+        - lastName
+        - race
+        - occupationalLevel
+        - hireDate
+        - contractType
+        - monthlySalary
+
+    UpdateEmployeeRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+        department:
+          type: string
+          maxLength: 100
+        jobTitle:
+          type: string
+          maxLength: 100
+        managerId:
+          type: string
+          format: uuid
+        monthlySalary:
+          type: number
+          format: decimal
+          minimum: 0
+        bankName:
+          type: string
+          maxLength: 50
+        bankAccountNumber:
+          type: string
+          maxLength: 20
+        bankBranchCode:
+          type: string
+          maxLength: 10
+        taxNumber:
+          type: string
+          maxLength: 20
+
+    TerminateEmployeeRequest:
+      type: object
+      properties:
+        terminationDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 500
+      required: [terminationDate]
+
+    EmployeeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        saIdNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE]
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        race:
+          type: string
+          enum: [AFRICAN, COLOURED, INDIAN, WHITE]
+        occupationalLevel:
+          type: string
+          enum: [TOP_MANAGEMENT, SENIOR, SKILLED, SEMI_SKILLED, UNSKILLED]
+        hireDate:
+          type: string
+          format: date
+        terminationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, TERMINATED, ON_LEAVE]
+        contractType:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME]
+        department:
+          type: string
+        jobTitle:
+          type: string
+        managerId:
+          type: string
+          format: uuid
+        monthlySalary:
+          type: number
+          format: decimal
+        etiEligible:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - saIdNumber
+        - firstName
+        - lastName
+        - race
+        - occupationalLevel
+        - hireDate
+        - status
+        - contractType
+        - monthlySalary
+        - createdAt
+
+    EmployeePage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    ParsedSaIdResponse:
+      type: object
+      properties:
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE]
+        valid:
+          type: boolean
+      required: [dateOfBirth, gender, valid]
+
+    LeaveBalanceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        leaveType:
+          type: string
+          enum: [ANNUAL, SICK, FAMILY_RESPONSIBILITY, UNPAID]
+        accrued:
+          type: number
+          format: decimal
+        used:
+          type: number
+          format: decimal
+        pending:
+          type: number
+          format: decimal
+        available:
+          type: number
+          format: decimal
+          description: accrued - used - pending
+        cycleStartDate:
+          type: string
+          format: date
+        cycleEndDate:
+          type: string
+          format: date
+        taxYear:
+          type: integer
+      required:
+        - id
+        - employeeId
+        - leaveType
+        - accrued
+        - used
+        - pending
+        - available
+        - taxYear
+
+    CreateLeaveRequestRequest:
+      type: object
+      properties:
+        leaveType:
+          type: string
+          enum: [ANNUAL, SICK, FAMILY_RESPONSIBILITY, UNPAID]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 500
+      required: [leaveType, startDate, endDate]
+
+    RejectLeaveRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+      required: [reason]
+
+    LeaveRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        leaveType:
+          type: string
+          enum: [ANNUAL, SICK, FAMILY_RESPONSIBILITY, UNPAID]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        days:
+          type: number
+          format: decimal
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+        approverId:
+          type: string
+          format: uuid
+        approverName:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        rejectionReason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employeeId
+        - leaveType
+        - startDate
+        - endDate
+        - days
+        - status
+        - createdAt
+
+    LeaveRequestPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaveRequestResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    AssignAssetRequest:
+      type: object
+      properties:
+        assetName:
+          type: string
+          maxLength: 100
+        assetTag:
+          type: string
+          maxLength: 50
+        type:
+          type: string
+          enum: [LAPTOP, PHONE, VEHICLE, FURNITURE, OTHER]
+        value:
+          type: number
+          format: decimal
+        assignedDate:
+          type: string
+          format: date
+        notes:
+          type: string
+          maxLength: 500
+      required: [assetName, type, assignedDate]
+
+    EmployeeAssetResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        assetName:
+          type: string
+        assetTag:
+          type: string
+        type:
+          type: string
+          enum: [LAPTOP, PHONE, VEHICLE, FURNITURE, OTHER]
+        value:
+          type: number
+          format: decimal
+        assignedDate:
+          type: string
+          format: date
+        returnedDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, employeeId, assetName, type, assignedDate, createdAt]
+
+    CreateContractRequest:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          description: Null for permanent contracts
+        type:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME]
+      required: [startDate, type]
+
+    SignContractRequest:
+      type: object
+      properties:
+        signature:
+          type: string
+          description: Base64 encoded signature image
+        ipAddress:
+          type: string
+          format: ipv4
+      required: [signature]
+
+    EmploymentContractResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        type:
+          type: string
+          enum: [PERMANENT, FIXED_TERM, PART_TIME]
+        signatureStatus:
+          type: string
+          enum: [PENDING, SIGNED, EXPIRED]
+        signedAt:
+          type: string
+          format: date-time
+        documentUrl:
+          type: string
+          format: uri
+          description: URL to download signed PDF
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, employeeId, startDate, type, signatureStatus, createdAt]

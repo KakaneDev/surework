@@ -1,0 +1,85 @@
+# API Gateway specific configuration
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: tenant-service
+          uri: lb://tenant-service
+          predicates:
+            - Path=/api/v1/tenants/**
+          filters:
+            - StripPrefix=0
+
+        - id: identity-service
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/v1/auth/**, /api/v1/users/**
+          filters:
+            - StripPrefix=0
+
+        - id: hr-service
+          uri: lb://hr-service
+          predicates:
+            - Path=/api/v1/employees/**, /api/v1/leave/**
+          filters:
+            - StripPrefix=0
+
+        - id: payroll-service
+          uri: lb://payroll-service
+          predicates:
+            - Path=/api/v1/payroll/**, /api/v1/payslips/**
+          filters:
+            - StripPrefix=0
+
+        - id: accounting-service
+          uri: lb://accounting-service
+          predicates:
+            - Path=/api/v1/accounting/**, /api/v1/invoices/**, /api/v1/expenses/**
+          filters:
+            - StripPrefix=0
+
+        - id: recruitment-service
+          uri: lb://recruitment-service
+          predicates:
+            - Path=/api/v1/jobs/**, /api/v1/applications/**
+          filters:
+            - StripPrefix=0
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:4200"
+              - "https://*.surework.co.za"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+# Rate limiting
+surework:
+  gateway:
+    rate-limit:
+      enabled: true
+      requests-per-second: 100
+      burst-capacity: 200

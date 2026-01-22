@@ -1,0 +1,185 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            exposedHeaders:
+              - "Authorization"
+              - "X-Request-Id"
+            allowCredentials: true
+            maxAge: 3600
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+            redis-rate-limiter.requestedTokens: 1
+
+      routes:
+        # Admin Service
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=0
+
+        # Employee Service
+        - id: employee-service
+          uri: lb://employee-service
+          predicates:
+            - Path=/api/employees/**
+          filters:
+            - StripPrefix=0
+
+        # Leave Service
+        - id: leave-service
+          uri: lb://leave-service
+          predicates:
+            - Path=/api/leave/**
+          filters:
+            - StripPrefix=0
+
+        # Payroll Service
+        - id: payroll-service
+          uri: lb://payroll-service
+          predicates:
+            - Path=/api/payroll/**
+          filters:
+            - StripPrefix=0
+
+        # Accounting Service
+        - id: accounting-service
+          uri: lb://accounting-service
+          predicates:
+            - Path=/api/accounting/**
+          filters:
+            - StripPrefix=0
+
+        # Recruitment Service
+        - id: recruitment-service
+          uri: lb://recruitment-service
+          predicates:
+            - Path=/api/recruitment/**
+          filters:
+            - StripPrefix=0
+
+        # Time & Attendance Service
+        - id: time-attendance-service
+          uri: lb://time-attendance-service
+          predicates:
+            - Path=/api/time/**
+          filters:
+            - StripPrefix=0
+
+        # Document Service
+        - id: document-service
+          uri: lb://document-service
+          predicates:
+            - Path=/api/documents/**
+          filters:
+            - StripPrefix=0
+
+        # Reporting Service
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+            - Path=/api/reporting/**
+          filters:
+            - StripPrefix=0
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10000
+        permitted-number-of-calls-in-half-open-state: 5
+    instances:
+      admin-service:
+        base-config: default
+      employee-service:
+        base-config: default
+      payroll-service:
+        base-config: default
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 30s
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+    gateway:
+      enabled: true
+
+# JWT Configuration
+surework:
+  gateway:
+    jwt:
+      secret: ${JWT_SECRET:surework-jwt-secret-key-for-development-only}
+      header: Authorization
+      prefix: Bearer
+
+    # Public paths (no authentication required)
+    public-paths:
+      - /api/admin/auth/login
+      - /api/admin/auth/refresh
+      - /actuator/health
+      - /swagger-ui/**
+      - /v3/api-docs/**
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.surework.gateway: DEBUG

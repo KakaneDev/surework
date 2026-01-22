@@ -1,0 +1,35 @@
+# Recruitment Service specific configuration
+server:
+  port: 8086
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surework}
+    username: ${DATABASE_USERNAME:surework}
+    password: ${DATABASE_PASSWORD:surework}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  kafka:
+    consumer:
+      group-id: recruitment-service
+
+# Recruitment Service configuration
+surework:
+  recruitment:
+    job-posting:
+      default-expiry-days: 30
+      max-applications-per-job: 500
+    application:
+      statuses:
+        - RECEIVED
+        - SCREENING
+        - INTERVIEW
+        - ASSESSMENT
+        - OFFER
+        - HIRED
+        - REJECTED
+        - WITHDRAWN

@@ -1,0 +1,1267 @@
+openapi: 3.1.0
+info:
+  title: SureWork Payroll Service API
+  description: Payroll processing, SARS tax calculations, and Two-Pot retirement (Module B)
+  version: 1.0.0
+  contact:
+    name: SureWork API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: Payroll Runs
+    description: Payroll cycle management
+  - name: Payslips
+    description: Employee payslip access
+  - name: Tax
+    description: SARS tax calculations and reports
+  - name: Two-Pot
+    description: Two-Pot retirement management
+
+paths:
+  /payroll-runs:
+    get:
+      tags: [Payroll Runs]
+      operationId: listPayrollRuns
+      summary: List payroll runs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: taxYear
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PROCESSING, FINALIZED, ROLLED_BACK]
+      responses:
+        '200':
+          description: Page of payroll runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunPage'
+
+    post:
+      tags: [Payroll Runs]
+      operationId: createPayrollRun
+      summary: Create new payroll run
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayrollRunRequest'
+      responses:
+        '201':
+          description: Payroll run created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Payroll run already exists for this period
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /payroll-runs/{payrollRunId}:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+
+    get:
+      tags: [Payroll Runs]
+      operationId: getPayrollRun
+      summary: Get payroll run details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payroll run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /payroll-runs/{payrollRunId}/calculate:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+
+    post:
+      tags: [Payroll Runs]
+      operationId: calculatePayroll
+      summary: Calculate payroll for all active employees
+      description: Calculates PAYE, UIF, SDL, ETI, and deductions for all active employees
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payroll calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Payroll already finalized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /payroll-runs/{payrollRunId}/finalize:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+
+    post:
+      tags: [Payroll Runs]
+      operationId: finalizePayroll
+      summary: Finalize payroll run (triggers journal entry creation)
+      description: Marks payroll as finalized, generates payslips, and creates immutable journal entry
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payroll finalized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Payroll not ready for finalization
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /payroll-runs/{payrollRunId}/rollback:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+
+    post:
+      tags: [Payroll Runs]
+      operationId: rollbackPayroll
+      summary: Roll back finalized payroll run
+      description: Creates reversal journal entry and allows re-processing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackPayrollRequest'
+      responses:
+        '200':
+          description: Payroll rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollRunResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot rollback - not finalized or already rolled back
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /payroll-runs/{payrollRunId}/line-items:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+
+    get:
+      tags: [Payroll Runs]
+      operationId: getPayrollLineItems
+      summary: Get all line items for payroll run
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Payroll line items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollLineItemPage'
+
+  /payroll-runs/{payrollRunId}/line-items/{employeeId}:
+    parameters:
+      - $ref: '#/components/parameters/PayrollRunId'
+      - name: employeeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Payroll Runs]
+      operationId: getPayrollLineItem
+      summary: Get line item for specific employee
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payroll line item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollLineItemResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Payroll Runs]
+      operationId: updatePayrollLineItem
+      summary: Adjust line item (before finalization)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePayrollLineItemRequest'
+      responses:
+        '200':
+          description: Line item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollLineItemResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot modify finalized payroll
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /payslips:
+    get:
+      tags: [Payslips]
+      operationId: listMyPayslips
+      summary: List payslips for current user (ESS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: taxYear
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payslips
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayslipPage'
+
+  /payslips/{payslipId}:
+    parameters:
+      - name: payslipId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Payslips]
+      operationId: getPayslip
+      summary: Get payslip details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payslip details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayslipResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /payslips/{payslipId}/pdf:
+    parameters:
+      - name: payslipId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Payslips]
+      operationId: downloadPayslipPdf
+      summary: Download payslip as PDF
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Payslip PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tax/tables:
+    get:
+      tags: [Tax]
+      operationId: getTaxTables
+      summary: Get SARS tax tables for tax year
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taxYear
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tax tables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaxTableResponse'
+        '404':
+          description: Tax tables not found for year
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /tax/calculate-paye:
+    post:
+      tags: [Tax]
+      operationId: calculatePaye
+      summary: Calculate PAYE for given income
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayeCalculationRequest'
+      responses:
+        '200':
+          description: PAYE calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayeCalculationResponse'
+
+  /tax/reports/emp201:
+    get:
+      tags: [Tax]
+      operationId: generateEmp201
+      summary: Generate EMP201 monthly report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taxYear
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: taxPeriod
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          description: EMP201 report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emp201Response'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /tax/reports/emp501:
+    get:
+      tags: [Tax]
+      operationId: generateEmp501
+      summary: Generate EMP501 annual reconciliation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taxYear
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: EMP501 report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emp501Response'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /two-pot/records:
+    get:
+      tags: [Two-Pot]
+      operationId: listTwoPotRecords
+      summary: List Two-Pot records for employees
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Two-Pot records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotRecordPage'
+
+  /two-pot/records/{recordId}:
+    parameters:
+      - name: recordId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Two-Pot]
+      operationId: getTwoPotRecord
+      summary: Get Two-Pot record details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Two-Pot record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotRecordResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /two-pot/simulate:
+    post:
+      tags: [Two-Pot]
+      operationId: simulateTwoPotWithdrawal
+      summary: Simulate withdrawal with tax implications (ESS)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoPotSimulationRequest'
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotSimulationResponse'
+        '422':
+          description: Insufficient balance or below minimum
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /two-pot/withdrawal-requests:
+    get:
+      tags: [Two-Pot]
+      operationId: listWithdrawalRequests
+      summary: List Two-Pot withdrawal requests
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: employeeId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, TAX_DIRECTIVE_REQUESTED, APPROVED, PAID, REJECTED]
+      responses:
+        '200':
+          description: Withdrawal requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotWithdrawalRequestPage'
+
+    post:
+      tags: [Two-Pot]
+      operationId: createWithdrawalRequest
+      summary: Submit Two-Pot withdrawal request (ESS)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTwoPotWithdrawalRequest'
+      responses:
+        '201':
+          description: Withdrawal request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotWithdrawalRequestResponse'
+        '422':
+          description: Insufficient balance or below R2000 minimum
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /two-pot/withdrawal-requests/{requestId}:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Two-Pot]
+      operationId: getWithdrawalRequest
+      summary: Get withdrawal request details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Withdrawal request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotWithdrawalRequestResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /two-pot/withdrawal-requests/{requestId}/process:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Two-Pot]
+      operationId: processWithdrawalRequest
+      summary: Process withdrawal request (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessTwoPotWithdrawalRequest'
+      responses:
+        '200':
+          description: Withdrawal processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoPotWithdrawalRequestResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    PayrollRunId:
+      name: payrollRunId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        errorCode:
+          type: string
+      required: [title, status]
+
+    CreatePayrollRunRequest:
+      type: object
+      properties:
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
+      required: [periodStart, periodEnd, payDate]
+
+    RollbackPayrollRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+      required: [reason]
+
+    PayrollRunResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [DRAFT, PROCESSING, FINALIZED, ROLLED_BACK]
+        taxYear:
+          type: integer
+        taxPeriod:
+          type: integer
+        totalGross:
+          type: number
+          format: decimal
+        totalPaye:
+          type: number
+          format: decimal
+        totalUif:
+          type: number
+          format: decimal
+        totalSdl:
+          type: number
+          format: decimal
+        totalEti:
+          type: number
+          format: decimal
+        totalNet:
+          type: number
+          format: decimal
+        employeeCount:
+          type: integer
+        journalEntryId:
+          type: string
+          format: uuid
+        finalizedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - periodStart
+        - periodEnd
+        - payDate
+        - status
+        - taxYear
+        - taxPeriod
+        - totalGross
+        - totalNet
+        - createdAt
+
+    PayrollRunPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayrollRunResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    UpdatePayrollLineItemRequest:
+      type: object
+      properties:
+        overtime:
+          type: number
+          format: decimal
+        bonus:
+          type: number
+          format: decimal
+        commission:
+          type: number
+          format: decimal
+
+    PayrollLineItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        payrollRunId:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        grossSalary:
+          type: number
+          format: decimal
+        overtime:
+          type: number
+          format: decimal
+        bonus:
+          type: number
+          format: decimal
+        commission:
+          type: number
+          format: decimal
+        paye:
+          type: number
+          format: decimal
+        uifEmployee:
+          type: number
+          format: decimal
+        pensionEmployee:
+          type: number
+          format: decimal
+        unpaidLeaveDays:
+          type: number
+          format: decimal
+        unpaidLeaveDeduction:
+          type: number
+          format: decimal
+        uifEmployer:
+          type: number
+          format: decimal
+        sdl:
+          type: number
+          format: decimal
+        eti:
+          type: number
+          format: decimal
+        pensionEmployer:
+          type: number
+          format: decimal
+        netPay:
+          type: number
+          format: decimal
+      required:
+        - id
+        - payrollRunId
+        - employeeId
+        - grossSalary
+        - paye
+        - uifEmployee
+        - netPay
+
+    PayrollLineItemPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayrollLineItemResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    PayslipResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        payrollRunId:
+          type: string
+          format: uuid
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        payDate:
+          type: string
+          format: date
+        grossSalary:
+          type: number
+          format: decimal
+        totalDeductions:
+          type: number
+          format: decimal
+        netPay:
+          type: number
+          format: decimal
+        breakdown:
+          $ref: '#/components/schemas/PayrollLineItemResponse'
+      required: [id, employeeId, payrollRunId, periodStart, periodEnd, payDate, netPay]
+
+    PayslipPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayslipResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    TaxTableResponse:
+      type: object
+      properties:
+        taxYear:
+          type: integer
+        effectiveFrom:
+          type: string
+          format: date
+        effectiveTo:
+          type: string
+          format: date
+        payeBrackets:
+          type: array
+          items:
+            type: object
+            properties:
+              minIncome:
+                type: number
+              maxIncome:
+                type: number
+              rate:
+                type: number
+              baseTax:
+                type: number
+        primaryRebate:
+          type: number
+          format: decimal
+        secondaryRebate:
+          type: number
+          format: decimal
+        tertiaryRebate:
+          type: number
+          format: decimal
+        taxThresholdUnder65:
+          type: number
+          format: decimal
+        taxThreshold65To74:
+          type: number
+          format: decimal
+        taxThreshold75Plus:
+          type: number
+          format: decimal
+        uifRate:
+          type: number
+          format: decimal
+        uifCeiling:
+          type: number
+          format: decimal
+        sdlRate:
+          type: number
+          format: decimal
+      required: [taxYear, effectiveFrom, payeBrackets]
+
+    PayeCalculationRequest:
+      type: object
+      properties:
+        annualIncome:
+          type: number
+          format: decimal
+        taxYear:
+          type: integer
+        age:
+          type: integer
+      required: [annualIncome, taxYear, age]
+
+    PayeCalculationResponse:
+      type: object
+      properties:
+        annualIncome:
+          type: number
+          format: decimal
+        grossTax:
+          type: number
+          format: decimal
+        rebates:
+          type: number
+          format: decimal
+        netTax:
+          type: number
+          format: decimal
+        monthlyPaye:
+          type: number
+          format: decimal
+        effectiveRate:
+          type: number
+          format: decimal
+          description: Net tax as percentage of income
+      required: [annualIncome, grossTax, rebates, netTax, monthlyPaye, effectiveRate]
+
+    Emp201Response:
+      type: object
+      properties:
+        taxYear:
+          type: integer
+        taxPeriod:
+          type: integer
+        totalPaye:
+          type: number
+          format: decimal
+        totalUif:
+          type: number
+          format: decimal
+        totalSdl:
+          type: number
+          format: decimal
+        totalEti:
+          type: number
+          format: decimal
+        employeeCount:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+      required: [taxYear, taxPeriod, totalPaye, totalUif, totalSdl, employeeCount]
+
+    Emp501Response:
+      type: object
+      properties:
+        taxYear:
+          type: integer
+        totalRemuneration:
+          type: number
+          format: decimal
+        totalPaye:
+          type: number
+          format: decimal
+        totalUif:
+          type: number
+          format: decimal
+        totalSdl:
+          type: number
+          format: decimal
+        totalEti:
+          type: number
+          format: decimal
+        employeeCount:
+          type: integer
+        irp5Count:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+      required: [taxYear, totalRemuneration, totalPaye, employeeCount]
+
+    TwoPotRecordResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        fundName:
+          type: string
+        fundMemberNumber:
+          type: string
+        savingsComponent:
+          type: number
+          format: decimal
+        retirementComponent:
+          type: number
+          format: decimal
+        vestedComponent:
+          type: number
+          format: decimal
+        lastUpdated:
+          type: string
+          format: date
+      required: [id, employeeId, fundName, savingsComponent, retirementComponent]
+
+    TwoPotRecordPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TwoPotRecordResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    TwoPotSimulationRequest:
+      type: object
+      properties:
+        twoPotRecordId:
+          type: string
+          format: uuid
+        withdrawalAmount:
+          type: number
+          format: decimal
+          minimum: 2000
+          description: Minimum R2000
+      required: [twoPotRecordId, withdrawalAmount]
+
+    TwoPotSimulationResponse:
+      type: object
+      properties:
+        requestedAmount:
+          type: number
+          format: decimal
+        availableBalance:
+          type: number
+          format: decimal
+        estimatedTax:
+          type: number
+          format: decimal
+        estimatedNetPayout:
+          type: number
+          format: decimal
+        marginalTaxRate:
+          type: number
+          format: decimal
+        effectiveTaxRate:
+          type: number
+          format: decimal
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+        - requestedAmount
+        - availableBalance
+        - estimatedTax
+        - estimatedNetPayout
+        - marginalTaxRate
+
+    CreateTwoPotWithdrawalRequest:
+      type: object
+      properties:
+        twoPotRecordId:
+          type: string
+          format: uuid
+        requestedAmount:
+          type: number
+          format: decimal
+          minimum: 2000
+      required: [twoPotRecordId, requestedAmount]
+
+    ProcessTwoPotWithdrawalRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [APPROVE, REJECT]
+        taxDirectiveNumber:
+          type: string
+          maxLength: 50
+          description: Required if approving
+        rejectionReason:
+          type: string
+          maxLength: 500
+          description: Required if rejecting
+      required: [action]
+
+    TwoPotWithdrawalRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+        employeeName:
+          type: string
+        twoPotRecordId:
+          type: string
+          format: uuid
+        requestedAmount:
+          type: number
+          format: decimal
+        approvedAmount:
+          type: number
+          format: decimal
+        taxAmount:
+          type: number
+          format: decimal
+        netPayout:
+          type: number
+          format: decimal
+        status:
+          type: string
+          enum: [PENDING, TAX_DIRECTIVE_REQUESTED, APPROVED, PAID, REJECTED]
+        taxDirectiveNumber:
+          type: string
+        taxDirectiveDate:
+          type: string
+          format: date
+        rejectionReason:
+          type: string
+        paidDate:
+          type: string
+          format: date
+        journalEntryId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, employeeId, twoPotRecordId, requestedAmount, status, createdAt]
+
+    TwoPotWithdrawalRequestPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TwoPotWithdrawalRequestResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]

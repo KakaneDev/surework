@@ -1,0 +1,144 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: document-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_documents
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: document-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.surework.common.messaging.event"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    com.surework: DEBUG
+    software.amazon.awssdk: INFO
+
+# Storage Configuration
+surework:
+  document:
+    storage:
+      # Use 'local' for development, 's3' for production
+      type: ${STORAGE_TYPE:local}
+      local:
+        base-path: ${DOCUMENT_STORAGE_PATH:./document-storage}
+      s3:
+        endpoint: ${S3_ENDPOINT:http://localhost:9000}
+        region: ${S3_REGION:af-south-1}
+        bucket: ${S3_BUCKET:surework-documents}
+        access-key: ${S3_ACCESS_KEY:minioadmin}
+        secret-key: ${S3_SECRET_KEY:minioadmin}
+
+    # File restrictions
+    allowed-extensions: pdf,doc,docx,xls,xlsx,csv,txt,png,jpg,jpeg,gif
+    max-file-size-mb: 50
+    max-versions: 10
+
+    # South African compliance document categories
+    categories:
+      - code: EMPLOYMENT_CONTRACT
+        name: Employment Contract
+        retention-years: 5
+        required: true
+      - code: IRP5
+        name: IRP5 Tax Certificate
+        retention-years: 5
+        required: true
+      - code: PAYSLIP
+        name: Payslip
+        retention-years: 5
+        required: true
+      - code: ID_DOCUMENT
+        name: Identity Document
+        retention-years: -1
+        required: true
+      - code: QUALIFICATION
+        name: Qualification Certificate
+        retention-years: -1
+        required: false
+      - code: BANK_CONFIRMATION
+        name: Bank Confirmation Letter
+        retention-years: 5
+        required: true
+      - code: TAX_NUMBER
+        name: Tax Number Certificate
+        retention-years: -1
+        required: true
+      - code: UIF_DECLARATION
+        name: UIF Declaration
+        retention-years: 5
+        required: true
+      - code: MEDICAL_CERTIFICATE
+        name: Medical Certificate
+        retention-years: 3
+        required: false
+      - code: LEAVE_FORM
+        name: Leave Application Form
+        retention-years: 3
+        required: false
+      - code: DISCIPLINARY
+        name: Disciplinary Record
+        retention-years: 3
+        required: false
+      - code: PERFORMANCE_REVIEW
+        name: Performance Review
+        retention-years: 3
+        required: false
+      - code: TRAINING_CERTIFICATE
+        name: Training Certificate
+        retention-years: 5
+        required: false
+      - code: CV
+        name: Curriculum Vitae
+        retention-years: 2
+        required: false
+      - code: OTHER
+        name: Other Document
+        retention-years: 3
+        required: false

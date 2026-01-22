@@ -1,0 +1,66 @@
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Maven build output
+target/
+
+# Node.js (for frontend builds)
+node_modules/
+.angular/
+.npm/
+
+# Environment files
+.env*
+*.local
+
+# Documentation (not needed in container)
+docs/
+specs/
+*.md
+!README.md
+
+# Tests (not needed in production container)
+**/src/test/
+coverage/
+.nyc_output/
+jacoco/
+
+# CI/CD
+.github/
+
+# Infrastructure (separate deployment)
+infrastructure/terraform/
+infrastructure/kubernetes/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Kubernetes secrets
+*.secret.yaml
+secrets/
+kubeconfig*
+*.key
+*.crt
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker (avoid recursive inclusion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

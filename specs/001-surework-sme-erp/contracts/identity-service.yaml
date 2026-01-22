@@ -1,0 +1,700 @@
+openapi: 3.1.0
+info:
+  title: SureWork Identity Service API
+  description: Authentication, MFA, User and Role management
+  version: 1.0.0
+  contact:
+    name: SureWork API Support
+
+servers:
+  - url: /api/v1
+    description: API version 1
+
+tags:
+  - name: Authentication
+    description: Login, MFA, and token management
+  - name: Users
+    description: User management operations
+  - name: Roles
+    description: Role and permission management
+  - name: Tenants
+    description: Tenant management (admin only)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Initiate login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: MFA challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaChallengeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/mfa/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyMfa
+      summary: Verify MFA code and receive JWT tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshToken
+      summary: Refresh access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Invalidate current session
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: List users in tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: roleId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, LOCKED]
+      responses:
+        '200':
+          description: Page of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create a new user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get user by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Update user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Deactivate user (soft delete)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: User deactivated
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Cannot delete last owner
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /users/{userId}/permissions:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Users]
+      operationId: getUserPermissions
+      summary: Get effective permissions for user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsResponse'
+
+    patch:
+      tags: [Users]
+      operationId: updateUserPermissions
+      summary: Grant or revoke specific permissions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePermissionsRequest'
+      responses:
+        '200':
+          description: Permissions updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /roles:
+    get:
+      tags: [Roles]
+      operationId: listRoles
+      summary: List available roles
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleResponse'
+
+  /roles/{roleId}:
+    parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Roles]
+      operationId: getRole
+      summary: Get role details including default permissions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tenants:
+    post:
+      tags: [Tenants]
+      operationId: createTenant
+      summary: Create a new tenant (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /tenants/{tenantId}:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Tenants]
+      operationId: getTenant
+      summary: Get tenant details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: Resource conflict (e.g., duplicate email)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Detail
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        errorCode:
+          type: string
+      required: [title, status]
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required: [email, password]
+
+    MfaChallengeResponse:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        mfaMethod:
+          type: string
+          enum: [SMS_OTP, AUTHENTICATOR_APP]
+        maskedTarget:
+          type: string
+          description: "Masked phone number or 'Authenticator App'"
+        expiresAt:
+          type: string
+          format: date-time
+      required: [challengeId, mfaMethod, expiresAt]
+
+    MfaVerifyRequest:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^\d{6}$'
+      required: [challengeId, code]
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          default: Bearer
+        expiresIn:
+          type: integer
+          description: Access token expiry in seconds
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required: [refreshToken]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        roleId:
+          type: string
+          format: uuid
+        employeeId:
+          type: string
+          format: uuid
+          description: Link to existing employee record
+        mfaMethod:
+          type: string
+          enum: [SMS_OTP, AUTHENTICATOR_APP]
+        mfaPhoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+          description: Required if mfaMethod is SMS_OTP
+      required: [email, roleId, mfaMethod]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        roleId:
+          type: string
+          format: uuid
+        mfaMethod:
+          type: string
+          enum: [SMS_OTP, AUTHENTICATOR_APP]
+        mfaPhoneNumber:
+          type: string
+          pattern: '^\+27\d{9}$'
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/RoleResponse'
+        employeeId:
+          type: string
+          format: uuid
+        mfaMethod:
+          type: string
+          enum: [SMS_OTP, AUTHENTICATOR_APP]
+        mfaEnabled:
+          type: boolean
+        emailVerified:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, LOCKED]
+        lastLoginAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, email, role, mfaMethod, mfaEnabled, status, createdAt]
+
+    UserPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required: [content, page, size, totalElements, totalPages]
+
+    PermissionsResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        rolePermissions:
+          type: array
+          items:
+            type: string
+          description: Permissions from assigned role
+        grantedOverrides:
+          type: array
+          items:
+            type: string
+          description: Additional permissions granted
+        revokedOverrides:
+          type: array
+          items:
+            type: string
+          description: Permissions revoked from role
+        effectivePermissions:
+          type: array
+          items:
+            type: string
+          description: Final computed permissions
+      required: [userId, rolePermissions, grantedOverrides, revokedOverrides, effectivePermissions]
+
+    UpdatePermissionsRequest:
+      type: object
+      properties:
+        grant:
+          type: array
+          items:
+            type: string
+          description: Permissions to grant
+        revoke:
+          type: array
+          items:
+            type: string
+          description: Permissions to revoke
+        reason:
+          type: string
+          maxLength: 255
+          description: Audit reason for change
+      required: [reason]
+
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          enum: [OWNER, HR_MANAGER, PAYROLL_ADMIN, ACCOUNTANT, EMPLOYEE]
+        description:
+          type: string
+        defaultPermissions:
+          type: array
+          items:
+            type: string
+        systemRole:
+          type: boolean
+      required: [id, name, defaultPermissions, systemRole]
+
+    CreateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        businessRegistrationNumber:
+          type: string
+          maxLength: 100
+        tier:
+          type: string
+          enum: [MICRO, GROWTH, SCALE]
+        ownerEmail:
+          type: string
+          format: email
+          description: Email for initial owner user
+      required: [name, tier, ownerEmail]
+
+    TenantResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        schemaName:
+          type: string
+        businessRegistrationNumber:
+          type: string
+        tier:
+          type: string
+          enum: [MICRO, GROWTH, SCALE]
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, TERMINATED]
+        subscriptionStartDate:
+          type: string
+          format: date
+        subscriptionEndDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, schemaName, tier, status, createdAt]

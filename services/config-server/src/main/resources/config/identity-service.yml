@@ -1,0 +1,35 @@
+# Identity Service specific configuration
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/surework}
+    username: ${DATABASE_USERNAME:surework}
+    password: ${DATABASE_PASSWORD:surework}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# Identity/Auth configuration
+surework:
+  identity:
+    password:
+      min-length: 12
+      require-uppercase: true
+      require-lowercase: true
+      require-digit: true
+      require-special: true
+    session:
+      max-concurrent: 5
+    totp:
+      issuer: SureWork
+      digits: 6
+      period: 30

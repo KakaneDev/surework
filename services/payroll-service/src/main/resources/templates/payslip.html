@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Payslip</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 100%;
+        }
+
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 0;
+        }
+
+        .document-title {
+            font-size: 14pt;
+            color: #666;
+            margin: 5px 0 0 0;
+        }
+
+        .info-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: table-row;
+        }
+
+        .info-cell {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding: 5px 10px 5px 0;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .info-box-title {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .info-label {
+            color: #64748b;
+            font-size: 9pt;
+        }
+
+        .info-value {
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th {
+            background: #2563eb;
+            color: white;
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 9pt;
+            text-transform: uppercase;
+        }
+
+        th.amount {
+            text-align: right;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 10pt;
+        }
+
+        td.amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .totals-table {
+            width: 50%;
+            margin-left: auto;
+        }
+
+        .totals-table td {
+            padding: 6px 10px;
+        }
+
+        .totals-table .total-label {
+            font-weight: bold;
+        }
+
+        .totals-table .grand-total {
+            background: #2563eb;
+            color: white;
+            font-size: 12pt;
+        }
+
+        .ytd-section {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 20px;
+        }
+
+        .ytd-title {
+            font-weight: bold;
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+
+        .ytd-grid {
+            display: table;
+            width: 100%;
+        }
+
+        .ytd-item {
+            display: table-cell;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .ytd-value {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #92400e;
+        }
+
+        .ytd-label {
+            font-size: 8pt;
+            color: #78350f;
+        }
+
+        .bank-details {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .bank-title {
+            font-weight: bold;
+            color: #166534;
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 8pt;
+            color: #94a3b8;
+            text-align: center;
+        }
+
+        .confidential {
+            color: #dc2626;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1 class="company-name">SureWork</h1>
+        <p class="document-title">Payslip - <span th:text="${periodDisplay}">January 2025</span></p>
+    </div>
+
+    <!-- Employee and Pay Information -->
+    <div class="info-grid">
+        <div class="info-row">
+            <div class="info-cell">
+                <div class="info-box">
+                    <div class="info-box-title">Employee Details</div>
+                    <div class="info-item">
+                        <span class="info-label">Name:</span>
+                        <span class="info-value" th:text="${employeeName}">John Smith</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Employee No:</span>
+                        <span class="info-value" th:text="${employeeNumber}">EMP001</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">ID Number:</span>
+                        <span class="info-value" th:text="${idNumber}">9001015****</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tax Number:</span>
+                        <span class="info-value" th:text="${taxNumber}">1234567890</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Department:</span>
+                        <span class="info-value" th:text="${department}">Engineering</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Job Title:</span>
+                        <span class="info-value" th:text="${jobTitle}">Software Developer</span>
+                    </div>
+                </div>
+            </div>
+            <div class="info-cell">
+                <div class="info-box">
+                    <div class="info-box-title">Pay Period</div>
+                    <div class="info-item">
+                        <span class="info-label">Period:</span>
+                        <span class="info-value" th:text="${periodDisplay}">January 2025</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Payment Date:</span>
+                        <span class="info-value" th:text="${paymentDate}">25 January 2025</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Payslip No:</span>
+                        <span class="info-value" th:text="${payslipNumber}">PS-EMP001-202501</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Earnings -->
+    <div class="section-title">Earnings</div>
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 15%;">Code</th>
+            <th style="width: 55%;">Description</th>
+            <th class="amount" style="width: 30%;">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="line : ${earnings}">
+            <td th:text="${line.code}">BASIC</td>
+            <td th:text="${line.description}">Basic Salary</td>
+            <td class="amount" th:text="${formatCurrency.format(line.amount)}">R 25,000.00</td>
+        </tr>
+        </tbody>
+        <tfoot>
+        <tr style="background: #dbeafe;">
+            <td colspan="2" style="font-weight: bold;">Total Earnings</td>
+            <td class="amount" style="font-weight: bold;" th:text="${grossEarnings}">R 25,000.00</td>
+        </tr>
+        </tfoot>
+    </table>
+
+    <!-- Deductions -->
+    <div class="section-title">Deductions</div>
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 15%;">Code</th>
+            <th style="width: 55%;">Description</th>
+            <th class="amount" style="width: 30%;">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="line : ${deductions}">
+            <td th:text="${line.code}">PAYE</td>
+            <td th:text="${line.description}">PAYE Tax</td>
+            <td class="amount" th:text="${formatCurrency.format(line.amount)}">R 3,500.00</td>
+        </tr>
+        </tbody>
+        <tfoot>
+        <tr style="background: #fee2e2;">
+            <td colspan="2" style="font-weight: bold;">Total Deductions</td>
+            <td class="amount" style="font-weight: bold;" th:text="${totalDeductions}">R 5,000.00</td>
+        </tr>
+        </tfoot>
+    </table>
+
+    <!-- Net Pay -->
+    <table class="totals-table">
+        <tr class="grand-total">
+            <td class="total-label">NET PAY</td>
+            <td class="amount" th:text="${netPay}">R 20,000.00</td>
+        </tr>
+    </table>
+
+    <!-- Employer Contributions (for information) -->
+    <div class="section-title">Employer Contributions (For Information)</div>
+    <table>
+        <thead>
+        <tr>
+            <th style="width: 15%;">Code</th>
+            <th style="width: 55%;">Description</th>
+            <th class="amount" style="width: 30%;">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="line : ${employerContributions}">
+            <td th:text="${line.code}">UIFER</td>
+            <td th:text="${line.description}">UIF (Employer)</td>
+            <td class="amount" th:text="${formatCurrency.format(line.amount)}">R 177.12</td>
+        </tr>
+        </tbody>
+        <tfoot>
+        <tr style="background: #f0fdf4;">
+            <td colspan="2" style="font-weight: bold;">Total Cost to Company</td>
+            <td class="amount" style="font-weight: bold;" th:text="${totalEmployerCost}">R 25,500.00</td>
+        </tr>
+        </tfoot>
+    </table>
+
+    <!-- Year to Date -->
+    <div class="ytd-section">
+        <div class="ytd-title">Year to Date Summary</div>
+        <div class="ytd-grid">
+            <div class="ytd-item">
+                <div class="ytd-value" th:text="${ytdGross}">R 75,000.00</div>
+                <div class="ytd-label">Gross Earnings</div>
+            </div>
+            <div class="ytd-item">
+                <div class="ytd-value" th:text="${ytdPaye}">R 10,500.00</div>
+                <div class="ytd-label">PAYE</div>
+            </div>
+            <div class="ytd-item">
+                <div class="ytd-value" th:text="${ytdUif}">R 531.36</div>
+                <div class="ytd-label">UIF</div>
+            </div>
+            <div class="ytd-item">
+                <div class="ytd-value" th:text="${ytdNet}">R 60,000.00</div>
+                <div class="ytd-label">Net Pay</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Details -->
+    <div class="bank-details" th:if="${bankAccount}">
+        <div class="bank-title">Payment Details</div>
+        <div class="info-item">
+            <span class="info-label">Bank:</span>
+            <span class="info-value" th:text="${bankName}">First National Bank</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Account:</span>
+            <span class="info-value" th:text="${bankAccount}">****1234</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Branch Code:</span>
+            <span class="info-value" th:text="${branchCode}">250655</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p class="confidential">CONFIDENTIAL - For Employee Use Only</p>
+        <p>This payslip is computer-generated and does not require a signature.</p>
+        <p>For queries, please contact your HR department.</p>
+        <p>Generated by SureWork Payroll System</p>
+    </div>
+</div>
+</body>
+</html>

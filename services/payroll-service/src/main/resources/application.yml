@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: payroll-service
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_payroll}
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Africa/Johannesburg
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: payroll-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.surework.*
+
+server:
+  port: ${SERVER_PORT:8083}
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    db:
+      enabled: true
+
+# Application-specific configuration
+surework:
+  payroll:
+    # South African tax year runs from March 1 to February 28/29
+    tax-year-start-month: 3
+    # Default payment date (day of month)
+    default-payment-day: 25
+    # PAYE threshold (annual) - below this, no PAYE is deducted
+    paye-threshold: 95750
+    # UIF contribution rate (both employee and employer)
+    uif-rate: 0.01
+    # UIF maximum monthly earnings ceiling
+    uif-ceiling: 17712
+    # SDL (Skills Development Levy) rate
+    sdl-rate: 0.01
+
+logging:
+  level:
+    com.surework: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG
