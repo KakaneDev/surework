@@ -27,16 +27,21 @@
         <module>libs/common-web</module>
         <module>libs/common-testing</module>
 
-        <!-- Services -->
-        <module>services/config-server</module>
+        <!-- Infrastructure Services -->
+        <module>services/eureka-server</module>
         <module>services/api-gateway</module>
-        <module>services/tenant-service</module>
+
+        <!-- Business Services -->
+        <module>services/admin-service</module>
         <module>services/identity-service</module>
-        <module>services/hr-service</module>
+        <module>services/employee-service</module>
+        <module>services/leave-service</module>
         <module>services/payroll-service</module>
         <module>services/accounting-service</module>
         <module>services/recruitment-service</module>
-        <module>services/notification-service</module>
+        <module>services/time-attendance-service</module>
+        <module>services/document-service</module>
+        <module>services/reporting-service</module>
     </modules>
 
     <properties>

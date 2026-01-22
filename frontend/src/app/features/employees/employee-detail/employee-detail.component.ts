@@ -27,7 +27,8 @@ import { EmployeeService, Employee } from '@core/services/employee.service';
       <div class="loading-container">
         <mat-spinner></mat-spinner>
       </div>
-    } @else if (employee(); as emp) {
+    } @else {
+      @if (employee(); as emp) {
       <div class="employee-detail">
         <div class="header">
           <div class="header-content">
@@ -254,6 +255,7 @@ import { EmployeeService, Employee } from '@core/services/employee.service';
           </mat-tab>
         </mat-tab-group>
       </div>
+      }
     }
   `,
   styles: [`

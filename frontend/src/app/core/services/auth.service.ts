@@ -9,13 +9,29 @@ export interface LoginRequest {
   mfaCode?: string;
 }
 
+// Internal request format for backend
+interface BackendLoginRequest {
+  username: string;
+  password: string;
+  mfaCode?: string;
+}
+
 export interface LoginResponse {
   accessToken: string | null;
   refreshToken: string | null;
-  accessTokenExpiresIn: number;
-  refreshTokenExpiresIn: number;
+  expiresIn: number;
+  tokenType: string;
   mfaRequired: boolean;
-  mfaChallengeToken: string | null;
+  mfaChallengeToken?: string | null;
+  user?: BackendUserResponse;
+}
+
+interface BackendUserResponse {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: { code: string }[];
 }
 
 export interface MfaVerifyRequest {
@@ -42,7 +58,8 @@ export interface CurrentUser {
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = `${environment.apiUrl}/api/v1/auth`;
+  // Use admin-service directly for auth (port 8081)
+  private readonly apiUrl = 'http://localhost:8081/api/admin/auth';
 
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
@@ -51,7 +68,13 @@ export class AuthService {
    * Login with email and password.
    */
   login(request: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, request).pipe(
+    // Transform to backend format (uses username field for email)
+    const backendRequest: BackendLoginRequest = {
+      username: request.email,
+      password: request.password,
+      mfaCode: request.mfaCode
+    };
+    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, backendRequest).pipe(
       tap(response => {
         if (response.accessToken) {
           this.storeTokens(response.accessToken, response.refreshToken!);
