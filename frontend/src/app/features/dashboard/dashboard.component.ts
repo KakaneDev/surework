@@ -1,15 +1,17 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
 import { Store } from '@ngrx/store';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import * as AuthSelectors from '@core/store/auth/auth.selectors';
+import { DashboardService, DashboardStats } from '@core/services/dashboard.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,12 +19,14 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
   imports: [
     CommonModule,
     RouterLink,
+    RouterLinkActive,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatToolbarModule,
     MatSidenavModule,
     MatListModule,
+    MatDividerModule,
   ],
   template: `
     <mat-sidenav-container class="dashboard-container">
@@ -84,8 +88,8 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
                 <mat-card-title>Employees</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <h2 class="stat-number">--</h2>
-                <p>Total active employees</p>
+                <h2 class="stat-number">{{ stats()?.employeeCount ?? '--' }}</h2>
+                <p>Total active users</p>
               </mat-card-content>
             </mat-card>
 
@@ -95,7 +99,7 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
                 <mat-card-title>Leave Requests</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <h2 class="stat-number">--</h2>
+                <h2 class="stat-number">{{ stats()?.pendingLeaveRequests ?? '--' }}</h2>
                 <p>Pending approvals</p>
               </mat-card-content>
             </mat-card>
@@ -106,7 +110,7 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
                 <mat-card-title>Payroll</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <h2 class="stat-number">--</h2>
+                <h2 class="stat-number stat-date">{{ stats()?.nextPayrollDate ?? '--' }}</h2>
                 <p>Next run date</p>
               </mat-card-content>
             </mat-card>
@@ -117,7 +121,7 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
                 <mat-card-title>Open Positions</mat-card-title>
               </mat-card-header>
               <mat-card-content>
-                <h2 class="stat-number">--</h2>
+                <h2 class="stat-number">{{ stats()?.openJobPostings ?? '--' }}</h2>
                 <p>Active job postings</p>
               </mat-card-content>
             </mat-card>
@@ -206,14 +210,39 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
       font-weight: 500;
       margin: 16px 0 8px;
       color: #1a73e8;
+
+      &.stat-date {
+        font-size: 20px;
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
   private readonly store = inject(Store);
+  private readonly dashboardService = inject(DashboardService);
 
   user$ = this.store.select(AuthSelectors.selectCurrentUser);
+  stats = signal<DashboardStats | null>(null);
+
+  ngOnInit(): void {
+    this.loadDashboardStats();
+  }
+
+  loadDashboardStats(): void {
+    this.dashboardService.getDashboardStats().subscribe({
+      next: (data) => this.stats.set(data),
+      error: () => {
+        // Set default values on error
+        this.stats.set({
+          employeeCount: 0,
+          pendingLeaveRequests: 0,
+          openJobPostings: 0,
+          nextPayrollDate: null
+        });
+      }
+    });
+  }
 
   logout(): void {
     this.store.dispatch(AuthActions.logout());
