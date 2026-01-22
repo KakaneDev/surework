@@ -466,7 +466,8 @@ public class AdminServiceImpl implements AdminService {
     public LoginResponse login(LoginRequest request, String ipAddress, String userAgent) {
         log.info("Login attempt for user: {}", request.username());
 
-        User user = userRepository.findByUsername(request.username())
+        // Allow login with either username or email
+        User user = userRepository.findByUsernameOrEmail(request.username(), request.username())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
         if (user.getStatus() == User.UserStatus.LOCKED) {
