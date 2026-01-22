@@ -43,7 +43,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
             @Param("size") int size
     );
 
-    default List<AuditLog> search(
+    default List<AuditLog> searchPaged(
             UUID tenantId,
             String entityType,
             UUID entityId,

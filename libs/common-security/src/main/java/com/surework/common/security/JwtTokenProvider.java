@@ -2,7 +2,8 @@ package com.surework.common.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -22,8 +23,9 @@ import java.util.*;
  * - Tenant ID in claims for multi-tenancy
  */
 @Component
-@Slf4j
 public class JwtTokenProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     private static final String CLAIM_TENANT_ID = "tenantId";
     private static final String CLAIM_USER_ID = "userId";
@@ -36,7 +38,7 @@ public class JwtTokenProvider {
     private final long refreshTokenExpirationMs;
 
     public JwtTokenProvider(
-            @Value("${surework.security.jwt.secret}") String jwtSecret,
+            @Value("${surework.security.jwt.secret:surework-jwt-secret-key-for-development-only-change-in-production-min32chars}") String jwtSecret,
             @Value("${surework.security.jwt.access-token-expiration-ms:900000}") long accessTokenExpirationMs,
             @Value("${surework.security.jwt.refresh-token-expiration-ms:604800000}") long refreshTokenExpirationMs
     ) {

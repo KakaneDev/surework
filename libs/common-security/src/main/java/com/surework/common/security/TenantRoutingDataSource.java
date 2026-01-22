@@ -1,6 +1,7 @@
 package com.surework.common.security;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 /**
@@ -10,8 +11,9 @@ import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
  * Routes database connections to the correct tenant schema based on
  * the TenantContext set from the JWT token.
  */
-@Slf4j
 public class TenantRoutingDataSource extends AbstractRoutingDataSource {
+
+    private static final Logger log = LoggerFactory.getLogger(TenantRoutingDataSource.class);
 
     /**
      * Key for the public schema (tenant registry, shared config).

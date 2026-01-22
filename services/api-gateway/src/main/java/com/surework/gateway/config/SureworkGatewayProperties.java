@@ -11,7 +11,7 @@ import java.util.List;
  */
 @Component
 @ConfigurationProperties(prefix = "surework.gateway")
-public class GatewayProperties {
+public class SureworkGatewayProperties {
 
     private JwtConfig jwt = new JwtConfig();
     private List<String> publicPaths = new ArrayList<>();

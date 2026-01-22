@@ -1,8 +1,9 @@
 package com.surework.common.security.audit;
 
 import com.surework.common.dto.AuditLog;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,13 +17,19 @@ import java.util.UUID;
  * Implements FR-E03: Comprehensive audit logging.
  *
  * Uses async processing to minimize performance impact on main operations.
+ * Only loaded if AuditLogRepository bean is available.
  */
 @Service
-@Slf4j
-@RequiredArgsConstructor
+@ConditionalOnBean(AuditLogRepository.class)
 public class AuditLogServiceImpl implements AuditLogService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuditLogServiceImpl.class);
+
     private final AuditLogRepository auditLogRepository;
+
+    public AuditLogServiceImpl(AuditLogRepository auditLogRepository) {
+        this.auditLogRepository = auditLogRepository;
+    }
 
     @Override
     @Async("auditLogExecutor")

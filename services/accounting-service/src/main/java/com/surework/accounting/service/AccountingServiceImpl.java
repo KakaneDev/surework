@@ -264,9 +264,10 @@ public class AccountingServiceImpl implements AccountingService {
         JournalEntry entry = journalEntryRepository.findById(entryId)
                 .orElseThrow(() -> new ResourceNotFoundException("JournalEntry", entryId));
 
-        FiscalPeriod period = fiscalPeriodRepository.findByDate(entry.getTransactionDate())
+        var transactionDate = entry.getTransactionDate();
+        FiscalPeriod period = fiscalPeriodRepository.findByDate(transactionDate)
                 .orElseThrow(() -> new BusinessRuleException("No fiscal period found for date: " +
-                        entry.getTransactionDate()));
+                        transactionDate));
 
         if (!period.isPostingAllowed()) {
             throw new BusinessRuleException("Fiscal period is not open for posting");

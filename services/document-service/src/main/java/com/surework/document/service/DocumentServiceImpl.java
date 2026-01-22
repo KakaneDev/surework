@@ -393,7 +393,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (request.variables() != null) template.setVariables(request.variables());
         template.setActive(request.active());
         template.setDefaultTemplate(request.defaultTemplate());
-        template.updateVersion();
+        template.updateTemplateVersion();
 
         template = templateRepository.save(template);
         return DocumentDto.TemplateResponse.fromEntity(template);

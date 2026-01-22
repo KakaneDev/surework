@@ -11,6 +11,7 @@ public sealed interface HrEvent extends DomainEvent permits
         HrEvent.EmployeeCreated,
         HrEvent.EmployeeUpdated,
         HrEvent.EmployeeTerminated,
+        HrEvent.SalaryUpdated,
         HrEvent.LeaveRequested,
         HrEvent.LeaveApproved,
         HrEvent.LeaveRejected,
@@ -53,6 +54,19 @@ public sealed interface HrEvent extends DomainEvent permits
             UUID employeeId,
             Instant terminationDate,
             String reason
+    ) implements HrEvent {}
+
+    /**
+     * Event raised when employee salary is updated.
+     */
+    record SalaryUpdated(
+            UUID eventId,
+            UUID tenantId,
+            Instant timestamp,
+            UUID employeeId,
+            java.math.BigDecimal previousSalary,
+            java.math.BigDecimal newSalary,
+            Instant effectiveDate
     ) implements HrEvent {}
 
     /**

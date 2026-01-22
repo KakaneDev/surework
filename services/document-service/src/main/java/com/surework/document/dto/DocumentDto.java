@@ -262,7 +262,7 @@ public sealed interface DocumentDto {
                     template.getFileName(),
                     template.getContentType(),
                     template.getFileSize(),
-                    template.getVersion(),
+                    template.getTemplateVersion(),
                     template.isActive(),
                     template.isDefaultTemplate(),
                     template.isCompliant(),

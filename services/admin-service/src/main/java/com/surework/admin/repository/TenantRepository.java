@@ -44,9 +44,18 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
     // Find tenants by subscription tier
     List<Tenant> findBySubscriptionTier(Tenant.SubscriptionTier tier);
 
-    // Count tenants by status
+    // Count tenants by status (grouped)
     @Query("SELECT t.status, COUNT(t) FROM Tenant t GROUP BY t.status")
-    List<Object[]> countByStatus();
+    List<Object[]> countGroupedByStatus();
+
+    // Count tenants by specific status
+    long countByStatus(Tenant.TenantStatus status);
+
+    // Search by status and name
+    Page<Tenant> findByStatusAndNameContainingIgnoreCase(Tenant.TenantStatus status, String name, Pageable pageable);
+
+    // Search by name only
+    Page<Tenant> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     // Find active tenants with user count approaching limit
     @Query("SELECT t FROM Tenant t WHERE t.status = 'ACTIVE' " +

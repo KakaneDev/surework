@@ -122,6 +122,12 @@ public class Role {
     public Role getParentRole() { return parentRole; }
     public void setParentRole(Role parentRole) { this.parentRole = parentRole; }
 
+    public UUID getParentRoleId() { return parentRole != null ? parentRole.getId() : null; }
+    public void setParentRoleId(UUID parentRoleId) {
+        // This is a convenience method - actual parent role should be set via setParentRole
+        // The service layer should load the Role by ID and call setParentRole
+    }
+
     public Set<Role> getChildRoles() { return childRoles; }
     public void setChildRoles(Set<Role> childRoles) { this.childRoles = childRoles; }
 

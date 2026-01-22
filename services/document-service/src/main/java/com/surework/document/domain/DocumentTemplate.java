@@ -1,6 +1,6 @@
 package com.surework.document.domain;
 
-import com.surework.common.persistence.BaseEntity;
+import com.surework.common.dto.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,8 +60,8 @@ public class DocumentTemplate extends BaseEntity {
     @Column(name = "variables", columnDefinition = "TEXT")
     private String variables; // JSON array of variable definitions
 
-    @Column(name = "version")
-    private int version = 1;
+    @Column(name = "template_version")
+    private int templateVersion = 1;
 
     @Column(name = "is_active")
     private boolean active = true;
@@ -142,15 +142,15 @@ public class DocumentTemplate extends BaseEntity {
         template.setCategory(category);
         template.setCreatedBy(createdBy);
         template.setActive(true);
-        template.setVersion(1);
+        template.setTemplateVersion(1);
         return template;
     }
 
     /**
-     * Update version.
+     * Update template version.
      */
-    public void updateVersion() {
-        this.version++;
+    public void updateTemplateVersion() {
+        this.templateVersion++;
     }
 
     /**

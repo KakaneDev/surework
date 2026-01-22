@@ -1,6 +1,7 @@
 package com.surework.common.security;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -12,8 +13,9 @@ import java.util.UUID;
  * Each API request sets the tenant context from the JWT token,
  * which is used to route database queries to the correct schema.
  */
-@Slf4j
 public final class TenantContext {
+
+    private static final Logger log = LoggerFactory.getLogger(TenantContext.class);
 
     private static final ThreadLocal<UUID> CURRENT_TENANT = new ThreadLocal<>();
     private static final ThreadLocal<UUID> CURRENT_USER = new ThreadLocal<>();

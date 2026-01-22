@@ -75,7 +75,7 @@ public class PayrollController {
             @RequestParam(required = false) PayrollRun.PayrollRunStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<PayrollDto.PayrollRunResponse> page = payrollService.searchPayrollRuns(year, status, pageable);
-        return ResponseEntity.ok(PageResponse.of(page));
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     /**
@@ -151,7 +151,7 @@ public class PayrollController {
             @PageableDefault(size = 20) Pageable pageable) {
         Page<PayrollDto.PayslipSummary> page = payrollService.searchPayslips(
                 employeeId, year, month, status, pageable);
-        return ResponseEntity.ok(PageResponse.of(page));
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     /**

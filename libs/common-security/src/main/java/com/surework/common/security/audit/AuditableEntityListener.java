@@ -7,8 +7,10 @@ import com.surework.common.security.TenantContext;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.PostRemove;
 import jakarta.persistence.PreUpdate;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
@@ -26,10 +28,14 @@ import java.util.UUID;
  * - Timestamp (automatic)
  * - Old Value / New Value (field comparison)
  * - IP Address (from TenantContext)
+ *
+ * Only loaded if AuditLogService bean is available.
  */
 @Component
-@Slf4j
+@ConditionalOnBean(AuditLogService.class)
 public class AuditableEntityListener {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditableEntityListener.class);
 
     private static ApplicationContext applicationContext;
     private static ObjectMapper objectMapper;

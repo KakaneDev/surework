@@ -85,8 +85,8 @@ public class TimeAttendanceServiceImpl implements TimeAttendanceService {
 
         entry.clockIn(clockTime);
 
-        entry = timeEntryRepository.save(entry);
-        return TimeAttendanceDto.TimeEntryResponse.fromEntity(entry);
+        TimeEntry savedEntry = timeEntryRepository.save(entry);
+        return TimeAttendanceDto.TimeEntryResponse.fromEntity(savedEntry);
     }
 
     @Override
@@ -182,8 +182,8 @@ public class TimeAttendanceServiceImpl implements TimeAttendanceService {
                     entry.setPublicHolidayName(holiday.getName());
                 });
 
-        entry = timeEntryRepository.save(entry);
-        return TimeAttendanceDto.TimeEntryResponse.fromEntity(entry);
+        TimeEntry savedEntry = timeEntryRepository.save(entry);
+        return TimeAttendanceDto.TimeEntryResponse.fromEntity(savedEntry);
     }
 
     @Override

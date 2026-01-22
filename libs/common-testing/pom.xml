@@ -22,6 +22,19 @@
             <artifactId>spring-boot-starter-test</artifactId>
         </dependency>
 
+        <!-- Spring Boot Testcontainers Support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+        </dependency>
+
+        <!-- Common Security (for test utils) -->
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Testcontainers -->
         <dependency>
             <groupId>org.testcontainers</groupId>

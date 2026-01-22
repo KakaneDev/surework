@@ -115,6 +115,9 @@ public class Tenant {
     @Column(name = "suspension_reason")
     private String suspensionReason;
 
+    @Column(name = "terminated_at")
+    private LocalDateTime terminatedAt;
+
     // Branding
     @Column(name = "logo_url")
     private String logoUrl;
@@ -230,6 +233,7 @@ public class Tenant {
 
     public void terminate() {
         this.status = TenantStatus.TERMINATED;
+        this.terminatedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -342,6 +346,9 @@ public class Tenant {
 
     public String getSuspensionReason() { return suspensionReason; }
     public void setSuspensionReason(String suspensionReason) { this.suspensionReason = suspensionReason; }
+
+    public LocalDateTime getTerminatedAt() { return terminatedAt; }
+    public void setTerminatedAt(LocalDateTime terminatedAt) { this.terminatedAt = terminatedAt; }
 
     public String getLogoUrl() { return logoUrl; }
     public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }

@@ -1,6 +1,6 @@
 package com.surework.gateway.filter;
 
-import com.surework.gateway.config.GatewayProperties;
+import com.surework.gateway.config.SureworkGatewayProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -35,10 +35,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-    private final GatewayProperties gatewayProperties;
+    private final SureworkGatewayProperties gatewayProperties;
     private final AntPathMatcher pathMatcher;
 
-    public JwtAuthenticationFilter(GatewayProperties gatewayProperties) {
+    public JwtAuthenticationFilter(SureworkGatewayProperties gatewayProperties) {
         this.gatewayProperties = gatewayProperties;
         this.pathMatcher = new AntPathMatcher();
     }

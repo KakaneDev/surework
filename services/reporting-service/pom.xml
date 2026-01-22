@@ -109,10 +109,20 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- Shared Library -->
+        <!-- Shared Libraries -->
         <dependency>
             <groupId>com.surework</groupId>
-            <artifactId>surework-common</artifactId>
+            <artifactId>common-dto</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-web</artifactId>
             <version>${project.version}</version>
         </dependency>
 

@@ -1,5 +1,6 @@
 package com.surework.reporting.service;
 
+import com.surework.reporting.domain.DashboardWidget;
 import com.surework.reporting.domain.Report;
 import com.surework.reporting.domain.ReportSchedule;
 import com.surework.reporting.dto.ReportingDto.*;

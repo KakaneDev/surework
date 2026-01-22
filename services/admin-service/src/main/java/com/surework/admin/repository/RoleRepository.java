@@ -26,12 +26,15 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     List<Role> findByTenantIdAndActiveTrue(UUID tenantId);
 
-    Optional<Role> findByTenantIdAndIsDefaultTrue(UUID tenantId);
+    Optional<Role> findByTenantIdAndDefaultRoleTrue(UUID tenantId);
 
-    @Query("SELECT r FROM Role r WHERE (r.tenantId = :tenantId OR r.tenantId IS NULL) AND r.isDefault = TRUE")
+    @Query("SELECT r FROM Role r WHERE (r.tenantId = :tenantId OR r.tenantId IS NULL) AND r.defaultRole = true")
     Optional<Role> findDefaultRoleForTenant(@Param("tenantId") UUID tenantId);
 
-    List<Role> findByIsSystemRoleTrue();
+    List<Role> findBySystemRoleTrue();
+
+    @Query("SELECT r FROM Role r WHERE r.tenantId = :tenantId OR r.systemRole = true")
+    List<Role> findByTenantIdOrSystemRoleTrue(@Param("tenantId") UUID tenantId);
 
     boolean existsByTenantIdAndCode(UUID tenantId, String code);
 }

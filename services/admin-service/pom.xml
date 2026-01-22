@@ -88,13 +88,6 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- Shared Library -->
-        <dependency>
-            <groupId>com.surework</groupId>
-            <artifactId>surework-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!-- OpenAPI Documentation -->
         <dependency>
             <groupId>org.springdoc</groupId>

@@ -19,7 +19,17 @@
         <!-- Internal Dependencies -->
         <dependency>
             <groupId>com.surework</groupId>
-            <artifactId>common-persistence</artifactId>
+            <artifactId>common-dto</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-web</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

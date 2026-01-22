@@ -18,7 +18,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     Page<AuditLog> findByTenantIdOrderByTimestampDesc(UUID tenantId, Pageable pageable);
 
+    Page<AuditLog> findByTenantId(UUID tenantId, Pageable pageable);
+
     Page<AuditLog> findByUserIdOrderByTimestampDesc(UUID userId, Pageable pageable);
+
+    Page<AuditLog> findByUserId(UUID userId, Pageable pageable);
 
     @Query("SELECT a FROM AuditLog a WHERE a.tenantId = :tenantId " +
            "AND (:eventType IS NULL OR a.eventType = :eventType) " +
@@ -43,6 +47,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     Page<AuditLog> findByResourceTypeAndResourceIdOrderByTimestampDesc(
             String resourceType, String resourceId, Pageable pageable);
+
+    Page<AuditLog> findByResourceTypeAndResourceId(String resourceType, String resourceId, Pageable pageable);
+
+    // Count by tenant and time range
+    long countByTenantIdAndTimestampBetween(UUID tenantId, LocalDateTime from, LocalDateTime to);
 
     // Find failed events
     Page<AuditLog> findByTenantIdAndSuccessFalseOrderByTimestampDesc(UUID tenantId, Pageable pageable);

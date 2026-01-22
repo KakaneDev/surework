@@ -1,6 +1,6 @@
 package com.surework.payroll.domain;
 
-import com.surework.common.persistence.BaseEntity;
+import com.surework.common.dto.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

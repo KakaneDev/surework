@@ -70,7 +70,7 @@ public class AccountingController {
             @PageableDefault(size = 50) Pageable pageable) {
         Page<AccountingDto.AccountResponse> page = accountingService.searchAccounts(
                 searchTerm, type, activeOnly, pageable);
-        return ResponseEntity.ok(PageResponse.of(page));
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     @GetMapping("/accounts/type/{type}")
@@ -132,7 +132,7 @@ public class AccountingController {
             @PageableDefault(size = 20) Pageable pageable) {
         Page<AccountingDto.JournalEntryResponse> page = accountingService.searchJournalEntries(
                 startDate, endDate, status, type, searchTerm, pageable);
-        return ResponseEntity.ok(PageResponse.of(page));
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     @GetMapping("/journal-entries/drafts")
