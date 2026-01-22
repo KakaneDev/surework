@@ -32,7 +32,25 @@ export class AuthEffects {
   loginSuccess$ = createEffect(() =>
     this.actions$.pipe(
       ofType(AuthActions.loginSuccess, AuthActions.verifyMfaSuccess),
-      map(() => AuthActions.loadCurrentUser())
+      map(action => {
+        // Extract user from login response instead of making separate API call
+        const user = action.response.user;
+        if (user) {
+          return AuthActions.loadCurrentUserSuccess({
+            user: {
+              userId: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              fullName: `${user.firstName} ${user.lastName}`,
+              roles: user.roles.map((r: { code: string }) => r.code),
+              permissions: [],
+              mfaEnabled: false
+            }
+          });
+        }
+        return AuthActions.loadCurrentUser();
+      })
     )
   );
 
