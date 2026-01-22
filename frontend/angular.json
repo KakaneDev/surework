@@ -74,7 +74,8 @@
               "buildTarget": "surework:build:production"
             },
             "development": {
-              "buildTarget": "surework:build:development"
+              "buildTarget": "surework:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
