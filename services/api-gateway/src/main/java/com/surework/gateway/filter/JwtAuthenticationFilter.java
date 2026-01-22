@@ -48,6 +48,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().value();
 
+        // Skip CORS preflight requests
+        if (request.getMethod() == org.springframework.http.HttpMethod.OPTIONS) {
+            log.debug("Skipping JWT auth for CORS preflight request: {}", path);
+            return chain.filter(exchange);
+        }
+
         // Check if path is public (no auth required)
         if (isPublicPath(path)) {
             log.debug("Public path accessed: {}", path);
