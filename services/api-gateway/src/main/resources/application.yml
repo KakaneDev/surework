@@ -49,11 +49,11 @@ spring:
           filters:
             - StripPrefix=0
 
-        # Employee Service
+        # Employee Service - direct URL since Eureka is disabled
         - id: employee-service
-          uri: lb://employee-service
+          uri: http://localhost:8086
           predicates:
-            - Path=/api/employees/**
+            - Path=/api/v1/employees/**,/api/v1/departments/**
           filters:
             - StripPrefix=0
 
@@ -174,6 +174,8 @@ surework:
     public-paths:
       - /api/admin/auth/login
       - /api/admin/auth/refresh
+      - /api/v1/employees/**
+      - /api/v1/departments/**
       - /actuator/health
       - /swagger-ui/**
       - /v3/api-docs/**
