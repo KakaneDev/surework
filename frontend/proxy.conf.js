@@ -1,9 +1,30 @@
 const PROXY_CONFIG = [
   {
-    // Route employee and department APIs directly to employee-service
+    // Route employee and department APIs directly to hr-service
     // Bypassing API Gateway which has corrupted chunked encoding
     context: ['/api/v1/employees', '/api/v1/departments'],
-    target: 'http://localhost:8086',
+    target: 'http://localhost:8082',
+    secure: false,
+    changeOrigin: true
+  },
+  {
+    // Route leave APIs directly to hr-service
+    context: ['/api/v1/leave'],
+    target: 'http://localhost:8082',
+    secure: false,
+    changeOrigin: true
+  },
+  {
+    // Route recruitment APIs directly to recruitment-service
+    context: ['/api/recruitment'],
+    target: 'http://localhost:8085',
+    secure: false,
+    changeOrigin: true
+  },
+  {
+    // Route document APIs directly to document-service
+    context: ['/api/documents'],
+    target: 'http://localhost:8088',
     secure: false,
     changeOrigin: true
   },
