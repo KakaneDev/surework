@@ -3,22 +3,29 @@ package com.surework.notification.service;
 import java.util.Map;
 
 /**
- * Service interface for email operations.
+ * Service for sending templated emails.
  */
 public interface EmailService {
 
     /**
-     * Send a simple email.
+     * Send an offer letter email to a candidate.
      */
-    void sendEmail(String to, String subject, String body);
+    void sendOfferEmail(String to, Map<String, Object> variables);
 
     /**
-     * Send a templated email.
+     * Send an offer acceptance confirmation email to a candidate.
      */
-    void sendTemplatedEmail(String to, String subject, String templateId, Map<String, String> variables);
+    void sendOfferAcceptedEmail(String to, Map<String, Object> variables);
 
     /**
-     * Send email with attachment.
+     * Send an offer decline confirmation email to a candidate.
      */
-    void sendEmailWithAttachment(String to, String subject, String body, byte[] attachment, String attachmentName);
+    void sendOfferDeclinedEmail(String to, Map<String, Object> variables);
+
+    /**
+     * Send an email with a PDF attachment.
+     */
+    void sendEmailWithAttachment(String to, String subject, String template,
+                                  Map<String, Object> variables, byte[] attachment,
+                                  String attachmentFilename);
 }

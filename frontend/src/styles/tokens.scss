@@ -1,0 +1,257 @@
+// =============================================================================
+// SureWork Design Tokens
+// CSS Custom Properties for theming and consistency
+// =============================================================================
+
+:root {
+  // Primary Colors (Modern Teal - aligned with tailwind.config.js)
+  --color-primary-50: #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-400: #2dd4bf;
+  --color-primary-500: #14b8a6;
+  --color-primary-600: #0d9488;
+  --color-primary-700: #0f766e;
+  --color-primary-800: #115e59;
+  --color-primary-900: #134e4a;
+
+  // Accent Colors (Cyan)
+  --color-accent-50: #ecfeff;
+  --color-accent-500: #06b6d4;
+  --color-accent-600: #0891b2;
+
+  // Semantic Colors (Emerald, Amber, Red)
+  --color-success-50: #ecfdf5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+
+  // Neutral Colors (Slate for cleaner look)
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  // Light Mode Defaults
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+
+  // Sidebar (Slate-900 based)
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --color-sidebar-active: rgba(20, 184, 166, 0.1);
+  --color-sidebar-text: rgba(255, 255, 255, 0.8);
+  --color-sidebar-text-active: #14b8a6;
+
+  // Typography
+  --font-family-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  // Spacing
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+
+  // Border Radius
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  // Shadows
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-sidebar: 2px 0 8px rgba(0, 0, 0, 0.1);
+
+  // ==========================================================================
+  // Glassmorphism System - Centralized transparency & blur tokens
+  // ==========================================================================
+
+  // Background opacity levels (use with rgba or Tailwind /XX notation)
+  --glass-opacity-subtle: 0.1;
+  --glass-opacity-light: 0.2;
+  --glass-opacity-medium: 0.35;
+  --glass-opacity-heavy: 0.5;
+  --glass-opacity-solid: 0.7;
+
+  // Blur strengths
+  --glass-blur-sm: 8px;
+  --glass-blur-md: 12px;
+  --glass-blur-lg: 16px;
+  --glass-blur-xl: 24px;
+
+  // Pre-composed glassmorphism backgrounds (Light mode - use white base)
+  --glass-bg-subtle: rgba(255, 255, 255, 0.1);
+  --glass-bg-light: rgba(255, 255, 255, 0.2);
+  --glass-bg-medium: rgba(255, 255, 255, 0.35);
+  --glass-bg-heavy: rgba(255, 255, 255, 0.5);
+  --glass-bg-solid: rgba(255, 255, 255, 0.7);
+
+  // Glass borders (Light mode)
+  --glass-border-subtle: rgba(255, 255, 255, 0.1);
+  --glass-border-light: rgba(255, 255, 255, 0.15);
+  --glass-border-medium: rgba(255, 255, 255, 0.2);
+  --glass-border-strong: rgba(255, 255, 255, 0.3);
+
+  // Glass shadows
+  --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.15);
+  --glass-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.2);
+
+  // Overlay backgrounds (for modals, backdrops)
+  --overlay-light: rgba(0, 0, 0, 0.3);
+  --overlay-medium: rgba(0, 0, 0, 0.5);
+  --overlay-heavy: rgba(0, 0, 0, 0.7);
+
+  // ==========================================================================
+  // Animation System - Standardized Durations, Easings & Transitions
+  // ==========================================================================
+
+  // Duration tokens (use these for consistency)
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;      // Micro-interactions, hover states, focus
+  --duration-normal: 200ms;    // Default transitions, buttons, inputs
+  --duration-slow: 300ms;      // Larger elements, modals, page transitions
+  --duration-slower: 500ms;    // Complex animations, charts
+
+  // Easing functions
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);       // Accelerate (for exits)
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);      // Decelerate (for enters)
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); // Smooth (for hovers)
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55); // Playful
+
+  // Composed transitions (duration + easing)
+  --transition-fast: var(--duration-fast) var(--ease-in-out);
+  --transition-normal: var(--duration-normal) var(--ease-in-out);
+  --transition-slow: var(--duration-slow) var(--ease-in-out);
+
+  // GPU-safe transition properties (only these avoid layout/paint)
+  --transition-gpu: transform, opacity;
+  --transition-colors: background-color, border-color, color, fill, stroke;
+  --transition-shadow: box-shadow;
+
+  // Animation delays (for staggered animations)
+  --delay-1: 50ms;
+  --delay-2: 100ms;
+  --delay-3: 150ms;
+  --delay-4: 200ms;
+  --delay-5: 250ms;
+
+  // Z-Index Scale
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+}
+
+// Dark Mode Variables (Slate-based)
+.dark {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-elevated: #334155;
+  --color-border: #475569;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  // Adjusted shadows for dark mode
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  // Dark mode glassmorphism (use dark base instead of white)
+  --glass-bg-subtle: rgba(15, 23, 42, 0.3);
+  --glass-bg-light: rgba(15, 23, 42, 0.4);
+  --glass-bg-medium: rgba(15, 23, 42, 0.5);
+  --glass-bg-heavy: rgba(15, 23, 42, 0.65);
+  --glass-bg-solid: rgba(15, 23, 42, 0.8);
+
+  // Dark mode glass borders (white-based for contrast)
+  --glass-border-subtle: rgba(255, 255, 255, 0.05);
+  --glass-border-light: rgba(255, 255, 255, 0.08);
+  --glass-border-medium: rgba(255, 255, 255, 0.12);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+
+  // Dark mode glass shadows (deeper)
+  --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.3);
+  --glass-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.4);
+
+  // Dark mode overlays
+  --overlay-light: rgba(0, 0, 0, 0.4);
+  --overlay-medium: rgba(0, 0, 0, 0.6);
+  --overlay-heavy: rgba(0, 0, 0, 0.8);
+}
+
+// =============================================================================
+// Reduced Motion Preference - GLOBAL OVERRIDE
+// Disables ALL animations and transitions for users who prefer reduced motion
+// =============================================================================
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    // Disable all duration tokens
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+
+    // Disable composed transitions
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+  }
+
+  // Global override for ALL elements
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -11,6 +11,7 @@ import java.util.UUID;
 public sealed interface PayrollEvent extends DomainEvent permits
         PayrollEvent.PayrollRunStarted,
         PayrollEvent.PayrollRunCompleted,
+        PayrollEvent.PayrollRunApproved,
         PayrollEvent.PayrollRunFailed,
         PayrollEvent.PayslipGenerated,
         PayrollEvent.SalaryUpdated {
@@ -37,6 +38,39 @@ public sealed interface PayrollEvent extends DomainEvent permits
             int employeeCount,
             BigDecimal totalGross,
             BigDecimal totalNet
+    ) implements PayrollEvent {}
+
+    /**
+     * Event raised when a payroll run is approved and ready for accounting integration.
+     * Contains detailed breakdown for journal entry creation.
+     */
+    record PayrollRunApproved(
+            UUID eventId,
+            UUID tenantId,
+            Instant timestamp,
+            UUID payrollRunId,
+            String runNumber,
+            int periodYear,
+            int periodMonth,
+            java.time.LocalDate paymentDate,
+            int employeeCount,
+            // Gross amounts
+            BigDecimal totalGross,
+            // Employee deductions
+            BigDecimal totalPaye,
+            BigDecimal totalUifEmployee,
+            BigDecimal totalPensionEmployee,
+            BigDecimal totalMedicalEmployee,
+            BigDecimal totalOtherDeductions,
+            // Employer contributions
+            BigDecimal totalUifEmployer,
+            BigDecimal totalSdl,
+            BigDecimal totalPensionEmployer,
+            BigDecimal totalMedicalEmployer,
+            // Net pay
+            BigDecimal totalNet,
+            // Total employer cost
+            BigDecimal totalEmployerCost
     ) implements PayrollEvent {}
 
     /**

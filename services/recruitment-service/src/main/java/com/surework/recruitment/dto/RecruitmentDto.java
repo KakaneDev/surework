@@ -7,13 +7,85 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * DTOs for Recruitment operations.
  */
 public sealed interface RecruitmentDto {
+
+    // === Client DTOs ===
+
+    record CreateClientRequest(
+            @NotBlank(message = "Client name is required")
+            String name,
+            String industry,
+            String contactPerson,
+            String contactEmail,
+            String contactPhone,
+            String website,
+            String notes
+    ) implements RecruitmentDto {}
+
+    record UpdateClientRequest(
+            String name,
+            String industry,
+            String contactPerson,
+            String contactEmail,
+            String contactPhone,
+            String website,
+            String notes,
+            Boolean active
+    ) implements RecruitmentDto {}
+
+    record ClientResponse(
+            UUID id,
+            String name,
+            String industry,
+            String contactPerson,
+            String contactEmail,
+            String contactPhone,
+            String website,
+            String notes,
+            boolean active,
+            Instant createdAt
+    ) implements RecruitmentDto {
+
+        public static ClientResponse fromEntity(com.surework.recruitment.domain.Client client) {
+            return new ClientResponse(
+                    client.getId(),
+                    client.getName(),
+                    client.getIndustry(),
+                    client.getContactPerson(),
+                    client.getContactEmail(),
+                    client.getContactPhone(),
+                    client.getWebsite(),
+                    client.getNotes(),
+                    client.isActive(),
+                    client.getCreatedAt()
+            );
+        }
+    }
+
+    record ClientSummary(
+            UUID id,
+            String name,
+            String industry,
+            boolean active
+    ) implements RecruitmentDto {
+
+        public static ClientSummary fromEntity(com.surework.recruitment.domain.Client client) {
+            return new ClientSummary(
+                    client.getId(),
+                    client.getName(),
+                    client.getIndustry(),
+                    client.isActive()
+            );
+        }
+    }
 
     // === Job Posting DTOs ===
 
@@ -52,7 +124,27 @@ public sealed interface RecruitmentDto {
             String recruiterName,
 
             boolean internalOnly,
-            boolean remote
+            boolean remote,
+
+            // Client & compensation fields
+            UUID clientId,
+            JobPosting.ClientVisibility clientVisibility,
+            JobPosting.CompensationType compensationType,
+            String salaryCurrency,
+            String projectName,
+
+            // External portal publishing fields
+            String city,
+            JobPosting.Province province,
+            String postalCode,
+            String countryCode,
+            JobPosting.Industry industry,
+            JobPosting.EducationLevel educationLevel,
+            String keywords,
+            String contractDuration,
+            boolean publishToExternal,
+            List<JobPosting.JobPortal> externalPortals,
+            JobPosting.CompanyMentionPreference companyMentionPreference
     ) implements RecruitmentDto {}
 
     record UpdateJobRequest(
@@ -71,7 +163,27 @@ public sealed interface RecruitmentDto {
             String benefits,
             int positionsAvailable,
             boolean internalOnly,
-            boolean remote
+            boolean remote,
+
+            // Client & compensation fields
+            UUID clientId,
+            JobPosting.ClientVisibility clientVisibility,
+            JobPosting.CompensationType compensationType,
+            String salaryCurrency,
+            String projectName,
+
+            // External portal publishing fields
+            String city,
+            JobPosting.Province province,
+            String postalCode,
+            String countryCode,
+            JobPosting.Industry industry,
+            JobPosting.EducationLevel educationLevel,
+            String keywords,
+            String contractDuration,
+            boolean publishToExternal,
+            List<JobPosting.JobPortal> externalPortals,
+            JobPosting.CompanyMentionPreference companyMentionPreference
     ) implements RecruitmentDto {}
 
     record JobPostingResponse(
@@ -105,12 +217,34 @@ public sealed interface RecruitmentDto {
             String recruiterName,
             boolean internalOnly,
             boolean remote,
+
+            // Client & compensation fields
+            UUID clientId,
+            String clientName,
+            JobPosting.ClientVisibility clientVisibility,
+            JobPosting.CompensationType compensationType,
+            String salaryCurrency,
+            String projectName,
+
             int applicationCount,
             int viewCount,
-            Instant createdAt
+            Instant createdAt,
+
+            // External portal publishing fields
+            String city,
+            JobPosting.Province province,
+            String postalCode,
+            String countryCode,
+            JobPosting.Industry industry,
+            JobPosting.EducationLevel educationLevel,
+            String keywords,
+            String contractDuration,
+            boolean publishToExternal,
+            List<JobPosting.JobPortal> externalPortals,
+            JobPosting.CompanyMentionPreference companyMentionPreference
     ) implements RecruitmentDto {
 
-        public static JobPostingResponse fromEntity(JobPosting job) {
+        public static JobPostingResponse fromEntity(JobPosting job, String clientName) {
             return new JobPostingResponse(
                     job.getId(),
                     job.getJobReference(),
@@ -142,10 +276,33 @@ public sealed interface RecruitmentDto {
                     job.getRecruiterName(),
                     job.isInternalOnly(),
                     job.isRemote(),
+                    // Client & compensation fields
+                    job.getClientId(),
+                    clientName,
+                    job.getClientVisibility(),
+                    job.getCompensationType(),
+                    job.getSalaryCurrency(),
+                    job.getProjectName(),
                     job.getApplicationCount(),
                     job.getViewCount(),
-                    job.getCreatedAt()
+                    job.getCreatedAt(),
+                    // External portal fields
+                    job.getCity(),
+                    job.getProvince(),
+                    job.getPostalCode(),
+                    job.getCountryCode(),
+                    job.getIndustry(),
+                    job.getEducationLevel(),
+                    job.getKeywords(),
+                    job.getContractDuration(),
+                    job.isPublishToExternal(),
+                    new ArrayList<>(job.getExternalPortalSet()),
+                    job.getCompanyMentionPreference()
             );
+        }
+
+        public static JobPostingResponse fromEntity(JobPosting job) {
+            return fromEntity(job, null);
         }
     }
 
@@ -159,10 +316,13 @@ public sealed interface RecruitmentDto {
             JobPosting.JobStatus status,
             LocalDate closingDate,
             int applicationCount,
-            boolean remote
+            boolean remote,
+            String clientName,
+            JobPosting.CompensationType compensationType,
+            String projectName
     ) implements RecruitmentDto {
 
-        public static JobPostingSummary fromEntity(JobPosting job) {
+        public static JobPostingSummary fromEntity(JobPosting job, String clientName) {
             return new JobPostingSummary(
                     job.getId(),
                     job.getJobReference(),
@@ -173,8 +333,15 @@ public sealed interface RecruitmentDto {
                     job.getStatus(),
                     job.getClosingDate(),
                     job.getApplicationCount(),
-                    job.isRemote()
+                    job.isRemote(),
+                    clientName,
+                    job.getCompensationType(),
+                    job.getProjectName()
             );
+        }
+
+        public static JobPostingSummary fromEntity(JobPosting job) {
+            return fromEntity(job, null);
         }
     }
 
@@ -351,10 +518,15 @@ public sealed interface RecruitmentDto {
     ) implements RecruitmentDto {
 
         public static ApplicationResponse fromEntity(Application app) {
+            Candidate candidate = app.getCandidate();
+            CandidateSummary candidateSummary = candidate != null
+                    ? CandidateSummary.fromEntity(candidate)
+                    : new CandidateSummary(null, null, app.getApplicantFullName(),
+                            app.getApplicantEmail(), null, null);
             return new ApplicationResponse(
                     app.getId(),
                     app.getApplicationReference(),
-                    CandidateSummary.fromEntity(app.getCandidate()),
+                    candidateSummary,
                     JobPostingSummary.fromEntity(app.getJobPosting()),
                     app.getApplicationDate(),
                     app.getStatus(),
@@ -456,6 +628,7 @@ public sealed interface RecruitmentDto {
     record InterviewResponse(
             UUID id,
             UUID applicationId,
+            UUID candidateId,
             String candidateName,
             String jobTitle,
             Interview.InterviewType interviewType,
@@ -485,6 +658,7 @@ public sealed interface RecruitmentDto {
             return new InterviewResponse(
                     interview.getId(),
                     interview.getApplication().getId(),
+                    interview.getApplication().getCandidate().getId(),
                     interview.getApplication().getCandidate().getFullName(),
                     interview.getApplication().getJobPosting().getTitle(),
                     interview.getInterviewType(),
@@ -529,4 +703,177 @@ public sealed interface RecruitmentDto {
             String stageName,
             int count
     ) implements RecruitmentDto {}
+
+    // === External Job Posting DTOs ===
+
+    record ExternalJobPostingResponse(
+            UUID id,
+            UUID jobPostingId,
+            String jobTitle,
+            String jobReference,
+            JobPosting.JobPortal portal,
+            String externalJobId,
+            String externalUrl,
+            ExternalJobPosting.ExternalPostingStatus status,
+            String errorMessage,
+            int retryCount,
+            LocalDateTime postedAt,
+            LocalDateTime expiresAt,
+            LocalDateTime lastCheckedAt,
+            Instant createdAt
+    ) implements RecruitmentDto {
+
+        public static ExternalJobPostingResponse fromEntity(ExternalJobPosting posting) {
+            JobPosting job = posting.getJobPosting();
+            return new ExternalJobPostingResponse(
+                    posting.getId(),
+                    job.getId(),
+                    job.getTitle(),
+                    job.getJobReference(),
+                    posting.getPortal(),
+                    posting.getExternalJobId(),
+                    posting.getExternalUrl(),
+                    posting.getStatus(),
+                    posting.getErrorMessage(),
+                    posting.getRetryCount(),
+                    posting.getPostedAt(),
+                    posting.getExpiresAt(),
+                    posting.getLastCheckedAt(),
+                    posting.getCreatedAt()
+            );
+        }
+    }
+
+    record ExternalPostingSummary(
+            UUID id,
+            JobPosting.JobPortal portal,
+            ExternalJobPosting.ExternalPostingStatus status,
+            String externalUrl,
+            LocalDateTime postedAt
+    ) implements RecruitmentDto {
+
+        public static ExternalPostingSummary fromEntity(ExternalJobPosting posting) {
+            return new ExternalPostingSummary(
+                    posting.getId(),
+                    posting.getPortal(),
+                    posting.getStatus(),
+                    posting.getExternalUrl(),
+                    posting.getPostedAt()
+            );
+        }
+    }
+
+    record ExternalPostingStats(
+            long totalPending,
+            long totalPosted,
+            long totalFailed,
+            long totalRequiresManual,
+            List<PortalStats> byPortal
+    ) implements RecruitmentDto {}
+
+    record PortalStats(
+            JobPosting.JobPortal portal,
+            long pending,
+            long posted,
+            long failed,
+            long postedToday
+    ) implements RecruitmentDto {}
+
+    // === Analytics DTOs ===
+
+    record PortalPerformanceStats(
+            List<PortalDetail> portals,
+            long totalPosted,
+            long totalActive,
+            long totalFailed,
+            long totalExpired
+    ) implements RecruitmentDto {}
+
+    record PortalDetail(
+            String portal,
+            long totalPostings,
+            long activePostings,
+            long failedPostings,
+            long expiredPostings,
+            double avgDaysLive,
+            long postsToday
+    ) implements RecruitmentDto {}
+
+    record AdvertPerformanceStats(
+            List<AdvertDetail> adverts,
+            double avgConversionRate,
+            double avgDaysLive,
+            int totalViews,
+            int totalApplications
+    ) implements RecruitmentDto {}
+
+    record AdvertDetail(
+            UUID jobId,
+            String title,
+            String status,
+            String departmentName,
+            int views,
+            int applications,
+            double conversionRate,
+            String postingDate,
+            String closingDate,
+            long daysLive
+    ) implements RecruitmentDto {}
+
+    record SourceEffectivenessStats(
+            Map<String, Long> applicationsBySource,
+            Map<String, Long> hiredBySource,
+            Map<String, Double> conversionRateBySource,
+            Map<String, Double> avgDaysToHireBySource,
+            long totalApplications,
+            long totalHires
+    ) implements RecruitmentDto {}
+
+    record OfferAcceptanceStats(
+            long totalOffersMade,
+            long totalAccepted,
+            long totalDeclined,
+            double acceptanceRatePercent,
+            double avgDaysToAccept,
+            Map<String, Double> acceptanceRateByDepartment,
+            List<OfferTrend> monthlyTrend
+    ) implements RecruitmentDto {}
+
+    record OfferTrend(
+            String month,
+            long offers,
+            long accepted,
+            long declined,
+            double acceptanceRate
+    ) implements RecruitmentDto {}
+
+    // === Post to Portals Request ===
+
+    record PostToPortalsRequest(
+            @NotEmpty(message = "At least one portal is required")
+            List<JobPosting.JobPortal> portals,
+            JobPosting.CompanyMentionPreference companyMentionPreference
+    ) implements RecruitmentDto {}
+
+    // === Portal Status DTO (tenant-facing) ===
+
+    record PortalStatusResponse(
+            JobPosting.JobPortal portal,
+            String connectionStatus,
+            boolean isActive,
+            int dailyRateLimit,
+            int postsToday
+    ) implements RecruitmentDto {
+
+        public static PortalStatusResponse fromEntity(
+                com.surework.recruitment.domain.PlatformPortalCredentials creds) {
+            return new PortalStatusResponse(
+                    creds.getPortal(),
+                    creds.getConnectionStatus().name(),
+                    creds.isActive(),
+                    creds.getDailyRateLimit(),
+                    creds.getPostsToday()
+            );
+        }
+    }
 }

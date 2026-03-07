@@ -30,6 +30,9 @@ public class Document extends BaseEntity {
     @Column(name = "document_reference", nullable = false, unique = true)
     private String documentReference;
 
+    @Column(name = "tenant_id", nullable = false)
+    private UUID tenantId;
+
     @Column(name = "name", nullable = false)
     private String name;
 

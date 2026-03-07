@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: leave-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_leave}
     username: ${DB_USERNAME:surework}

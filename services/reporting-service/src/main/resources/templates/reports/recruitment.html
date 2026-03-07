@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${report.name}">Recruitment Report</title>
+    <style>
+        @page { size: A4 landscape; margin: 1.5cm; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9pt; line-height: 1.4; color: #333; margin: 0; padding: 15px; }
+        .header { border-bottom: 2px solid #7c3aed; padding-bottom: 15px; margin-bottom: 20px; }
+        .company-name { font-size: 20pt; font-weight: bold; color: #6d28d9; }
+        .report-title { font-size: 16pt; margin-top: 8px; color: #1f2937; }
+        .report-meta { font-size: 8pt; color: #6b7280; margin-top: 8px; }
+        .summary-box { background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 12px; margin-bottom: 15px; display: flex; gap: 30px; }
+        .summary-item { }
+        .summary-label { font-size: 7pt; color: #6b7280; text-transform: uppercase; }
+        .summary-value { font-size: 14pt; font-weight: bold; color: #6d28d9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #6d28d9; color: white; border: 1px solid #5b21b6; padding: 6px 8px; text-align: left; font-weight: 600; font-size: 8pt; }
+        td { border: 1px solid #d1d5db; padding: 5px 8px; font-size: 8pt; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+        .number { text-align: right; }
+        .percent { text-align: right; }
+        .footer { margin-top: 20px; text-align: center; font-size: 7pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        .section-title { font-size: 12pt; font-weight: bold; color: #1f2937; margin: 15px 0 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name" th:text="${companyName}">SureWork ERP</div>
+        <div class="report-title" th:text="${report.name}">Recruitment Report</div>
+        <div class="report-meta">
+            Report Type: <span th:text="${report.reportType}">RECRUITMENT_PIPELINE</span> |
+            Generated: <span th:text="${#temporals.format(generatedAt, 'dd MMM yyyy HH:mm')}">01 Jan 2026 09:00</span>
+            <span th:if="${report.dateFrom != null}">
+                | Period: <span th:text="${#temporals.format(report.dateFrom, 'dd MMM yyyy')}">01 Jan</span>
+                to <span th:text="${#temporals.format(report.dateTo, 'dd MMM yyyy')}">31 Jan</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Dynamic table based on report type -->
+    <div th:switch="${report.reportType.name()}">
+
+        <!-- Recruitment Pipeline -->
+        <div th:case="'RECRUITMENT_PIPELINE'">
+            <div class="section-title">Recruitment Pipeline Summary</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Stage</th>
+                        <th class="number">Count</th>
+                        <th class="percent">Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['stage']}">New</td>
+                        <td class="number" th:text="${row['count']}">0</td>
+                        <td class="percent" th:text="${row['percentage'] + '%'}">0%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Time to Hire -->
+        <div th:case="'TIME_TO_HIRE'">
+            <div class="section-title">Time to Hire Analysis</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Candidate</th>
+                        <th>Job Title</th>
+                        <th>Department</th>
+                        <th>Applied</th>
+                        <th class="number">Days to Screen</th>
+                        <th class="number">Days to Offer</th>
+                        <th class="number">Total Days</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['applicationReference']}">APP-001</td>
+                        <td th:text="${row['candidateName']}">John Doe</td>
+                        <td th:text="${row['jobTitle']}">Developer</td>
+                        <td th:text="${row['department']}">Engineering</td>
+                        <td th:text="${row['applicationDate']}">2025-01-01</td>
+                        <td class="number" th:text="${row['daysToScreen'] != null ? row['daysToScreen'] : '-'}">-</td>
+                        <td class="number" th:text="${row['daysToOffer'] != null ? row['daysToOffer'] : '-'}">-</td>
+                        <td class="number" th:text="${row['totalDaysToHire'] != null ? row['totalDaysToHire'] : '-'}">-</td>
+                        <td th:text="${row['source']}">LinkedIn</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Source Effectiveness -->
+        <div th:case="'SOURCE_EFFECTIVENESS'">
+            <div class="section-title">Source Effectiveness</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th class="number">Applications</th>
+                        <th class="number">Hired</th>
+                        <th class="percent">Conversion Rate</th>
+                        <th class="number">Avg Days to Hire</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['source']}">LinkedIn</td>
+                        <td class="number" th:text="${row['applications']}">0</td>
+                        <td class="number" th:text="${row['hired']}">0</td>
+                        <td class="percent" th:text="${row['conversionRate'] + '%'}">0%</td>
+                        <td class="number" th:text="${row['avgDaysToHire']}">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Offer Acceptance -->
+        <div th:case="'OFFER_ACCEPTANCE'">
+            <div class="section-title">Offer Acceptance Analysis</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th class="number">Offers</th>
+                        <th class="number">Accepted</th>
+                        <th class="number">Declined</th>
+                        <th class="percent">Acceptance Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['month'] != null ? row['month'] : row['metric']}">Jan</td>
+                        <td class="number" th:text="${row['offers'] != null ? row['offers'] : row['totalOffersMade']}">0</td>
+                        <td class="number" th:text="${row['accepted'] != null ? row['accepted'] : row['totalAccepted']}">0</td>
+                        <td class="number" th:text="${row['declined'] != null ? row['declined'] : row['totalDeclined']}">0</td>
+                        <td class="percent" th:text="${row['acceptanceRate'] + '%'}">0%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- External Portal Performance -->
+        <div th:case="'EXTERNAL_PORTAL_PERFORMANCE'">
+            <div class="section-title">External Portal Performance</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Portal</th>
+                        <th class="number">Total Postings</th>
+                        <th class="number">Active</th>
+                        <th class="number">Failed</th>
+                        <th class="number">Expired</th>
+                        <th class="number">Avg Days Live</th>
+                        <th class="number">Posts Today</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['portal']}">LinkedIn</td>
+                        <td class="number" th:text="${row['totalPostings']}">0</td>
+                        <td class="number" th:text="${row['activePostings']}">0</td>
+                        <td class="number" th:text="${row['failedPostings']}">0</td>
+                        <td class="number" th:text="${row['expiredPostings']}">0</td>
+                        <td class="number" th:text="${row['avgDaysLive']}">0</td>
+                        <td class="number" th:text="${row['postsToday']}">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Job Advert Effectiveness -->
+        <div th:case="'JOB_ADVERT_EFFECTIVENESS'">
+            <div class="section-title">Job Advert Effectiveness</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Job Title</th>
+                        <th>Department</th>
+                        <th class="number">Views</th>
+                        <th class="number">Applications</th>
+                        <th class="percent">Conversion Rate</th>
+                        <th class="number">Days Live</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:text="${row['title']}">Software Engineer</td>
+                        <td th:text="${row['department']}">Engineering</td>
+                        <td class="number" th:text="${row['views']}">0</td>
+                        <td class="number" th:text="${row['applications']}">0</td>
+                        <td class="percent" th:text="${row['conversionRate'] + '%'}">0%</td>
+                        <td class="number" th:text="${row['daysLive']}">0</td>
+                        <td th:text="${row['status']}">OPEN</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Fallback -->
+        <div th:case="*">
+            <div class="section-title">Report Data</div>
+            <table th:if="${!data.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th th:each="key : ${data[0].keySet()}" th:text="${key}">Column</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row : ${data}">
+                        <td th:each="key : ${row.keySet()}" th:text="${row[key]}">Value</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p th:if="${data.isEmpty()}" style="text-align: center; color: #9ca3af; padding: 20px;">
+        No data available for the selected period.
+    </p>
+
+    <div class="footer">
+        Generated by SureWork ERP Reporting Engine |
+        <span th:text="${#temporals.format(generatedAt, 'dd MMMM yyyy HH:mm:ss')}">01 January 2026 09:00:00</span> |
+        Confidential
+    </div>
+</body>
+</html>

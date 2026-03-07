@@ -1,5 +1,6 @@
 package com.surework.reporting.controller;
 
+import com.surework.common.security.TenantContext;
 import com.surework.reporting.domain.Dashboard;
 import com.surework.reporting.domain.Report;
 import com.surework.reporting.dto.ReportingDto.*;
@@ -11,6 +12,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +23,9 @@ import java.util.concurrent.CompletableFuture;
 /**
  * REST controller for Reporting and Analytics.
  * Provides endpoints for report generation, scheduling, dashboards, and analytics.
+ *
+ * SECURITY: All endpoints derive tenantId and userId from TenantContext (set by JWT filter),
+ * never from request parameters. This prevents cross-tenant data access.
  */
 @RestController
 @RequestMapping("/api/reporting")
@@ -36,18 +43,18 @@ public class ReportingController {
 
     @PostMapping("/reports")
     public ResponseEntity<ReportResponse> generateReport(
-            @Valid @RequestBody GenerateReportRequest request,
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+            @Valid @RequestBody GenerateReportRequest request) {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         ReportResponse response = reportingService.generateReport(request, tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/reports/async")
     public ResponseEntity<CompletableFuture<ReportResponse>> generateReportAsync(
-            @Valid @RequestBody GenerateReportRequest request,
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+            @Valid @RequestBody GenerateReportRequest request) {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         CompletableFuture<ReportResponse> future = reportingService.generateReportAsync(request, tenantId, userId);
         return ResponseEntity.accepted().body(future);
     }
@@ -68,12 +75,12 @@ public class ReportingController {
 
     @GetMapping("/reports")
     public ResponseEntity<Page<ReportListItem>> searchReports(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) Report.ReportCategory category,
             @RequestParam(required = false) Report.ReportStatus status,
             @RequestParam(required = false) Report.ReportType reportType,
             @RequestParam(required = false) UUID createdBy,
             Pageable pageable) {
+        UUID tenantId = TenantContext.requireTenantId();
         Page<ReportListItem> reports = reportingService.searchReports(
                 tenantId, category, status, reportType, createdBy, pageable);
         return ResponseEntity.ok(reports);
@@ -81,8 +88,8 @@ public class ReportingController {
 
     @GetMapping("/reports/recent")
     public ResponseEntity<List<ReportListItem>> getRecentReports(
-            @RequestParam UUID tenantId,
             @RequestParam(defaultValue = "10") int limit) {
+        UUID tenantId = TenantContext.requireTenantId();
         List<ReportListItem> reports = reportingService.getRecentReports(tenantId, limit);
         return ResponseEntity.ok(reports);
     }
@@ -105,6 +112,40 @@ public class ReportingController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/reports/{reportId}/download")
+    public ResponseEntity<Resource> downloadReport(@PathVariable UUID reportId) {
+        ReportResponse report = reportingService.getReport(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("Report not found"));
+
+        if (report.status() != Report.ReportStatus.COMPLETED) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        File file = new File(report.filePath());
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = new FileSystemResource(file);
+        String contentType = report.contentType() != null ? report.contentType() : "application/octet-stream";
+        String fileName = report.name().replaceAll("[^a-zA-Z0-9.-]", "_") + getFileExtension(report.outputFormat());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .body(resource);
+    }
+
+    private String getFileExtension(Report.OutputFormat format) {
+        return switch (format) {
+            case PDF -> ".pdf";
+            case EXCEL -> ".xlsx";
+            case CSV -> ".csv";
+            case JSON -> ".json";
+            case HTML -> ".html";
+        };
+    }
+
     @DeleteMapping("/reports/{reportId}")
     public ResponseEntity<Void> deleteReport(@PathVariable UUID reportId) {
         reportingService.deleteReport(reportId);
@@ -115,9 +156,9 @@ public class ReportingController {
 
     @PostMapping("/schedules")
     public ResponseEntity<ScheduleResponse> createSchedule(
-            @Valid @RequestBody CreateScheduleRequest request,
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+            @Valid @RequestBody CreateScheduleRequest request) {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         ScheduleResponse response = reportingService.createSchedule(request, tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -139,9 +180,9 @@ public class ReportingController {
 
     @GetMapping("/schedules")
     public ResponseEntity<Page<ScheduleResponse>> listSchedules(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) Boolean active,
             Pageable pageable) {
+        UUID tenantId = TenantContext.requireTenantId();
         Page<ScheduleResponse> schedules = reportingService.listSchedules(tenantId, active, pageable);
         return ResponseEntity.ok(schedules);
     }
@@ -160,8 +201,8 @@ public class ReportingController {
 
     @PostMapping("/schedules/{scheduleId}/run")
     public ResponseEntity<ReportResponse> runScheduleNow(
-            @PathVariable UUID scheduleId,
-            @RequestParam UUID userId) {
+            @PathVariable UUID scheduleId) {
+        UUID userId = TenantContext.requireUserId();
         ReportResponse response = reportingService.runScheduleNow(scheduleId, userId);
         return ResponseEntity.ok(response);
     }
@@ -176,9 +217,9 @@ public class ReportingController {
 
     @PostMapping("/dashboards")
     public ResponseEntity<DashboardResponse> createDashboard(
-            @Valid @RequestBody CreateDashboardRequest request,
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+            @Valid @RequestBody CreateDashboardRequest request) {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createDashboard(request, tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -199,7 +240,8 @@ public class ReportingController {
     }
 
     @GetMapping("/dashboards/default")
-    public ResponseEntity<DashboardResponse> getDefaultDashboard(@RequestParam UUID tenantId) {
+    public ResponseEntity<DashboardResponse> getDefaultDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
         return dashboardService.getDefaultDashboard(tenantId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -207,32 +249,32 @@ public class ReportingController {
 
     @GetMapping("/dashboards")
     public ResponseEntity<Page<DashboardListItem>> listDashboards(
-            @RequestParam UUID tenantId,
             Pageable pageable) {
+        UUID tenantId = TenantContext.requireTenantId();
         Page<DashboardListItem> dashboards = dashboardService.listDashboards(tenantId, pageable);
         return ResponseEntity.ok(dashboards);
     }
 
     @GetMapping("/dashboards/accessible")
-    public ResponseEntity<List<DashboardListItem>> getAccessibleDashboards(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<List<DashboardListItem>> getAccessibleDashboards() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         List<DashboardListItem> dashboards = dashboardService.getAccessibleDashboards(tenantId, userId);
         return ResponseEntity.ok(dashboards);
     }
 
     @GetMapping("/dashboards/type/{type}")
     public ResponseEntity<List<DashboardListItem>> getDashboardsByType(
-            @RequestParam UUID tenantId,
             @PathVariable Dashboard.DashboardType type) {
+        UUID tenantId = TenantContext.requireTenantId();
         List<DashboardListItem> dashboards = dashboardService.getDashboardsByType(tenantId, type);
         return ResponseEntity.ok(dashboards);
     }
 
     @PostMapping("/dashboards/{dashboardId}/set-default")
     public ResponseEntity<DashboardResponse> setAsDefault(
-            @PathVariable UUID dashboardId,
-            @RequestParam UUID tenantId) {
+            @PathVariable UUID dashboardId) {
+        UUID tenantId = TenantContext.requireTenantId();
         DashboardResponse response = dashboardService.setAsDefault(dashboardId, tenantId);
         return ResponseEntity.ok(response);
     }
@@ -240,8 +282,8 @@ public class ReportingController {
     @PostMapping("/dashboards/{dashboardId}/duplicate")
     public ResponseEntity<DashboardResponse> duplicateDashboard(
             @PathVariable UUID dashboardId,
-            @RequestParam String newName,
-            @RequestParam UUID userId) {
+            @RequestParam String newName) {
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.duplicateDashboard(dashboardId, newName, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -279,8 +321,8 @@ public class ReportingController {
 
     @GetMapping("/widgets/{widgetId}/data")
     public ResponseEntity<WidgetDataResponse> getWidgetData(
-            @PathVariable UUID widgetId,
-            @RequestParam UUID tenantId) {
+            @PathVariable UUID widgetId) {
+        UUID tenantId = TenantContext.requireTenantId();
         WidgetDataResponse response = reportingService.getWidgetData(widgetId, tenantId);
         return ResponseEntity.ok(response);
     }
@@ -304,41 +346,41 @@ public class ReportingController {
     // ==================== Dashboard Templates ====================
 
     @PostMapping("/dashboards/templates/hr")
-    public ResponseEntity<DashboardResponse> createHRDashboard(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<DashboardResponse> createHRDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createHRDashboard(tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/dashboards/templates/payroll")
-    public ResponseEntity<DashboardResponse> createPayrollDashboard(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<DashboardResponse> createPayrollDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createPayrollDashboard(tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/dashboards/templates/leave")
-    public ResponseEntity<DashboardResponse> createLeaveDashboard(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<DashboardResponse> createLeaveDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createLeaveDashboard(tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/dashboards/templates/executive")
-    public ResponseEntity<DashboardResponse> createExecutiveDashboard(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<DashboardResponse> createExecutiveDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createExecutiveDashboard(tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/dashboards/templates/recruitment")
-    public ResponseEntity<DashboardResponse> createRecruitmentDashboard(
-            @RequestParam UUID tenantId,
-            @RequestParam UUID userId) {
+    public ResponseEntity<DashboardResponse> createRecruitmentDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
+        UUID userId = TenantContext.requireUserId();
         DashboardResponse response = dashboardService.createRecruitmentDashboard(tenantId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -362,22 +404,24 @@ public class ReportingController {
     // ==================== Analytics Endpoints ====================
 
     @GetMapping("/analytics/headcount")
-    public ResponseEntity<HeadcountSummary> getHeadcountSummary(@RequestParam UUID tenantId) {
+    public ResponseEntity<HeadcountSummary> getHeadcountSummary() {
+        UUID tenantId = TenantContext.requireTenantId();
         HeadcountSummary summary = reportingService.getHeadcountSummary(tenantId);
         return ResponseEntity.ok(summary);
     }
 
     @GetMapping("/analytics/demographics")
-    public ResponseEntity<DemographicsSummary> getDemographicsSummary(@RequestParam UUID tenantId) {
+    public ResponseEntity<DemographicsSummary> getDemographicsSummary() {
+        UUID tenantId = TenantContext.requireTenantId();
         DemographicsSummary summary = reportingService.getDemographicsSummary(tenantId);
         return ResponseEntity.ok(summary);
     }
 
     @GetMapping("/analytics/turnover")
     public ResponseEntity<TurnoverAnalysis> getTurnoverAnalysis(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
+        UUID tenantId = TenantContext.requireTenantId();
         LocalDateTime dateFrom = from != null ? from : LocalDateTime.now().minusMonths(6);
         LocalDateTime dateTo = to != null ? to : LocalDateTime.now();
         TurnoverAnalysis analysis = reportingService.getTurnoverAnalysis(tenantId, dateFrom, dateTo);
@@ -386,9 +430,9 @@ public class ReportingController {
 
     @GetMapping("/analytics/payroll")
     public ResponseEntity<PayrollSummary> getPayrollSummary(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
+        UUID tenantId = TenantContext.requireTenantId();
         LocalDateTime dateFrom = from != null ? from : LocalDateTime.now().minusMonths(1);
         LocalDateTime dateTo = to != null ? to : LocalDateTime.now();
         PayrollSummary summary = reportingService.getPayrollSummary(tenantId, dateFrom, dateTo);
@@ -397,9 +441,9 @@ public class ReportingController {
 
     @GetMapping("/analytics/leave")
     public ResponseEntity<LeaveSummary> getLeaveSummary(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
+        UUID tenantId = TenantContext.requireTenantId();
         LocalDateTime dateFrom = from != null ? from : LocalDateTime.now().minusMonths(1);
         LocalDateTime dateTo = to != null ? to : LocalDateTime.now();
         LeaveSummary summary = reportingService.getLeaveSummary(tenantId, dateFrom, dateTo);
@@ -408,9 +452,9 @@ public class ReportingController {
 
     @GetMapping("/analytics/attendance")
     public ResponseEntity<AttendanceSummary> getAttendanceSummary(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
+        UUID tenantId = TenantContext.requireTenantId();
         LocalDateTime dateFrom = from != null ? from : LocalDateTime.now().minusMonths(1);
         LocalDateTime dateTo = to != null ? to : LocalDateTime.now();
         AttendanceSummary summary = reportingService.getAttendanceSummary(tenantId, dateFrom, dateTo);
@@ -419,9 +463,9 @@ public class ReportingController {
 
     @GetMapping("/analytics/recruitment")
     public ResponseEntity<RecruitmentSummary> getRecruitmentSummary(
-            @RequestParam UUID tenantId,
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
+        UUID tenantId = TenantContext.requireTenantId();
         LocalDateTime dateFrom = from != null ? from : LocalDateTime.now().minusMonths(3);
         LocalDateTime dateTo = to != null ? to : LocalDateTime.now();
         RecruitmentSummary summary = reportingService.getRecruitmentSummary(tenantId, dateFrom, dateTo);
@@ -429,13 +473,15 @@ public class ReportingController {
     }
 
     @GetMapping("/analytics/compliance")
-    public ResponseEntity<ComplianceDashboard> getComplianceDashboard(@RequestParam UUID tenantId) {
+    public ResponseEntity<ComplianceDashboard> getComplianceDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
         ComplianceDashboard dashboard = reportingService.getComplianceDashboard(tenantId);
         return ResponseEntity.ok(dashboard);
     }
 
     @GetMapping("/analytics/executive")
-    public ResponseEntity<ExecutiveDashboard> getExecutiveDashboard(@RequestParam UUID tenantId) {
+    public ResponseEntity<ExecutiveDashboard> getExecutiveDashboard() {
+        UUID tenantId = TenantContext.requireTenantId();
         ExecutiveDashboard dashboard = reportingService.getExecutiveDashboard(tenantId);
         return ResponseEntity.ok(dashboard);
     }
@@ -444,18 +490,18 @@ public class ReportingController {
 
     @GetMapping("/statutory/emp201")
     public ResponseEntity<EMP201Summary> getEMP201Summary(
-            @RequestParam UUID tenantId,
             @RequestParam int year,
             @RequestParam int month) {
+        UUID tenantId = TenantContext.requireTenantId();
         EMP201Summary summary = reportingService.getEMP201Summary(tenantId, year, month);
         return ResponseEntity.ok(summary);
     }
 
     @GetMapping("/statutory/emp501")
     public ResponseEntity<EMP501Summary> getEMP501Summary(
-            @RequestParam UUID tenantId,
             @RequestParam int taxYear,
             @RequestParam(defaultValue = "false") boolean isInterim) {
+        UUID tenantId = TenantContext.requireTenantId();
         EMP501Summary summary = reportingService.getEMP501Summary(tenantId, taxYear, isInterim);
         return ResponseEntity.ok(summary);
     }

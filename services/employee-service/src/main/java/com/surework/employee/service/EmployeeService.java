@@ -73,6 +73,24 @@ public class EmployeeService {
                 .toList();
     }
 
+    public List<EmployeeHierarchyItem> getHierarchyData() {
+        return employeeRepository.findAllActive().stream()
+                .map(this::toHierarchyItem)
+                .toList();
+    }
+
+    private EmployeeHierarchyItem toHierarchyItem(Employee e) {
+        return new EmployeeHierarchyItem(
+                e.getId(),
+                e.getEmployeeNumber(),
+                e.getFullName(),
+                e.getJobTitle(),
+                e.getDepartment() != null ? e.getDepartment().getName() : null,
+                e.getStatus(),
+                e.getManager() != null ? e.getManager().getId() : null
+        );
+    }
+
     private EmployeeListItem toListItem(Employee e) {
         return new EmployeeListItem(
                 e.getId(),

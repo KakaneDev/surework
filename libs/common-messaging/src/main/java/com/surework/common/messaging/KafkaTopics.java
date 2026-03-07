@@ -16,6 +16,7 @@ public final class KafkaTopics {
     public static final String ACCOUNTING_EVENTS = "surework.accounting.events";
     public static final String RECRUITMENT_EVENTS = "surework.recruitment.events";
     public static final String IDENTITY_EVENTS = "surework.identity.events";
+    public static final String SUPPORT_EVENTS = "surework.support.events";
 
     // Command topics
     public static final String NOTIFICATION_COMMANDS = "surework.notifications.commands";
@@ -26,5 +27,6 @@ public final class KafkaTopics {
     public static final String ACCOUNTING_EVENTS_DLT = "surework.accounting.events.dlt";
     public static final String RECRUITMENT_EVENTS_DLT = "surework.recruitment.events.dlt";
     public static final String IDENTITY_EVENTS_DLT = "surework.identity.events.dlt";
+    public static final String SUPPORT_EVENTS_DLT = "surework.support.events.dlt";
     public static final String NOTIFICATION_COMMANDS_DLT = "surework.notifications.commands.dlt";
 }

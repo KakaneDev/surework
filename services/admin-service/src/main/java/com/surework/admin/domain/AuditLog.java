@@ -142,7 +142,10 @@ public class AuditLog {
         ACCESS_GRANTED,
         ACCESS_DENIED,
         PERMISSION_CHANGE,
-        ROLE_CHANGE
+        ROLE_CHANGE,
+
+        // Security setting events
+        SECURITY_SETTING_CHANGE
     }
 
     public enum EventCategory {

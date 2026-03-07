@@ -1,13 +1,104 @@
+server:
+  port: ${SERVER_PORT:8090}
+
 spring:
   application:
     name: notification-service
-  config:
-    import: optional:configserver:http://localhost:8888
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_notifications}
+    username: ${DB_USERNAME:surework}
+    password: ${DB_PASSWORD:surework}
+  jpa:
+    hibernate:
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.surework.*
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-server:
-  port: 8087
+eureka:
+  client:
+    enabled: false
 
-# Logging
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+surework:
+  admin:
+    jwt:
+      secret: ${JWT_SECRET:}
+  services:
+    hr-service:
+      url: ${HR_SERVICE_URL:http://localhost:8083}
+    recruitment-service:
+      url: ${RECRUITMENT_SERVICE_URL:http://localhost:8088}
+
+# Resilience4j configuration for external service calls
+resilience4j:
+  retry:
+    instances:
+      hrService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+      recruitmentService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
+
+  circuitbreaker:
+    instances:
+      hrService:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      recruitmentService:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
 logging:
   level:
-    com.surework.notification: DEBUG
+    com.surework: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG

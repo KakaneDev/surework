@@ -1,0 +1,551 @@
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit, DestroyRef, computed } from '@angular/core';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { RouterLink, Router, ActivatedRoute } from '@angular/router';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import {
+  InvoiceService,
+  InvoiceResponse,
+  CustomerSummary,
+  CreateInvoiceRequest,
+  CreateInvoiceLineRequest,
+  VatCategory
+} from '../../../core/services/invoice.service';
+import { SpinnerComponent } from '@shared/ui';
+
+interface InvoiceTotals {
+  subtotal: number;
+  discount: number;
+  subtotalAfterDiscount: number;
+  vat: number;
+  total: number;
+}
+
+@Component({
+  selector: 'app-invoice-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    ReactiveFormsModule,
+    TranslateModule,
+    SpinnerComponent,
+    CurrencyPipe,
+    DatePipe
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="sw-page-header">
+        <div class="flex items-center gap-3">
+          <a [routerLink]="isEdit() ? ['/accounting/invoicing', invoiceId] : ['/accounting/invoicing']"
+             class="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300">
+            <span class="material-icons">arrow_back</span>
+          </a>
+          <div>
+            <h1 class="sw-page-title">{{ isEdit() ? ('accounting.invoicing.form.editInvoice' | translate) : ('accounting.invoicing.form.newInvoice' | translate) }}</h1>
+            <p class="sw-page-description">{{ isEdit() ? ('accounting.invoicing.form.updateInvoiceDetails' | translate) : ('accounting.invoicing.form.createNewInvoice' | translate) }}</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button (click)="cancel()" class="sw-btn sw-btn-outline sw-btn-md">{{ 'common.cancel' | translate }}</button>
+          <button (click)="saveDraft()" [disabled]="saving()" class="sw-btn sw-btn-outline sw-btn-md">
+            @if (saving() && saveAction === 'draft') {
+              <sw-spinner size="sm" />
+            }
+            {{ 'accounting.invoicing.form.saveDraft' | translate }}
+          </button>
+          <button (click)="saveAndSend()" [disabled]="saving() || form.invalid" class="sw-btn sw-btn-primary sw-btn-md">
+            @if (saving() && saveAction === 'send') {
+              <sw-spinner size="sm" />
+            }
+            <span class="material-icons text-lg">send</span>
+            {{ 'accounting.invoicing.form.saveAndSend' | translate }}
+          </button>
+        </div>
+      </div>
+
+      @if (loading()) {
+        <div class="flex justify-center items-center py-24">
+          <sw-spinner size="lg" />
+        </div>
+      } @else {
+        <form [formGroup]="form" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Main Content -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Customer & Invoice Info -->
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{{ 'accounting.invoicing.form.invoiceDetails' | translate }}</h2>
+              <div class="grid grid-cols-2 gap-4">
+                <!-- Customer -->
+                <div class="col-span-2 md:col-span-1">
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.customer' | translate }}</label>
+                  <select formControlName="customerId" class="sw-select w-full">
+                    <option value="">{{ 'accounting.invoicing.form.selectCustomer' | translate }}</option>
+                    @for (customer of customers(); track customer.id) {
+                      <option [value]="customer.id">{{ customer.customerName }} ({{ customer.customerCode }})</option>
+                    }
+                  </select>
+                  @if (form.get('customerId')?.invalid && form.get('customerId')?.touched) {
+                    <p class="text-red-500 text-xs mt-1">{{ 'accounting.invoicing.form.customerRequired' | translate }}</p>
+                  }
+                </div>
+
+                <!-- Invoice Number -->
+                <div class="col-span-2 md:col-span-1">
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.invoiceNumber' | translate }}</label>
+                  <input type="text" [value]="nextInvoiceNumber()" disabled class="sw-input w-full bg-neutral-100">
+                  <p class="text-xs text-neutral-500 mt-1">{{ 'accounting.invoicing.form.autoGeneratedOnSave' | translate }}</p>
+                </div>
+
+                <!-- Invoice Date -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.invoiceDate' | translate }}</label>
+                  <input type="date" formControlName="invoiceDate" class="sw-input w-full">
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.dueDate' | translate }}</label>
+                  <input type="date" formControlName="dueDate" class="sw-input w-full">
+                </div>
+
+                <!-- Reference -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.reference' | translate }}</label>
+                  <input type="text" formControlName="reference" [placeholder]="'accounting.invoicing.form.referenceExample' | translate" class="sw-input w-full">
+                </div>
+
+                <!-- Purchase Order -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.purchaseOrder' | translate }}</label>
+                  <input type="text" formControlName="purchaseOrder" [placeholder]="'accounting.invoicing.form.customerPoNumber' | translate" class="sw-input w-full">
+                </div>
+              </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border">
+              <div class="p-4 border-b border-neutral-200 dark:border-dark-border flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">{{ 'accounting.invoicing.form.lineItems' | translate }}</h2>
+                <button type="button" (click)="addLine()" class="sw-btn sw-btn-outline sw-btn-sm">
+                  <span class="material-icons text-sm">add</span>
+                  {{ 'accounting.invoicing.form.addLine' | translate }}
+                </button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-neutral-50 dark:bg-dark-elevated">
+                    <tr>
+                      <th class="text-left p-3 font-medium text-neutral-600 dark:text-neutral-400 w-1/3">{{ 'accounting.invoicing.form.description' | translate }}</th>
+                      <th class="text-right p-3 font-medium text-neutral-600 dark:text-neutral-400 w-20">{{ 'accounting.invoicing.form.quantity' | translate }}</th>
+                      <th class="text-right p-3 font-medium text-neutral-600 dark:text-neutral-400 w-28">{{ 'accounting.invoicing.form.unitPrice' | translate }}</th>
+                      <th class="text-center p-3 font-medium text-neutral-600 dark:text-neutral-400 w-28">{{ 'accounting.invoicing.form.vat' | translate }}</th>
+                      <th class="text-right p-3 font-medium text-neutral-600 dark:text-neutral-400 w-28">{{ 'accounting.invoicing.form.lineTotal' | translate }}</th>
+                      <th class="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody formArrayName="lines">
+                    @for (line of linesArray.controls; track $index; let i = $index) {
+                      <tr [formGroupName]="i" class="border-b border-neutral-100 dark:border-dark-border">
+                        <td class="p-2">
+                          <input type="text" formControlName="description" [placeholder]="'accounting.invoicing.form.itemDescription' | translate" class="sw-input w-full text-sm">
+                        </td>
+                        <td class="p-2">
+                          <input type="number" formControlName="quantity" min="0.01" step="0.01" class="sw-input w-full text-sm text-right">
+                        </td>
+                        <td class="p-2">
+                          <input type="number" formControlName="unitPrice" min="0" step="0.01" class="sw-input w-full text-sm text-right">
+                        </td>
+                        <td class="p-2">
+                          <select formControlName="vatCategory" class="sw-select w-full text-sm">
+                            @for (cat of vatCategories; track cat.value) {
+                              <option [value]="cat.value">{{ cat.label }}</option>
+                            }
+                          </select>
+                        </td>
+                        <td class="p-2 text-right font-mono text-neutral-800 dark:text-neutral-200">
+                          {{ getLineTotal(i) | currency:'ZAR':'symbol':'1.2-2' }}
+                        </td>
+                        <td class="p-2">
+                          @if (linesArray.length > 1) {
+                            <button type="button" (click)="removeLine(i)" class="text-red-500 hover:text-red-700">
+                              <span class="material-icons text-lg">delete</span>
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              @if (linesArray.length === 0) {
+                <div class="p-8 text-center">
+                  <p class="text-neutral-500 dark:text-neutral-400 mb-4">{{ 'accounting.invoicing.form.noLineItems' | translate }}</p>
+                  <button type="button" (click)="addLine()" class="sw-btn sw-btn-primary sw-btn-sm">
+                    <span class="material-icons text-sm">add</span>
+                    {{ 'accounting.invoicing.form.addFirstLine' | translate }}
+                  </button>
+                </div>
+              }
+            </div>
+
+            <!-- Notes & Terms -->
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{{ 'accounting.invoicing.form.notesAndTerms' | translate }}</h2>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.notesVisible' | translate }}</label>
+                  <textarea formControlName="notes" rows="2" [placeholder]="'accounting.invoicing.form.additionalNotes' | translate" class="sw-input w-full"></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.termsAndConditions' | translate }}</label>
+                  <textarea formControlName="termsAndConditions" rows="2" [placeholder]="'accounting.invoicing.form.paymentTerms' | translate" class="sw-input w-full"></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">{{ 'accounting.invoicing.form.internalNotes' | translate }}</label>
+                  <textarea formControlName="internalNotes" rows="2" [placeholder]="'accounting.invoicing.form.internalUseOnly' | translate" class="sw-input w-full"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar - Totals -->
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6 sticky top-6">
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">{{ 'accounting.invoicing.form.invoiceSummary' | translate }}</h2>
+
+              <!-- Discount -->
+              <div class="space-y-3 mb-4">
+                <div class="flex items-center gap-2">
+                  <input type="number" formControlName="discountPercentage" min="0" max="100" step="0.1"
+                         class="sw-input w-20 text-sm text-right" placeholder="0">
+                  <span class="text-sm text-neutral-500">{{ 'accounting.invoicing.form.percentDiscount' | translate }}</span>
+                </div>
+                <div class="text-sm text-neutral-500">
+                  {{ 'accounting.invoicing.form.or' | translate }}
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-neutral-500">R</span>
+                  <input type="number" formControlName="discountAmount" min="0" step="0.01"
+                         class="sw-input w-24 text-sm text-right" placeholder="0.00">
+                  <span class="text-sm text-neutral-500">{{ 'accounting.invoicing.form.fixedDiscount' | translate }}</span>
+                </div>
+              </div>
+
+              <div class="border-t border-neutral-200 dark:border-dark-border pt-4 space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-neutral-600 dark:text-neutral-400">{{ 'accounting.invoicing.form.subtotal' | translate }}</span>
+                  <span class="font-mono text-neutral-800 dark:text-neutral-200">{{ totals().subtotal | currency:'ZAR':'symbol':'1.2-2' }}</span>
+                </div>
+                @if (totals().discount > 0) {
+                  <div class="flex justify-between text-sm">
+                    <span class="text-neutral-600 dark:text-neutral-400">{{ 'accounting.invoicing.form.discount' | translate }}</span>
+                    <span class="font-mono text-red-600">-{{ totals().discount | currency:'ZAR':'symbol':'1.2-2' }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-neutral-600 dark:text-neutral-400">{{ 'accounting.invoicing.form.subtotalAfterDiscount' | translate }}</span>
+                    <span class="font-mono text-neutral-800 dark:text-neutral-200">{{ totals().subtotalAfterDiscount | currency:'ZAR':'symbol':'1.2-2' }}</span>
+                  </div>
+                }
+                <div class="flex justify-between text-sm">
+                  <span class="text-neutral-600 dark:text-neutral-400">{{ 'accounting.invoicing.form.vat15' | translate }}</span>
+                  <span class="font-mono text-neutral-800 dark:text-neutral-200">{{ totals().vat | currency:'ZAR':'symbol':'1.2-2' }}</span>
+                </div>
+                <div class="flex justify-between text-lg font-bold border-t border-neutral-200 dark:border-dark-border pt-3">
+                  <span class="text-neutral-900 dark:text-white">{{ 'accounting.invoicing.form.total' | translate }}</span>
+                  <span class="font-mono text-neutral-900 dark:text-white">{{ totals().total | currency:'ZAR':'symbol':'1.2-2' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Customer Info -->
+            @if (selectedCustomer()) {
+              <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+                <h3 class="text-sm font-semibold text-neutral-900 dark:text-white mb-3">{{ 'accounting.invoicing.form.billTo' | translate }}</h3>
+                <p class="font-medium text-neutral-800 dark:text-neutral-200">{{ selectedCustomer()!.customerName }}</p>
+                @if (selectedCustomer()!.email) {
+                  <p class="text-sm text-neutral-600 dark:text-neutral-400">{{ selectedCustomer()!.email }}</p>
+                }
+              </div>
+            }
+          </div>
+        </form>
+      }
+    </div>
+  `
+})
+export class InvoiceFormComponent implements OnInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly invoiceService = inject(InvoiceService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+
+  loading = signal(true);
+  saving = signal(false);
+  customers = signal<CustomerSummary[]>([]);
+  invoice = signal<InvoiceResponse | null>(null);
+  nextInvoiceNumber = signal('INV-XXXX');
+  selectedCustomer = signal<CustomerSummary | null>(null);
+
+  invoiceId: string | null = null;
+  saveAction: 'draft' | 'send' = 'draft';
+
+  isEdit = computed(() => !!this.invoiceId);
+
+  vatCategories = [
+    { value: 'STANDARD', label: this.translate.instant('accounting.invoicing.form.vat15') },
+    { value: 'ZERO_RATED', label: this.translate.instant('accounting.invoicing.form.zeroRated') },
+    { value: 'EXEMPT', label: this.translate.instant('accounting.invoicing.form.exempt') },
+    { value: 'OUT_OF_SCOPE', label: this.translate.instant('accounting.invoicing.form.outOfScope') }
+  ];
+
+  form: FormGroup = this.fb.group({
+    customerId: ['', Validators.required],
+    invoiceDate: [this.getTodayDate(), Validators.required],
+    dueDate: [this.getDefaultDueDate()],
+    reference: [''],
+    purchaseOrder: [''],
+    discountPercentage: [0],
+    discountAmount: [0],
+    notes: [''],
+    termsAndConditions: [this.translate.instant('accounting.invoicing.form.defaultPaymentTerms')],
+    internalNotes: [''],
+    lines: this.fb.array([])
+  });
+
+  get linesArray(): FormArray {
+    return this.form.get('lines') as FormArray;
+  }
+
+  totals = computed((): InvoiceTotals => {
+    const lines = this.linesArray.controls;
+    let subtotal = 0;
+    let vatAmount = 0;
+
+    for (const line of lines) {
+      const qty = line.get('quantity')?.value || 0;
+      const price = line.get('unitPrice')?.value || 0;
+      const vatCat = line.get('vatCategory')?.value || 'STANDARD';
+
+      const lineSubtotal = qty * price;
+      subtotal += lineSubtotal;
+
+      if (vatCat === 'STANDARD') {
+        vatAmount += lineSubtotal * 0.15;
+      }
+    }
+
+    const discountPct = this.form.get('discountPercentage')?.value || 0;
+    const discountAmt = this.form.get('discountAmount')?.value || 0;
+
+    let discount = discountAmt;
+    if (discountPct > 0) {
+      discount = subtotal * (discountPct / 100);
+    }
+
+    const subtotalAfterDiscount = subtotal - discount;
+    const adjustedVat = vatAmount * (subtotalAfterDiscount / subtotal) || 0;
+    const total = subtotalAfterDiscount + adjustedVat;
+
+    return {
+      subtotal,
+      discount,
+      subtotalAfterDiscount,
+      vat: adjustedVat,
+      total
+    };
+  });
+
+  ngOnInit(): void {
+    this.invoiceId = this.route.snapshot.paramMap.get('id');
+
+    this.loadCustomers();
+    this.loadNextInvoiceNumber();
+
+    // Watch customer selection
+    this.form.get('customerId')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(customerId => {
+        const customer = this.customers().find(c => c.id === customerId);
+        this.selectedCustomer.set(customer || null);
+      });
+
+    if (this.invoiceId && this.invoiceId !== 'new') {
+      this.loadInvoice();
+    } else {
+      this.addLine(); // Start with one empty line
+      this.loading.set(false);
+    }
+  }
+
+  loadCustomers(): void {
+    this.invoiceService.getActiveCustomers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (customers) => this.customers.set(customers),
+        error: (err) => console.error(this.translate.instant('accounting.invoicing.form.failedLoadCustomers'), err)
+      });
+  }
+
+  loadNextInvoiceNumber(): void {
+    this.invoiceService.getNextInvoiceNumber()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (number) => this.nextInvoiceNumber.set(number),
+        error: (err) => console.error(this.translate.instant('accounting.invoicing.form.failedLoadInvoiceNumber'), err)
+      });
+  }
+
+  loadInvoice(): void {
+    this.invoiceService.getInvoice(this.invoiceId!)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (invoice) => {
+          this.invoice.set(invoice);
+          this.populateForm(invoice);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error(this.translate.instant('accounting.invoicing.form.failedLoadInvoice'), err);
+          this.loading.set(false);
+        }
+      });
+  }
+
+  populateForm(invoice: InvoiceResponse): void {
+    this.form.patchValue({
+      customerId: invoice.customerId,
+      invoiceDate: invoice.invoiceDate,
+      dueDate: invoice.dueDate,
+      reference: invoice.reference,
+      purchaseOrder: invoice.purchaseOrder,
+      discountPercentage: invoice.discountPercentage || 0,
+      discountAmount: invoice.discountAmount || 0,
+      notes: invoice.notes,
+      termsAndConditions: invoice.termsAndConditions,
+      internalNotes: invoice.internalNotes
+    });
+
+    // Clear and repopulate lines
+    this.linesArray.clear();
+    for (const line of invoice.lines) {
+      this.linesArray.push(this.fb.group({
+        description: [line.description, Validators.required],
+        quantity: [line.quantity, [Validators.required, Validators.min(0.01)]],
+        unitPrice: [line.unitPrice, [Validators.required, Validators.min(0)]],
+        vatCategory: [line.vatCategory || 'STANDARD']
+      }));
+    }
+  }
+
+  addLine(): void {
+    this.linesArray.push(this.fb.group({
+      description: ['', Validators.required],
+      quantity: [1, [Validators.required, Validators.min(0.01)]],
+      unitPrice: [0, [Validators.required, Validators.min(0)]],
+      vatCategory: ['STANDARD']
+    }));
+  }
+
+  removeLine(index: number): void {
+    this.linesArray.removeAt(index);
+  }
+
+  getLineTotal(index: number): number {
+    const line = this.linesArray.at(index);
+    const qty = line.get('quantity')?.value || 0;
+    const price = line.get('unitPrice')?.value || 0;
+    const vatCat = line.get('vatCategory')?.value || 'STANDARD';
+
+    const subtotal = qty * price;
+    const vat = vatCat === 'STANDARD' ? subtotal * 0.15 : 0;
+    return subtotal + vat;
+  }
+
+  saveDraft(): void {
+    this.saveAction = 'draft';
+    this.saveInvoice(false);
+  }
+
+  saveAndSend(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.saveAction = 'send';
+    this.saveInvoice(true);
+  }
+
+  private saveInvoice(sendAfterSave: boolean): void {
+    this.saving.set(true);
+
+    const formValue = this.form.value;
+    const request: CreateInvoiceRequest = {
+      customerId: formValue.customerId,
+      invoiceDate: formValue.invoiceDate,
+      dueDate: formValue.dueDate || undefined,
+      reference: formValue.reference || undefined,
+      purchaseOrder: formValue.purchaseOrder || undefined,
+      discountPercentage: formValue.discountPercentage || undefined,
+      discountAmount: formValue.discountAmount || undefined,
+      notes: formValue.notes || undefined,
+      termsAndConditions: formValue.termsAndConditions || undefined,
+      internalNotes: formValue.internalNotes || undefined,
+      lines: formValue.lines.map((line: any): CreateInvoiceLineRequest => ({
+        description: line.description,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        vatCategory: line.vatCategory as VatCategory
+      }))
+    };
+
+    const operation = this.isEdit()
+      ? this.invoiceService.updateInvoice(this.invoiceId!, request)
+      : this.invoiceService.createInvoice(request);
+
+    operation
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (invoice) => {
+          if (sendAfterSave) {
+            // Navigate to send dialog or directly send
+            this.router.navigate(['/accounting/invoicing', invoice.id], {
+              queryParams: { action: 'send' }
+            });
+          } else {
+            this.router.navigate(['/accounting/invoicing', invoice.id]);
+          }
+          this.saving.set(false);
+        },
+        error: (err) => {
+          console.error(this.translate.instant('accounting.invoicing.form.failedSaveInvoice'), err);
+          this.saving.set(false);
+        }
+      });
+  }
+
+  cancel(): void {
+    if (this.isEdit()) {
+      this.router.navigate(['/accounting/invoicing', this.invoiceId]);
+    } else {
+      this.router.navigate(['/accounting/invoicing']);
+    }
+  }
+
+  private getTodayDate(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private getDefaultDueDate(): string {
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
+  }
+}

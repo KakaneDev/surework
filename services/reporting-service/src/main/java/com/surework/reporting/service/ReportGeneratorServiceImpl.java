@@ -28,12 +28,14 @@ public class ReportGeneratorServiceImpl implements ReportGeneratorService {
 
     private final TemplateEngine templateEngine;
     private final ObjectMapper objectMapper;
+    private final ReportDataFetcherService dataFetcherService;
 
     @Value("${surework.reporting.generation.temp-directory:./report-temp}")
     private String tempDirectory;
 
-    public ReportGeneratorServiceImpl(TemplateEngine templateEngine) {
+    public ReportGeneratorServiceImpl(TemplateEngine templateEngine, ReportDataFetcherService dataFetcherService) {
         this.templateEngine = templateEngine;
+        this.dataFetcherService = dataFetcherService;
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
@@ -102,8 +104,13 @@ public class ReportGeneratorServiceImpl implements ReportGeneratorService {
     }
 
     private int getRowCount(Report report) {
-        // This would be calculated based on actual data
-        return 100;
+        // Calculate actual row count from fetched data
+        try {
+            List<Map<String, Object>> data = dataFetcherService.fetchReportData(report);
+            return data != null ? data.size() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private int getPageCount(Report report, long contentSize) {
@@ -310,6 +317,8 @@ public class ReportGeneratorServiceImpl implements ReportGeneratorService {
             case LEAVE_BALANCE, LEAVE_UTILIZATION -> "reports/leave";
             case ATTENDANCE_SUMMARY -> "reports/attendance";
             case EMP201, EMP501 -> "reports/statutory";
+            case RECRUITMENT_PIPELINE, TIME_TO_HIRE, SOURCE_EFFECTIVENESS, OFFER_ACCEPTANCE,
+                 EXTERNAL_PORTAL_PERFORMANCE, JOB_ADVERT_EFFECTIVENESS -> "reports/recruitment";
             default -> "reports/generic";
         };
     }
@@ -325,51 +334,7 @@ public class ReportGeneratorServiceImpl implements ReportGeneratorService {
     }
 
     private List<Map<String, Object>> getReportData(Report report) {
-        // This would fetch actual data based on report type
-        // For now, return sample data
-        List<Map<String, Object>> data = new ArrayList<>();
-
-        switch (report.getReportType()) {
-            case HEADCOUNT -> {
-                for (int i = 1; i <= 10; i++) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("employeeNumber", "EMP" + String.format("%05d", i));
-                    row.put("firstName", "Employee");
-                    row.put("lastName", "Name " + i);
-                    row.put("department", "Department " + (i % 5 + 1));
-                    row.put("position", "Position " + i);
-                    row.put("startDate", LocalDateTime.now().minusMonths(i * 3));
-                    row.put("status", "Active");
-                    data.add(row);
-                }
-            }
-            case PAYROLL_REGISTER -> {
-                for (int i = 1; i <= 10; i++) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("employeeNumber", "EMP" + String.format("%05d", i));
-                    row.put("name", "Employee Name " + i);
-                    row.put("basicSalary", 25000 + (i * 1000));
-                    row.put("allowances", 2000 + (i * 100));
-                    row.put("grossPay", 27000 + (i * 1100));
-                    row.put("paye", 5000 + (i * 200));
-                    row.put("uif", 270 + (i * 11));
-                    row.put("netPay", 21730 + (i * 889));
-                    data.add(row);
-                }
-            }
-            default -> {
-                // Generic sample data
-                for (int i = 1; i <= 10; i++) {
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("id", i);
-                    row.put("description", "Item " + i);
-                    row.put("value", i * 100);
-                    row.put("date", LocalDateTime.now().minusDays(i));
-                    data.add(row);
-                }
-            }
-        }
-
-        return data;
+        // Fetch real data from microservices via ReportDataFetcherService
+        return dataFetcherService.fetchReportData(report);
     }
 }

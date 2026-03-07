@@ -1,13 +1,18 @@
 package com.surework.tenant.controller;
 
 import com.surework.common.web.exception.ResourceNotFoundException;
+import com.surework.tenant.config.JwtHeaderAuthenticationFilter.UserPrincipal;
 import com.surework.tenant.domain.Tenant;
 import com.surework.tenant.dto.TenantDto;
 import com.surework.tenant.service.TenantService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,7 +56,7 @@ public class TenantController {
     public ResponseEntity<TenantDto.Response> getTenantBySubdomain(@PathVariable String subdomain) {
         return tenantService.getTenantBySubdomain(subdomain)
                 .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant", "subdomain", subdomain));
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant", subdomain));
     }
 
     /**
@@ -61,6 +66,18 @@ public class TenantController {
     public ResponseEntity<List<TenantDto.Response>> listTenants(
             @RequestParam(required = false) Tenant.TenantStatus status) {
         List<TenantDto.Response> tenants = tenantService.listTenants(status);
+        return ResponseEntity.ok(tenants);
+    }
+
+    /**
+     * Search tenants with optional status filter and search term.
+     */
+    @GetMapping("/search")
+    public ResponseEntity<Page<TenantDto.Response>> searchTenants(
+            @RequestParam(required = false) Tenant.TenantStatus status,
+            @RequestParam(required = false) String search,
+            Pageable pageable) {
+        Page<TenantDto.Response> tenants = tenantService.searchTenants(status, search, pageable);
         return ResponseEntity.ok(tenants);
     }
 
@@ -125,6 +142,74 @@ public class TenantController {
             @PathVariable String subdomain) {
         boolean available = tenantService.isSubdomainAvailable(subdomain);
         return ResponseEntity.ok(new SubdomainAvailabilityResponse(subdomain, available));
+    }
+
+    // === Stuck Onboarding Endpoints ===
+
+    /**
+     * Get tenants stuck in onboarding.
+     */
+    @GetMapping("/stuck-onboarding")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'TENANT_ADMIN', 'Super Administrator', 'Tenant Administrator')")
+    public ResponseEntity<Page<TenantDto.StuckOnboardingResponse>> getStuckOnboarding(
+            @RequestParam(defaultValue = "7") int daysStuck,
+            Pageable pageable) {
+        Page<TenantDto.StuckOnboardingResponse> stuck = tenantService.getStuckOnboarding(daysStuck, pageable);
+        return ResponseEntity.ok(stuck);
+    }
+
+    /**
+     * Send onboarding help to a tenant.
+     */
+    @PostMapping("/{tenantId}/send-onboarding-help")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'TENANT_ADMIN', 'SUPPORT_ADMIN', 'Super Administrator', 'Tenant Administrator', 'Support Administrator')")
+    public ResponseEntity<Void> sendOnboardingHelp(
+            @PathVariable UUID tenantId,
+            @Valid @RequestBody TenantDto.SendOnboardingHelpRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        tenantService.sendOnboardingHelp(tenantId, request.message(), principal.userId(), principal.username());
+        return ResponseEntity.ok().build();
+    }
+
+    // === Activity Endpoints ===
+
+    /**
+     * Get tenant activity feed.
+     */
+    @GetMapping("/{tenantId}/activity")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'TENANT_ADMIN', 'Super Administrator', 'Tenant Administrator')")
+    public ResponseEntity<Page<TenantDto.ActivityResponse>> getTenantActivity(
+            @PathVariable UUID tenantId,
+            Pageable pageable) {
+        Page<TenantDto.ActivityResponse> activities = tenantService.getTenantActivity(tenantId, pageable);
+        return ResponseEntity.ok(activities);
+    }
+
+    // === Stats Endpoints ===
+
+    /**
+     * Get tenant statistics.
+     */
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'TENANT_ADMIN', 'Super Administrator', 'Tenant Administrator')")
+    public ResponseEntity<TenantDto.StatsResponse> getTenantStats() {
+        TenantDto.StatsResponse stats = tenantService.getTenantStats();
+        return ResponseEntity.ok(stats);
+    }
+
+    // === Impersonation Endpoints ===
+
+    /**
+     * Generate impersonation token for a tenant.
+     */
+    @PostMapping("/{tenantId}/impersonate")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('Super Administrator')")
+    public ResponseEntity<TenantDto.ImpersonateResponse> impersonateTenant(
+            @PathVariable UUID tenantId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        TenantDto.ImpersonateResponse response = tenantService.generateImpersonationToken(
+                tenantId, principal.userId(), principal.username());
+        return ResponseEntity.ok(response);
     }
 
     record SubdomainAvailabilityResponse(String subdomain, boolean available) {}

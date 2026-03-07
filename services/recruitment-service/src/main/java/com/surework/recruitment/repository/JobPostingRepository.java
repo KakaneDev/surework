@@ -68,15 +68,17 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
     List<JobPosting> findByRecruiterId(@Param("recruiterId") UUID recruiterId);
 
     /**
-     * Search job postings.
+     * Search job postings with safe parameterized JPQL query.
+     * Uses CONCAT to safely build LIKE patterns without SQL injection risk.
      */
     @Query("SELECT j FROM JobPosting j WHERE j.deleted = false " +
             "AND (:status IS NULL OR j.status = :status) " +
             "AND (:departmentId IS NULL OR j.departmentId = :departmentId) " +
             "AND (:employmentType IS NULL OR j.employmentType = :employmentType) " +
-            "AND (:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
-            "AND (:searchTerm IS NULL OR LOWER(j.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+            "AND (:location IS NULL OR :location = '' OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) " +
+            "AND (:searchTerm IS NULL OR :searchTerm = '' OR LOWER(j.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
             "    OR LOWER(j.description) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
+            "AND (:clientId IS NULL OR j.clientId = :clientId) " +
             "ORDER BY j.postingDate DESC NULLS LAST, j.createdAt DESC")
     Page<JobPosting> search(
             @Param("status") JobPosting.JobStatus status,
@@ -84,6 +86,7 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
             @Param("employmentType") JobPosting.EmploymentType employmentType,
             @Param("location") String location,
             @Param("searchTerm") String searchTerm,
+            @Param("clientId") UUID clientId,
             Pageable pageable);
 
     /**
@@ -142,4 +145,52 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, UUID> {
      */
     @Query("SELECT j FROM JobPosting j WHERE j.deleted = false ORDER BY j.createdAt DESC")
     Page<JobPosting> findRecentJobs(Pageable pageable);
+
+    /**
+     * Find by job reference and status.
+     */
+    @Query("SELECT j FROM JobPosting j WHERE j.jobReference = :jobReference AND j.status = :status AND j.deleted = false")
+    Optional<JobPosting> findByJobReferenceAndStatus(
+            @Param("jobReference") String jobReference,
+            @Param("status") JobPosting.JobStatus status);
+
+    /**
+     * Find by status (paginated).
+     */
+    @Query("SELECT j FROM JobPosting j WHERE j.status = :status AND j.deleted = false ORDER BY j.postingDate DESC NULLS LAST")
+    Page<JobPosting> findByStatus(@Param("status") JobPosting.JobStatus status, Pageable pageable);
+
+    /**
+     * Find job postings with advert performance data (views or applications > 0).
+     */
+    @Query("SELECT j FROM JobPosting j WHERE j.deleted = false " +
+            "AND (j.viewCount > 0 OR j.applicationCount > 0) " +
+            "ORDER BY j.postingDate DESC NULLS LAST")
+    Page<JobPosting> findAdvertPerformanceData(Pageable pageable);
+
+    /**
+     * Search published jobs for public careers page.
+     * Supports keyword search, location, province, employment type, industry, and remote filters.
+     */
+    @Query("SELECT j FROM JobPosting j WHERE j.status = 'OPEN' AND j.deleted = false " +
+            "AND (j.closingDate IS NULL OR j.closingDate >= CURRENT_DATE) " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "    LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "    LOWER(j.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "    LOWER(j.skills) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:location IS NULL OR :location = '' OR " +
+            "    LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%')) OR " +
+            "    LOWER(j.city) LIKE LOWER(CONCAT('%', :location, '%'))) " +
+            "AND (:province IS NULL OR j.province = :province) " +
+            "AND (:employmentType IS NULL OR j.employmentType = :employmentType) " +
+            "AND (:industry IS NULL OR j.industry = :industry) " +
+            "AND (:remote IS NULL OR j.remote = :remote)")
+    Page<JobPosting> searchPublishedJobs(
+            @Param("keyword") String keyword,
+            @Param("location") String location,
+            @Param("province") JobPosting.Province province,
+            @Param("employmentType") JobPosting.EmploymentType employmentType,
+            @Param("industry") JobPosting.Industry industry,
+            @Param("remote") Boolean remote,
+            Pageable pageable);
 }

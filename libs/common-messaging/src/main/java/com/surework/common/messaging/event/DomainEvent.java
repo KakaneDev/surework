@@ -20,6 +20,7 @@ public sealed interface DomainEvent permits
         AccountingEvent,
         RecruitmentEvent,
         IdentityEvent,
+        SupportEvent,
         NotificationCommand {
 
     /**

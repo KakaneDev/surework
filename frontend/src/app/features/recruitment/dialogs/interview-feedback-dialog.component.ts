@@ -1,19 +1,14 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Interview,
   InterviewFeedback,
   Recommendation
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ButtonComponent, DialogRef } from '@shared/ui';
 
 interface DialogData {
   interview: Interview;
@@ -25,199 +20,156 @@ interface DialogData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatIconModule
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent
   ],
   template: `
-    <h2 mat-dialog-title>Interview Feedback</h2>
-    <mat-dialog-content>
-      <p class="dialog-info">
-        Provide feedback for <strong>{{ data.interview.candidateName }}</strong>'s interview
+    <div class="p-6 min-w-[450px]">
+      <h2 id="feedback-dialog-title" class="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2 flex items-center gap-2">
+        <span class="material-icons text-primary-500" aria-hidden="true">rate_review</span>
+        {{ 'recruitment.interviewFeedback.title' | translate }}
+      </h2>
+      <p class="text-neutral-500 dark:text-neutral-400 mb-6">
+        {{ 'recruitment.interviewFeedback.description' | translate: { candidateName: data.interview.candidateName } }}
       </p>
-      <form [formGroup]="form">
-        <!-- Ratings -->
-        <div class="ratings-section">
-          <div class="rating-row">
-            <span class="rating-label">Technical Skills</span>
-            <div class="rating-stars">
+
+      <form [formGroup]="form" class="space-y-4">
+        <!-- Ratings Section -->
+        <div class="p-4 bg-neutral-50 dark:bg-dark-elevated rounded-lg space-y-3">
+          <div class="flex justify-between items-center py-2">
+            <span id="technical-label" class="font-medium text-neutral-700 dark:text-neutral-300">{{ 'recruitment.interviewFeedback.technicalSkills' | translate }}</span>
+            <div class="flex gap-1" role="group" aria-labelledby="technical-label">
               @for (star of [1, 2, 3, 4, 5]; track star) {
-                <mat-icon
-                  [class.filled]="star <= (form.get('technicalRating')?.value || 0)"
-                  (click)="setRating('technicalRating', star)">
-                  star
-                </mat-icon>
+                <button type="button" (click)="setRating('technicalRating', star)"
+                        class="text-2xl transition-colors"
+                        [class.text-warning-500]="star <= (form.get('technicalRating')?.value || 0)"
+                        [class.text-neutral-300]="star > (form.get('technicalRating')?.value || 0)"
+                        [class.dark:text-neutral-600]="star > (form.get('technicalRating')?.value || 0)"
+                        [attr.aria-label]="'Rate technical skills ' + star + ' out of 5'"
+                        [attr.aria-pressed]="star === form.get('technicalRating')?.value">
+                  <span class="material-icons" aria-hidden="true">star</span>
+                </button>
               }
             </div>
           </div>
 
-          <div class="rating-row">
-            <span class="rating-label">Communication</span>
-            <div class="rating-stars">
+          <div class="flex justify-between items-center py-2">
+            <span id="communication-label" class="font-medium text-neutral-700 dark:text-neutral-300">{{ 'recruitment.interviewFeedback.communication' | translate }}</span>
+            <div class="flex gap-1" role="group" aria-labelledby="communication-label">
               @for (star of [1, 2, 3, 4, 5]; track star) {
-                <mat-icon
-                  [class.filled]="star <= (form.get('communicationRating')?.value || 0)"
-                  (click)="setRating('communicationRating', star)">
-                  star
-                </mat-icon>
+                <button type="button" (click)="setRating('communicationRating', star)"
+                        class="text-2xl transition-colors"
+                        [class.text-warning-500]="star <= (form.get('communicationRating')?.value || 0)"
+                        [class.text-neutral-300]="star > (form.get('communicationRating')?.value || 0)"
+                        [class.dark:text-neutral-600]="star > (form.get('communicationRating')?.value || 0)"
+                        [attr.aria-label]="'Rate communication ' + star + ' out of 5'"
+                        [attr.aria-pressed]="star === form.get('communicationRating')?.value">
+                  <span class="material-icons" aria-hidden="true">star</span>
+                </button>
               }
             </div>
           </div>
 
-          <div class="rating-row">
-            <span class="rating-label">Cultural Fit</span>
-            <div class="rating-stars">
+          <div class="flex justify-between items-center py-2">
+            <span id="cultural-fit-label" class="font-medium text-neutral-700 dark:text-neutral-300">{{ 'recruitment.interviewFeedback.culturalFit' | translate }}</span>
+            <div class="flex gap-1" role="group" aria-labelledby="cultural-fit-label">
               @for (star of [1, 2, 3, 4, 5]; track star) {
-                <mat-icon
-                  [class.filled]="star <= (form.get('culturalFitRating')?.value || 0)"
-                  (click)="setRating('culturalFitRating', star)">
-                  star
-                </mat-icon>
+                <button type="button" (click)="setRating('culturalFitRating', star)"
+                        class="text-2xl transition-colors"
+                        [class.text-warning-500]="star <= (form.get('culturalFitRating')?.value || 0)"
+                        [class.text-neutral-300]="star > (form.get('culturalFitRating')?.value || 0)"
+                        [class.dark:text-neutral-600]="star > (form.get('culturalFitRating')?.value || 0)"
+                        [attr.aria-label]="'Rate cultural fit ' + star + ' out of 5'"
+                        [attr.aria-pressed]="star === form.get('culturalFitRating')?.value">
+                  <span class="material-icons" aria-hidden="true">star</span>
+                </button>
               }
             </div>
           </div>
 
-          <div class="rating-row overall">
-            <span class="rating-label">Overall Rating</span>
-            <div class="rating-stars">
+          <div class="flex justify-between items-center py-2 pt-4 border-t border-neutral-200 dark:border-dark-border">
+            <span id="overall-label" class="font-semibold text-neutral-800 dark:text-neutral-200">{{ 'recruitment.interviewFeedback.overallRating' | translate }}</span>
+            <div class="flex gap-1" role="group" aria-labelledby="overall-label" aria-required="true">
               @for (star of [1, 2, 3, 4, 5]; track star) {
-                <mat-icon
-                  [class.filled]="star <= (form.get('overallRating')?.value || 0)"
-                  (click)="setRating('overallRating', star)">
-                  star
-                </mat-icon>
+                <button type="button" (click)="setRating('overallRating', star)"
+                        class="text-2xl transition-colors"
+                        [class.text-warning-500]="star <= (form.get('overallRating')?.value || 0)"
+                        [class.text-neutral-300]="star > (form.get('overallRating')?.value || 0)"
+                        [class.dark:text-neutral-600]="star > (form.get('overallRating')?.value || 0)"
+                        [attr.aria-label]="'Rate overall ' + star + ' out of 5'"
+                        [attr.aria-pressed]="star === form.get('overallRating')?.value">
+                  <span class="material-icons" aria-hidden="true">star</span>
+                </button>
               }
             </div>
           </div>
         </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Recommendation</mat-label>
-          <mat-select formControlName="recommendation">
+        <div>
+          <label for="recommendation" class="sw-label">{{ 'recruitment.interviewFeedback.recommendation' | translate }}</label>
+          <select id="recommendation" formControlName="recommendation" class="sw-input w-full" aria-required="true">
+            <option value="">{{ 'recruitment.interviewFeedback.selectRecommendation' | translate }}</option>
             @for (rec of recommendations; track rec.value) {
-              <mat-option [value]="rec.value">{{ rec.label }}</mat-option>
+              <option [value]="rec.value">{{ rec.labelKey | translate }}</option>
             }
-          </mat-select>
-        </mat-form-field>
+          </select>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Strengths</mat-label>
-          <textarea matInput formControlName="strengths" rows="2"
-                    placeholder="What were the candidate's strengths?"></textarea>
-        </mat-form-field>
+        <div>
+          <label for="strengths" class="sw-label">{{ 'recruitment.interviewFeedback.strengths' | translate }}</label>
+          <textarea id="strengths" formControlName="strengths" class="sw-input w-full" rows="2"
+                    [placeholder]="'recruitment.interviewFeedback.strengthsPlaceholder' | translate"></textarea>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Concerns</mat-label>
-          <textarea matInput formControlName="concerns" rows="2"
-                    placeholder="Any concerns or areas for improvement?"></textarea>
-        </mat-form-field>
+        <div>
+          <label for="concerns" class="sw-label">{{ 'recruitment.interviewFeedback.concerns' | translate }}</label>
+          <textarea id="concerns" formControlName="concerns" class="sw-input w-full" rows="2"
+                    [placeholder]="'recruitment.interviewFeedback.concernsPlaceholder' | translate"></textarea>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Additional Feedback</mat-label>
-          <textarea matInput formControlName="feedback" rows="3"
-                    placeholder="Overall impressions and additional notes..."></textarea>
-        </mat-form-field>
+        <div>
+          <label for="feedback" class="sw-label">{{ 'recruitment.interviewFeedback.additionalFeedback' | translate }}</label>
+          <textarea id="feedback" formControlName="feedback" class="sw-input w-full" rows="3"
+                    [placeholder]="'recruitment.interviewFeedback.feedbackPlaceholder' | translate"></textarea>
+        </div>
       </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-              [disabled]="form.invalid || saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Submit Feedback
-        }
-      </button>
-    </mat-dialog-actions>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-dark-border">
+        <sw-button variant="ghost" size="md" [disabled]="saving()" (clicked)="cancel()">
+          {{ 'recruitment.interviewFeedback.cancel' | translate }}
+        </sw-button>
+        <sw-button variant="primary" size="md" [disabled]="form.invalid" [loading]="saving()" (clicked)="onSubmit()">
+          <span class="material-icons text-lg" aria-hidden="true">send</span>
+          {{ 'recruitment.interviewFeedback.submitFeedback' | translate }}
+        </sw-button>
+      </div>
+    </div>
   `,
-  styles: [`
-    .dialog-info {
-      margin-bottom: 16px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    mat-dialog-content {
-      min-width: 400px;
-    }
-
-    .ratings-section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .rating-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-    }
-
-    .rating-row.overall {
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
-      margin-top: 8px;
-      padding-top: 16px;
-    }
-
-    .rating-label {
-      font-weight: 500;
-    }
-
-    .rating-stars {
-      display: flex;
-      gap: 4px;
-    }
-
-    .rating-stars mat-icon {
-      cursor: pointer;
-      color: #e0e0e0;
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-      transition: color 0.2s;
-    }
-
-    .rating-stars mat-icon.filled {
-      color: #ffc107;
-    }
-
-    .rating-stars mat-icon:hover {
-      color: #ffca28;
-    }
-
-    mat-dialog-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InterviewFeedbackDialogComponent {
-  readonly dialogRef = inject(MatDialogRef<InterviewFeedbackDialogComponent>);
-  readonly data: DialogData = inject(MAT_DIALOG_DATA);
+  private readonly dialogRef: DialogRef = inject('DIALOG_REF' as any);
+  readonly data: DialogData = inject('DIALOG_DATA' as any);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
+  private readonly translate = inject(TranslateService);
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
 
   form: FormGroup;
   saving = signal(false);
 
-  recommendations: { value: Recommendation; label: string }[] = [
-    { value: 'STRONG_HIRE', label: 'Strong Hire' },
-    { value: 'HIRE', label: 'Hire' },
-    { value: 'LEAN_HIRE', label: 'Lean Hire' },
-    { value: 'NEUTRAL', label: 'Neutral' },
-    { value: 'LEAN_NO_HIRE', label: 'Lean No Hire' },
-    { value: 'NO_HIRE', label: 'No Hire' },
-    { value: 'STRONG_NO_HIRE', label: 'Strong No Hire' }
+  recommendations: { value: Recommendation; labelKey: string }[] = [
+    { value: 'STRONG_HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.strongHire' },
+    { value: 'HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.hire' },
+    { value: 'LEAN_HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.leanHire' },
+    { value: 'NEUTRAL', labelKey: 'recruitment.interviewFeedback.recommendations.neutral' },
+    { value: 'LEAN_NO_HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.leanNoHire' },
+    { value: 'NO_HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.noHire' },
+    { value: 'STRONG_NO_HIRE', labelKey: 'recruitment.interviewFeedback.recommendations.strongNoHire' }
   ];
 
   constructor() {

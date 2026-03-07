@@ -1,9 +1,11 @@
 server:
-  port: 8087
+  port: 8091
 
 spring:
   application:
     name: reporting-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://localhost:5432/surework_reporting
@@ -78,6 +80,19 @@ springdoc:
 
 # SureWork Reporting Configuration
 surework:
+  # Service URLs for Feign clients
+  services:
+    employee-service:
+      url: ${EMPLOYEE_SERVICE_URL:http://localhost:8082}
+    payroll-service:
+      url: ${PAYROLL_SERVICE_URL:http://localhost:8082}
+    leave-service:
+      url: ${LEAVE_SERVICE_URL:http://localhost:8083}
+    time-attendance-service:
+      url: ${TIME_ATTENDANCE_SERVICE_URL:http://localhost:8084}
+    recruitment-service:
+      url: ${RECRUITMENT_SERVICE_URL:http://localhost:8086}
+
   reporting:
     # Report generation settings
     generation:
@@ -180,6 +195,17 @@ surework:
         - labor-cost-analysis
         - department-budget
         - headcount-forecast
+
+# Feign Client Configuration
+spring.cloud.openfeign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 30000
+        loggerLevel: basic
+  circuitbreaker:
+    enabled: true
 
 # Logging Configuration
 logging:

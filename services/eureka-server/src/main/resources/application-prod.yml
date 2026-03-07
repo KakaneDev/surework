@@ -1,0 +1,23 @@
+# Production Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=prod or --spring.profiles.active=prod
+# All secrets MUST be provided via environment variables
+
+spring:
+  security:
+    user:
+      name: ${EUREKA_USERNAME}
+      password: ${EUREKA_PASSWORD}
+
+eureka:
+  server:
+    # Enable self-preservation for production (prevents mass deregistration)
+    enable-self-preservation: true
+    renewal-percent-threshold: 0.85
+    eviction-interval-timer-in-ms: 60000
+    response-cache-update-interval-ms: 5000
+
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+    root: INFO

@@ -8,12 +8,14 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Represents a job application from a candidate.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "applications", indexes = {
@@ -27,16 +29,64 @@ import java.util.UUID;
 @NoArgsConstructor
 public class Application extends BaseEntity {
 
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
+
     @Column(name = "application_reference", nullable = false, unique = true)
     private String applicationReference;
 
+    /**
+     * Linked candidate profile (optional for public applications).
+     * Public applications store applicant info directly on the Application.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "candidate_id", nullable = false)
+    @JoinColumn(name = "candidate_id")
     private Candidate candidate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_posting_id", nullable = false)
     private JobPosting jobPosting;
+
+    // ==================== Direct Applicant Fields ====================
+    // These fields are used for public career page applications
+    // where no Candidate profile exists yet.
+
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Column(name = "linkedin_url")
+    private String linkedInUrl;
+
+    @Column(name = "portfolio_url")
+    private String portfolioUrl;
+
+    @Column(name = "notice_period")
+    private String noticePeriod;
+
+    @Column(name = "expected_salary", precision = 12, scale = 2)
+    private BigDecimal expectedSalary;
+
+    @Column(name = "referred_by")
+    private String referredBy;
+
+    @Column(name = "additional_notes", columnDefinition = "TEXT")
+    private String additionalNotes;
+
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
 
     @Column(name = "application_date", nullable = false)
     private LocalDate applicationDate;
@@ -86,6 +136,9 @@ public class Application extends BaseEntity {
     private Integer overallInterviewRating;
 
     // Offer information
+    @Column(name = "offer_token", unique = true, length = 64)
+    private String offerToken;
+
     @Column(name = "offer_salary", precision = 12, scale = 2)
     private BigDecimal offerSalary;
 
@@ -128,7 +181,7 @@ public class Application extends BaseEntity {
     @Column(name = "overall_rating")
     private Integer overallRating; // 1-5 stars
 
-    @Column(name = "is_starred")
+    @Column(name = "starred")
     private boolean starred = false;
 
     @Column(name = "source")
@@ -142,7 +195,8 @@ public class Application extends BaseEntity {
      * Application statuses.
      */
     public enum ApplicationStatus {
-        NEW,            // Just submitted
+        RECEIVED,       // Received from public careers page (not yet reviewed)
+        NEW,            // Just submitted (internal)
         IN_REVIEW,      // Being reviewed
         SCREENED,       // Initial screening complete
         SHORTLISTED,    // Made the shortlist
@@ -175,7 +229,7 @@ public class Application extends BaseEntity {
     }
 
     /**
-     * Create a new application.
+     * Create a new application from a Candidate.
      */
     public static Application create(Candidate candidate, JobPosting jobPosting) {
         Application application = new Application();
@@ -188,9 +242,70 @@ public class Application extends BaseEntity {
         return application;
     }
 
+    /**
+     * Create a public application (from careers page, no Candidate profile).
+     */
+    public static Application createPublicApplication(JobPosting jobPosting, String firstName,
+            String lastName, String email, String phone) {
+        Application application = new Application();
+        application.setJobPosting(jobPosting);
+        application.setTenantId(jobPosting.getTenantId());
+        application.setFirstName(firstName);
+        application.setLastName(lastName);
+        application.setEmail(email);
+        application.setPhone(phone);
+        application.setApplicationReference(generateApplicationReference());
+        application.setApplicationDate(LocalDate.now());
+        application.setAppliedAt(LocalDateTime.now());
+        application.setStatus(ApplicationStatus.RECEIVED);
+        application.setStage(RecruitmentStage.NEW);
+        application.setSource("careers_page");
+        return application;
+    }
+
     private static String generateApplicationReference() {
         return "APP-" + System.currentTimeMillis() % 100000 + "-" +
                 UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+    }
+
+    /**
+     * Get the applicant's full name (from Candidate or direct fields).
+     */
+    public String getApplicantFullName() {
+        if (candidate != null) {
+            return candidate.getFirstName() + " " + candidate.getLastName();
+        }
+        if (firstName != null && lastName != null) {
+            return firstName + " " + lastName;
+        }
+        return firstName != null ? firstName : (lastName != null ? lastName : "Unknown");
+    }
+
+    /**
+     * Get the applicant's email (from Candidate or direct fields).
+     */
+    public String getApplicantEmail() {
+        if (candidate != null) {
+            return candidate.getEmail();
+        }
+        return email;
+    }
+
+    /**
+     * Get the applicant's phone (from Candidate or direct fields).
+     */
+    public String getApplicantPhone() {
+        if (candidate != null) {
+            return candidate.getPhone();
+        }
+        return phone;
+    }
+
+    /**
+     * Check if this is a public application (no linked Candidate).
+     */
+    public boolean isPublicApplication() {
+        return candidate == null;
     }
 
     /**
@@ -236,6 +351,13 @@ public class Application extends BaseEntity {
     }
 
     /**
+     * Generate a unique offer token for public acceptance link.
+     */
+    public void generateOfferToken() {
+        this.offerToken = UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
      * Make an offer.
      */
     public void makeOffer(BigDecimal salary, LocalDate expiryDate, LocalDate startDate) {
@@ -245,6 +367,7 @@ public class Application extends BaseEntity {
         this.offerDate = LocalDate.now();
         this.offerExpiryDate = expiryDate;
         this.expectedStartDate = startDate;
+        generateOfferToken();
     }
 
     /**
@@ -255,6 +378,7 @@ public class Application extends BaseEntity {
             throw new IllegalStateException("No offer to accept");
         }
         this.status = ApplicationStatus.OFFER_ACCEPTED;
+        this.stage = RecruitmentStage.ONBOARDING;
         this.offerAcceptedDate = LocalDate.now();
     }
 
@@ -265,9 +389,8 @@ public class Application extends BaseEntity {
         if (this.status != ApplicationStatus.OFFER_MADE) {
             throw new IllegalStateException("No offer to decline");
         }
-        this.status = ApplicationStatus.WITHDRAWN;
-        this.withdrawalReason = "Offer declined: " + reason;
-        this.withdrawnAt = java.time.Instant.now();
+        this.status = ApplicationStatus.OFFER_DECLINED;
+        this.rejectionReason = "Offer declined: " + (reason != null ? reason : "No reason provided");
     }
 
     /**

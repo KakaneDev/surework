@@ -176,6 +176,12 @@ public sealed interface AdminDto {
             @NotEmpty List<UUID> roleIds
     ) implements AdminDto {}
 
+    // ==================== Avatar DTOs ====================
+
+    record AvatarResponse(
+            String avatarUrl
+    ) implements AdminDto {}
+
     // ==================== Role DTOs ====================
 
     record CreateRoleRequest(
@@ -251,7 +257,9 @@ public sealed interface AdminDto {
             String tokenType,
             int expiresIn,
             UserResponse user,
-            boolean mfaRequired
+            boolean mfaRequired,
+            String mfaChallengeToken,
+            Integer remainingAttempts
     ) implements AdminDto {}
 
     record RefreshTokenRequest(
@@ -266,6 +274,42 @@ public sealed interface AdminDto {
 
     record MfaVerifyRequest(
             @NotBlank String code
+    ) implements AdminDto {}
+
+    // ==================== Password Reset DTOs ====================
+
+    record ForgotPasswordRequest(
+            @NotBlank @Email String email
+    ) implements AdminDto {}
+
+    record PasswordResetRequest(
+            @NotBlank String token,
+            @NotBlank @Size(min = 12, message = "Password must be at least 12 characters")
+            String newPassword,
+            @NotBlank String confirmPassword
+    ) implements AdminDto {}
+
+    record ValidateTokenResponse(
+            boolean valid,
+            String email
+    ) implements AdminDto {}
+
+    record PasswordResetResponse(
+            String message
+    ) implements AdminDto {}
+
+    // ==================== Session Management DTOs ====================
+
+    record ActiveSessionResponse(
+            UUID id,
+            String deviceName,
+            String deviceType,
+            String browser,
+            String ipAddress,
+            String location,
+            LocalDateTime lastActiveAt,
+            LocalDateTime createdAt,
+            boolean isCurrent
     ) implements AdminDto {}
 
     // ==================== API Key DTOs ====================

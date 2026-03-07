@@ -12,6 +12,7 @@ import java.util.UUID;
 
 /**
  * Represents an interview scheduled for a job application.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "interviews", indexes = {
@@ -24,6 +25,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class Interview extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "application_id", nullable = false)

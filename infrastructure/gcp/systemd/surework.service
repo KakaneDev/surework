@@ -1,0 +1,39 @@
+# SureWork Docker Compose Systemd Service
+# Install: sudo cp surework.service /etc/systemd/system/
+# Enable:  sudo systemctl enable surework
+# Start:   sudo systemctl start surework
+# Status:  sudo systemctl status surework
+# Logs:    journalctl -u surework -f
+
+[Unit]
+Description=SureWork ERP Platform (Docker Compose)
+Documentation=https://github.com/inmo/surework
+Requires=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Update this path to match your installation
+WorkingDirectory=/home/harrismogale/surework/surework
+
+# Start command - brings up all services
+ExecStart=/usr/bin/docker compose up -d
+
+# Stop command - gracefully shuts down all services
+ExecStop=/usr/bin/docker compose down
+
+# Restart policy
+Restart=on-failure
+RestartSec=30s
+
+# Timeouts
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+# Environment
+Environment="COMPOSE_HTTP_TIMEOUT=300"
+
+[Install]
+WantedBy=multi-user.target

@@ -12,6 +12,34 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Silently handle certain errors that are expected or handled elsewhere:
+      // - Notification service errors (service may not be running)
+      // - Auth API errors (handled by login form)
+      // - Dashboard API 403 errors (user may not have permissions for all dashboard data)
+      // - Admin API 403 errors for non-admin users viewing dashboard
+      if (req.url.includes('/api/notifications') ||
+          req.url.includes('/ws/notifications') ||
+          req.url.includes('/api/admin/auth')) {
+        return throwError(() => error);
+      }
+
+      // Silently handle 403 errors for dashboard aggregation endpoints
+      // and admin/HR pages where permission-based access is expected
+      // Components handle these errors with their own UI (empty states, access denied)
+      if (error.status === 403 && (
+          req.url.includes('/api/admin/dashboard') ||
+          req.url.includes('/api/recruitment/dashboard') ||
+          req.url.includes('/api/v1/leave/pending') ||
+          req.url.includes('/api/v1/leave/employees') ||
+          req.url.includes('/api/recruitment/pipeline') ||
+          req.url.includes('/api/recruitment/interviews/upcoming') ||
+          req.url.includes('/api/v1/leave/on-leave-today') ||
+          req.url.includes('/api/v1/employees') ||
+          req.url.includes('/api/payroll')
+      )) {
+        return throwError(() => error);
+      }
+
       let message = 'An unexpected error occurred';
 
       if (error.error instanceof ErrorEvent) {

@@ -60,3 +60,16 @@ export const logoutSuccess = createAction('[Auth] Logout Success');
 export const checkSession = createAction('[Auth] Check Session');
 
 export const sessionExpired = createAction('[Auth] Session Expired');
+
+// Rate Limiting
+export const loginRateLimited = createAction(
+  '[Auth] Login Rate Limited',
+  props<{ remainingAttempts: number; retryAfter?: number }>()
+);
+
+export const accountLocked = createAction(
+  '[Auth] Account Locked',
+  props<{ lockoutEndTime: number }>()
+);
+
+export const clearRateLimit = createAction('[Auth] Clear Rate Limit');

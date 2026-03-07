@@ -212,3 +212,39 @@ health: ## Check health of all services
 	@curl -s http://localhost:8086/actuator/health | jq -r '.status' | xargs -I {} echo "Time: {}" || echo "Time: DOWN"
 	@curl -s http://localhost:8087/actuator/health | jq -r '.status' | xargs -I {} echo "Reporting: {}" || echo "Reporting: DOWN"
 	@curl -s http://localhost:8089/actuator/health | jq -r '.status' | xargs -I {} echo "Document: {}" || echo "Document: DOWN"
+
+# ==================== GCP Deployment ====================
+
+gcp-deploy: ## Deploy GCP infrastructure (run from local machine)
+	@echo "$(BLUE)Deploying to Google Cloud Platform...$(NC)"
+	./infrastructure/gcp/deploy.sh
+
+gcp-ssh: ## SSH into GCP VM
+	gcloud compute ssh surework-server --zone=europe-west1-b
+
+gcp-logs: ## View VM startup logs
+	gcloud compute ssh surework-server --zone=europe-west1-b --command="sudo cat /var/log/surework-startup.log"
+
+gcp-status: ## Check GCP VM status
+	@echo "$(BLUE)GCP VM Status:$(NC)"
+	gcloud compute instances describe surework-server --zone=europe-west1-b --format="table(name,status,networkInterfaces[0].accessConfigs[0].natIP)"
+
+gcp-stop: ## Stop GCP VM (saves compute cost)
+	@echo "$(YELLOW)Stopping GCP VM...$(NC)"
+	gcloud compute instances stop surework-server --zone=europe-west1-b
+
+gcp-start: ## Start GCP VM
+	@echo "$(BLUE)Starting GCP VM...$(NC)"
+	gcloud compute instances start surework-server --zone=europe-west1-b
+
+gcp-ip: ## Show GCP static IP address
+	@gcloud compute addresses describe surework-ip --region=europe-west1 --format="get(address)"
+
+gcp-backup: ## Run database backup on GCP VM
+	gcloud compute ssh surework-server --zone=europe-west1-b --command="cd ~/surework/surework && ./infrastructure/gcp/scripts/backup-db.sh"
+
+gcp-health: ## Check health of services on GCP VM
+	gcloud compute ssh surework-server --zone=europe-west1-b --command="cd ~/surework/surework && ./infrastructure/gcp/scripts/health-check.sh"
+
+gcp-update: ## Update and redeploy on GCP VM
+	gcloud compute ssh surework-server --zone=europe-west1-b --command="cd ~/surework/surework && ./infrastructure/gcp/scripts/update-deploy.sh"

@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Test reports
+reports/
+test-results/
+playwright-report/
+
+# Authentication state
+.auth/
+
+# Screenshots and videos
+screenshots/
+videos/
+
+# OS files
+.DS_Store
+Thumbs.db

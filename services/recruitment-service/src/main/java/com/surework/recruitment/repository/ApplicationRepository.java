@@ -34,14 +34,16 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     /**
      * Find by job posting.
      */
-    @Query("SELECT a FROM Application a WHERE a.jobPosting.id = :jobId AND a.deleted = false " +
-            "ORDER BY a.applicationDate DESC")
+    @Query("SELECT a FROM Application a LEFT JOIN FETCH a.candidate JOIN FETCH a.jobPosting " +
+            "WHERE a.jobPosting.id = :jobId AND a.deleted = false ORDER BY a.applicationDate DESC")
     List<Application> findByJobPostingId(@Param("jobId") UUID jobId);
 
     /**
      * Find by job posting (paginated).
      */
-    @Query("SELECT a FROM Application a WHERE a.jobPosting.id = :jobId AND a.deleted = false")
+    @Query(value = "SELECT a FROM Application a LEFT JOIN FETCH a.candidate JOIN FETCH a.jobPosting " +
+            "WHERE a.jobPosting.id = :jobId AND a.deleted = false",
+            countQuery = "SELECT COUNT(a) FROM Application a WHERE a.jobPosting.id = :jobId AND a.deleted = false")
     Page<Application> findByJobPostingId(@Param("jobId") UUID jobId, Pageable pageable);
 
     /**
@@ -151,4 +153,77 @@ public interface ApplicationRepository extends JpaRepository<Application, UUID> 
     long countByDateRange(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * Check if an application exists for a job posting with the given email.
+     * Used to prevent duplicate applications from the public careers page.
+     */
+    @Query("SELECT COUNT(a) > 0 FROM Application a WHERE a.jobPosting.id = :jobPostingId " +
+            "AND a.email = :email AND a.deleted = false")
+    boolean existsByJobPostingIdAndEmail(
+            @Param("jobPostingId") UUID jobPostingId,
+            @Param("email") String email);
+
+    /**
+     * Find application by offer token (for public offer acceptance).
+     * Uses JOIN FETCH because OSIV is off.
+     */
+    @Query("SELECT a FROM Application a LEFT JOIN FETCH a.candidate JOIN FETCH a.jobPosting " +
+            "WHERE a.offerToken = :token AND a.deleted = false")
+    Optional<Application> findByOfferToken(@Param("token") String token);
+
+    /**
+     * Find expired offers (status OFFER_MADE with expiry date in the past).
+     */
+    @Query("SELECT a FROM Application a WHERE a.status = 'OFFER_MADE' AND a.deleted = false " +
+            "AND a.offerExpiryDate < :today")
+    List<Application> findExpiredOffers(@Param("today") LocalDate today);
+
+    // === Analytics Queries ===
+
+    /**
+     * Count applications grouped by source.
+     */
+    @Query("SELECT a.source, COUNT(a) FROM Application a WHERE a.deleted = false " +
+            "AND a.source IS NOT NULL GROUP BY a.source ORDER BY COUNT(a) DESC")
+    List<Object[]> countBySourceGrouped();
+
+    /**
+     * Count hired applications grouped by source.
+     */
+    @Query("SELECT a.source, COUNT(a) FROM Application a WHERE a.deleted = false " +
+            "AND a.status = 'HIRED' AND a.source IS NOT NULL GROUP BY a.source ORDER BY COUNT(a) DESC")
+    List<Object[]> countHiredBySource();
+
+    /**
+     * Get offer statistics: counts of OFFER_MADE, OFFER_ACCEPTED, OFFER_DECLINED, HIRED statuses.
+     * Returns Object[] rows: [status, count]
+     */
+    @Query("SELECT a.status, COUNT(a) FROM Application a WHERE a.deleted = false " +
+            "AND a.status IN ('OFFER_MADE', 'OFFER_ACCEPTED', 'OFFER_DECLINED', 'HIRED') " +
+            "GROUP BY a.status")
+    List<Object[]> getOfferStats();
+
+    /**
+     * Find hired applications with dates for time-to-hire-by-source analysis.
+     */
+    @Query("SELECT a FROM Application a WHERE a.deleted = false " +
+            "AND a.status = 'HIRED' AND a.applicationDate IS NOT NULL " +
+            "ORDER BY a.applicationDate DESC")
+    List<Application> findHiredApplicationsWithDates();
+
+    /**
+     * Count applications by status (for offer acceptance over time).
+     * Returns Object[] rows: [yearMonth, offersCount, acceptedCount, declinedCount]
+     */
+    @Query("SELECT FUNCTION('to_char', a.offerDate, 'YYYY-MM'), " +
+            "COUNT(a), " +
+            "SUM(CASE WHEN a.status = 'OFFER_ACCEPTED' OR a.status = 'HIRED' THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN a.status = 'OFFER_DECLINED' THEN 1 ELSE 0 END) " +
+            "FROM Application a WHERE a.deleted = false " +
+            "AND a.offerDate IS NOT NULL " +
+            "AND a.status IN ('OFFER_MADE', 'OFFER_ACCEPTED', 'OFFER_DECLINED', 'HIRED') " +
+            "GROUP BY FUNCTION('to_char', a.offerDate, 'YYYY-MM') " +
+            "ORDER BY FUNCTION('to_char', a.offerDate, 'YYYY-MM') DESC")
+    List<Object[]> getOfferTrendByMonth();
 }

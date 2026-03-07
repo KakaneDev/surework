@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { shareReplay } from 'rxjs/operators';
 import { environment } from '@env/environment';
 
 export interface Employee {
@@ -135,6 +136,10 @@ export class EmployeeService {
   private readonly apiUrl = `${environment.apiUrl}/api/v1/employees`;
   private readonly departmentsUrl = `${environment.apiUrl}/api/v1/departments`;
 
+  // Cached observables for frequently accessed static data
+  private departmentsCache$?: Observable<Department[]>;
+  private jobTitlesCache$?: Observable<JobTitle[]>;
+
   /**
    * Search employees with pagination.
    */
@@ -223,16 +228,34 @@ export class EmployeeService {
   }
 
   /**
-   * Get all departments.
+   * Get all departments (cached).
    */
   getDepartments(): Observable<Department[]> {
-    return this.http.get<Department[]>(this.departmentsUrl);
+    if (!this.departmentsCache$) {
+      this.departmentsCache$ = this.http.get<Department[]>(this.departmentsUrl).pipe(
+        shareReplay({ bufferSize: 1, refCount: true })
+      );
+    }
+    return this.departmentsCache$;
   }
 
   /**
-   * Get job titles.
+   * Get job titles (cached).
    */
   getJobTitles(): Observable<JobTitle[]> {
-    return this.http.get<JobTitle[]>(`${environment.apiUrl}/api/v1/job-titles`);
+    if (!this.jobTitlesCache$) {
+      this.jobTitlesCache$ = this.http.get<JobTitle[]>(`${environment.apiUrl}/api/v1/job-titles`).pipe(
+        shareReplay({ bufferSize: 1, refCount: true })
+      );
+    }
+    return this.jobTitlesCache$;
+  }
+
+  /**
+   * Clear cached data (use when departments/job titles are modified).
+   */
+  clearCache(): void {
+    this.departmentsCache$ = undefined;
+    this.jobTitlesCache$ = undefined;
   }
 }

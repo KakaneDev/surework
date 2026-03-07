@@ -124,6 +124,7 @@ public sealed interface AuthDto {
      */
     record CurrentUserResponse(
             String userId,
+            String employeeId,
             String email,
             String firstName,
             String lastName,

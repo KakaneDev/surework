@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Leave balance entity tracking employee leave entitlements.
@@ -15,6 +16,7 @@ import java.time.LocalDate;
  * - Annual: 21 consecutive days (15 working days) per year
  * - Sick: 30 days per 36-month cycle (does NOT carry over)
  * - Family Responsibility: 3 days per year
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "leave_balances")
@@ -22,6 +24,13 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 public class LeaveBalance extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)

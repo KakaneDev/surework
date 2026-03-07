@@ -1,11 +1,14 @@
 package com.surework.reporting.service;
 
+import com.surework.reporting.client.RecruitmentServiceClient;
 import com.surework.reporting.domain.DashboardWidget;
 import com.surework.reporting.domain.Report;
 import com.surework.reporting.domain.ReportSchedule;
 import com.surework.reporting.dto.ReportingDto.*;
 import com.surework.reporting.repository.ReportRepository;
 import com.surework.reporting.repository.ReportScheduleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,17 +31,25 @@ import java.util.concurrent.CompletableFuture;
 @Transactional
 public class ReportingServiceImpl implements ReportingService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportingServiceImpl.class);
+
     private final ReportRepository reportRepository;
     private final ReportScheduleRepository scheduleRepository;
     private final ReportGeneratorService generatorService;
+    private final ReportDataFetcherService dataFetcherService;
+    private final RecruitmentServiceClient recruitmentClient;
 
     public ReportingServiceImpl(
             ReportRepository reportRepository,
             ReportScheduleRepository scheduleRepository,
-            ReportGeneratorService generatorService) {
+            ReportGeneratorService generatorService,
+            ReportDataFetcherService dataFetcherService,
+            RecruitmentServiceClient recruitmentClient) {
         this.reportRepository = reportRepository;
         this.scheduleRepository = scheduleRepository;
         this.generatorService = generatorService;
+        this.dataFetcherService = dataFetcherService;
+        this.recruitmentClient = recruitmentClient;
     }
 
     // ==================== Report Generation ====================
@@ -70,6 +81,7 @@ public class ReportingServiceImpl implements ReportingService {
     private Report createReportEntity(GenerateReportRequest request, UUID tenantId, UUID userId) {
         Report report = new Report();
         report.setTenantId(tenantId);
+        report.setReference(generateReportReference(request.reportType()));
         report.setName(request.name() != null ? request.name() : generateDefaultName(request.reportType()));
         report.setDescription(request.description());
         report.setCategory(getCategoryForReportType(request.reportType()));
@@ -82,6 +94,12 @@ public class ReportingServiceImpl implements ReportingService {
         report.setCreatedBy(userId);
         report.setExpiresAt(LocalDateTime.now().plusDays(30)); // Reports expire after 30 days
         return report;
+    }
+
+    private String generateReportReference(Report.ReportType type) {
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "RPT-" + type.name().substring(0, Math.min(3, type.name().length())) + "-" + dateStr + "-" + randomSuffix;
     }
 
     private String generateDefaultName(Report.ReportType type) {
@@ -99,7 +117,8 @@ public class ReportingServiceImpl implements ReportingService {
                  ABSENCE_TRENDS -> Report.ReportCategory.LEAVE;
             case ATTENDANCE_SUMMARY, OVERTIME_REPORT, LATE_ARRIVALS, TIMESHEET_COMPLIANCE,
                  HOURS_WORKED -> Report.ReportCategory.TIME_ATTENDANCE;
-            case RECRUITMENT_PIPELINE, TIME_TO_HIRE, SOURCE_EFFECTIVENESS, OFFER_ACCEPTANCE -> Report.ReportCategory.RECRUITMENT;
+            case RECRUITMENT_PIPELINE, TIME_TO_HIRE, SOURCE_EFFECTIVENESS, OFFER_ACCEPTANCE,
+                 EXTERNAL_PORTAL_PERFORMANCE, JOB_ADVERT_EFFECTIVENESS -> Report.ReportCategory.RECRUITMENT;
             case EMP201, EMP501, UI19, IRP5, IT3A, EEA2, EEA4 -> Report.ReportCategory.STATUTORY;
             case LABOR_COST_ANALYSIS, DEPARTMENT_BUDGET, HEADCOUNT_FORECAST -> Report.ReportCategory.FINANCIAL;
             case AD_HOC, CUSTOM_QUERY -> Report.ReportCategory.CUSTOM;
@@ -192,7 +211,7 @@ public class ReportingServiceImpl implements ReportingService {
 
         return new DownloadResponse(
                 report.getId(),
-                "/api/reports/" + reportId + "/download",
+                "/api/reporting/reports/" + reportId + "/download",
                 fileName,
                 getContentType(report.getOutputFormat()),
                 report.getFileSize(),
@@ -522,28 +541,77 @@ public class ReportingServiceImpl implements ReportingService {
     @Override
     @Cacheable(value = "recruitment", key = "#tenantId + '-' + #from + '-' + #to")
     @Transactional(readOnly = true)
+    @SuppressWarnings("unchecked")
     public RecruitmentSummary getRecruitmentSummary(UUID tenantId, LocalDateTime from, LocalDateTime to) {
-        List<RecruitmentTrend> trend = List.of(
-                new RecruitmentTrend("Jan", 45, 12, 5, 4),
-                new RecruitmentTrend("Feb", 52, 15, 6, 5),
-                new RecruitmentTrend("Mar", 38, 10, 4, 3),
-                new RecruitmentTrend("Apr", 60, 18, 7, 6),
-                new RecruitmentTrend("May", 48, 14, 5, 4),
-                new RecruitmentTrend("Jun", 55, 16, 6, 5)
-        );
+        try {
+            Map<String, Object> sourceStats = recruitmentClient.getSourceEffectivenessStats();
+            Map<String, Object> offerStats = recruitmentClient.getOfferAcceptanceStats();
 
-        return new RecruitmentSummary(
-                12,   // openPositions
-                55,   // totalApplications
-                16,   // interviewsScheduled
-                6,    // offersExtended
-                5,    // hiresMade
-                new BigDecimal("32.5"),  // averageDaysToHire
-                new BigDecimal("83.3"),  // offerAcceptanceRatePercent
-                Map.of("LinkedIn", 120, "Indeed", 85, "Referral", 45, "Career Page", 35, "Other", 13),
-                Map.of("Engineering", 5, "Sales", 3, "HR", 1, "Finance", 1, "Operations", 2),
-                trend
-        );
+            // Extract source-level data
+            Map<String, Number> appsBySource = sourceStats.get("applicationsBySource") != null
+                    ? (Map<String, Number>) sourceStats.get("applicationsBySource")
+                    : Map.of();
+            int totalApps = sourceStats.get("totalApplications") != null
+                    ? ((Number) sourceStats.get("totalApplications")).intValue() : 0;
+            int totalHires = sourceStats.get("totalHires") != null
+                    ? ((Number) sourceStats.get("totalHires")).intValue() : 0;
+
+            // Extract offer-level data
+            int totalOffers = offerStats.get("totalOffersMade") != null
+                    ? ((Number) offerStats.get("totalOffersMade")).intValue() : 0;
+            int totalAccepted = offerStats.get("totalAccepted") != null
+                    ? ((Number) offerStats.get("totalAccepted")).intValue() : 0;
+            double acceptanceRate = offerStats.get("acceptanceRatePercent") != null
+                    ? ((Number) offerStats.get("acceptanceRatePercent")).doubleValue() : 0.0;
+            double avgDays = offerStats.get("avgDaysToAccept") != null
+                    ? ((Number) offerStats.get("avgDaysToAccept")).doubleValue() : 0.0;
+
+            // Build monthly trend from offer data
+            List<RecruitmentTrend> trend = new ArrayList<>();
+            Object monthlyTrendObj = offerStats.get("monthlyTrend");
+            if (monthlyTrendObj instanceof List<?> trendList) {
+                for (Object item : trendList) {
+                    if (item instanceof Map<?, ?> m) {
+                        String month = m.get("month") != null ? m.get("month").toString() : "";
+                        int offers = m.get("offers") != null ? ((Number) m.get("offers")).intValue() : 0;
+                        int accepted = m.get("accepted") != null ? ((Number) m.get("accepted")).intValue() : 0;
+                        trend.add(new RecruitmentTrend(month, totalApps, accepted, offers, accepted));
+                    }
+                }
+            }
+
+            // Build department map from offer acceptance by department
+            Map<String, Integer> byDept = new LinkedHashMap<>();
+            Object deptObj = offerStats.get("acceptanceRateByDepartment");
+            if (deptObj instanceof Map<?, ?> deptMap) {
+                deptMap.forEach((k, v) -> byDept.put(k.toString(), v != null ? ((Number) v).intValue() : 0));
+            }
+
+            // Convert applicationsBySource to Map<String, Integer>
+            Map<String, Integer> sourceMap = new LinkedHashMap<>();
+            appsBySource.forEach((k, v) -> sourceMap.put(k, v != null ? v.intValue() : 0));
+
+            // Count open positions from job postings
+            List<?> openJobs = recruitmentClient.getJobPostingsByStatus("OPEN");
+            int openPositions = openJobs != null ? openJobs.size() : 0;
+
+            return new RecruitmentSummary(
+                    openPositions,
+                    totalApps,
+                    0, // interviewsScheduled - would need separate endpoint
+                    totalOffers,
+                    totalHires,
+                    new BigDecimal(avgDays).setScale(1, RoundingMode.HALF_UP),
+                    new BigDecimal(acceptanceRate).setScale(1, RoundingMode.HALF_UP),
+                    sourceMap,
+                    byDept,
+                    trend
+            );
+        } catch (Exception e) {
+            log.warn("Failed to fetch recruitment data from recruitment-service, returning defaults: {}", e.getMessage());
+            return new RecruitmentSummary(0, 0, 0, 0, 0,
+                    BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), Map.of(), List.of());
+        }
     }
 
     @Override

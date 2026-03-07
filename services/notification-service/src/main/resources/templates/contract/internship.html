@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #666;
+        }
+        h2 {
+            font-size: 13pt;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        .section {
+            margin-bottom: 15px;
+        }
+        .clause {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table.details td {
+            padding: 5px 10px;
+            vertical-align: top;
+        }
+        table.details td:first-child {
+            font-weight: bold;
+            width: 200px;
+            color: #555;
+        }
+        .highlight-box {
+            background-color: #f0f7f0;
+            border-left: 3px solid #27ae60;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>INTERNSHIP AGREEMENT</h1>
+    <div class="subtitle">
+        In accordance with the Basic Conditions of Employment Act 75 of 1997
+    </div>
+    <div class="subtitle" th:text="'Date of Issue: ' + ${issueDate}">Date of Issue: 12 February 2026</div>
+</div>
+
+<div class="section">
+    <h2>1. PARTIES</h2>
+    <table class="details">
+        <tr>
+            <td>Host Employer:</td>
+            <td th:text="${companyName ?: 'The Company'}">The Company</td>
+        </tr>
+        <tr>
+            <td>Intern:</td>
+            <td th:text="${candidateName}">Intern Name</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>2. PURPOSE AND DURATION</h2>
+    <div class="clause">
+        This internship agreement is entered into for the purpose of providing the Intern with practical work experience and skills development in the field specified below.
+    </div>
+    <table class="details">
+        <tr>
+            <td>Start Date:</td>
+            <td th:text="${startDate}">1 March 2026</td>
+        </tr>
+        <tr>
+            <td>Duration:</td>
+            <td th:text="${endDate ?: '12 months (or as agreed)'}">12 months</td>
+        </tr>
+        <tr>
+            <td>Place of Work:</td>
+            <td th:text="${location ?: 'As designated by the host employer'}">Johannesburg</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>3. POSITION AND LEARNING OUTCOMES</h2>
+    <table class="details">
+        <tr>
+            <td>Position:</td>
+            <td th:text="${jobTitle}">Intern Position</td>
+        </tr>
+        <tr>
+            <td>Department:</td>
+            <td th:text="${department ?: 'As assigned'}">Department</td>
+        </tr>
+        <tr>
+            <td>Mentor / Supervisor:</td>
+            <td>To be designated by the Host Employer</td>
+        </tr>
+    </table>
+
+    <div class="highlight-box">
+        <strong>Learning Objectives:</strong>
+        <p>The internship is designed to enable the Intern to:</p>
+        <p>- Gain practical experience in their field of study or chosen career;</p>
+        <p>- Develop professional skills relevant to the position;</p>
+        <p>- Apply theoretical knowledge in a workplace setting;</p>
+        <p>- Build a professional network and understand workplace expectations.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>4. STIPEND</h2>
+    <table class="details">
+        <tr>
+            <td>Monthly Stipend:</td>
+            <td th:text="${formattedSalary}">R 8,000.00</td>
+        </tr>
+        <tr>
+            <td>Currency:</td>
+            <td th:text="${salaryCurrency ?: 'ZAR'}">ZAR</td>
+        </tr>
+        <tr>
+            <td>Payment Frequency:</td>
+            <td>Monthly</td>
+        </tr>
+        <tr>
+            <td>Payment Method:</td>
+            <td>Electronic transfer to the Intern's nominated bank account</td>
+        </tr>
+    </table>
+    <div class="clause">
+        The stipend is paid to assist the Intern with costs associated with the internship, including transport and meals.
+    </div>
+</div>
+
+<div class="section">
+    <h2>5. WORKING HOURS</h2>
+    <div class="clause">
+        The Intern's working hours shall be <strong th:text="${workingHours ?: '08:00 - 17:00, Monday to Friday'}">08:00 - 17:00, Monday to Friday</strong>, not exceeding 45 hours per week. The Intern shall not be required to work overtime except in exceptional circumstances and with prior agreement.
+    </div>
+</div>
+
+<div class="section">
+    <h2>6. LEAVE</h2>
+    <div class="clause">
+        <p><strong>6.1 Annual Leave:</strong> The Intern is entitled to pro-rata annual leave in accordance with Section 20 of the BCEA.</p>
+        <p><strong>6.2 Sick Leave:</strong> The Intern is entitled to sick leave in accordance with Section 22 of the BCEA.</p>
+        <p><strong>6.3 Family Responsibility Leave:</strong> 3 days per annual cycle (BCEA S27).</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>7. MENTORSHIP AND EVALUATION</h2>
+    <div class="clause">
+        <p><strong>7.1</strong> The Host Employer shall assign a designated mentor or supervisor to guide and support the Intern throughout the internship period.</p>
+        <p><strong>7.2</strong> The Intern's progress shall be evaluated at regular intervals (at minimum quarterly) against the learning objectives.</p>
+        <p><strong>7.3</strong> Upon successful completion of the internship, the Host Employer shall provide the Intern with a certificate of completion and a reference letter.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>8. NO GUARANTEE OF EMPLOYMENT</h2>
+    <div class="clause">
+        <p><strong>8.1</strong> This internship does not constitute a guarantee of permanent employment upon completion.</p>
+        <p><strong>8.2</strong> Should a suitable vacancy arise, the Intern may apply and will be considered alongside other candidates on merit.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>9. TERMINATION</h2>
+    <div class="clause">
+        <p><strong>9.1</strong> Either party may terminate this agreement by giving 2 (two) weeks' written notice.</p>
+        <p><strong>9.2</strong> The Host Employer may terminate the agreement immediately in cases of serious misconduct, including dishonesty, negligence, or breach of confidentiality.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>10. CONFIDENTIALITY</h2>
+    <div class="clause">
+        The Intern agrees to maintain the confidentiality of all proprietary and business information encountered during the internship, both during and after the internship period.
+    </div>
+</div>
+
+<div class="section">
+    <h2>11. DEDUCTIONS</h2>
+    <div class="clause">
+        Any deductions from the stipend shall only be made in accordance with Section 34 of the BCEA.
+    </div>
+</div>
+
+<div class="section">
+    <h2>12. DISPUTE RESOLUTION</h2>
+    <div class="clause">
+        Disputes shall be resolved through the Host Employer's internal procedures and, if unresolved, may be referred to the CCMA.
+    </div>
+</div>
+
+<div class="section">
+    <h2>13. GENERAL</h2>
+    <div class="clause">
+        <p><strong>13.1</strong> This agreement constitutes the entire understanding between the parties.</p>
+        <p><strong>13.2</strong> Amendments must be in writing and signed by both parties.</p>
+        <p><strong>13.3</strong> Governed by the laws of the Republic of South Africa.</p>
+    </div>
+</div>
+
+<div class="signature-block" style="page-break-inside: avoid; margin-top: 50px;">
+    <h2>SIGNATURES</h2>
+    <table style="width: 100%; margin-top: 30px;">
+        <tr>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Host Employer / Authorised Representative</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${companyName ?: 'The Company'}">The Company</span><br/>
+                        Title: Authorised Representative<br/>
+                        Date: <span th:text="${signatureDate}">Date</span>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: ___________________________<br/>
+                        Title: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+            <td style="width: 10%;"></td>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Intern</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${candidateName}">Intern Name</span><br/>
+                        Date: <span th:text="${acceptanceDate}">Date</span><br/>
+                        <em>Electronic acceptance (SureWork ERP)</em>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: <span th:text="${candidateName}">Intern Name</span><br/>
+                        ID No: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="footer" th:if="${signed}">
+    This agreement was electronically signed via SureWork ERP on <span th:text="${acceptanceDate}">date</span>.
+    Both parties have indicated their acceptance of the terms set forth in this agreement.
+</div>
+<div class="footer" th:unless="${signed}">
+    This agreement is provided for your review. Please review the terms carefully before responding to the offer.
+</div>
+
+</body>
+</html>

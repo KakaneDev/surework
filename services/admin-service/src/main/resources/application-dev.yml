@@ -1,0 +1,66 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  flyway:
+    clean-disabled: false
+
+# Development database defaults
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_admin
+    username: surework
+    password: surework
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+# Development Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Development mail - use MailHog (docker run -p 1025:1025 -p 8025:8025 mailhog/mailhog)
+# Or disable mail autoconfiguration entirely for dev
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+# Disable mail health check in development (no mail server running)
+# Show health details for debugging
+management:
+  health:
+    mail:
+      enabled: false
+  endpoint:
+    health:
+      show-details: always
+
+# Development JWT and session settings
+surework:
+  admin:
+    jwt:
+      secret: surework-dev-jwt-secret-key-for-development-only
+      expiration-hours: 24
+    session:
+      idle-timeout-minutes: 120
+
+logging:
+  level:
+    com.surework.admin: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

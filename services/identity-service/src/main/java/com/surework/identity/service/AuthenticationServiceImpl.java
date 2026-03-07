@@ -4,6 +4,7 @@ import com.surework.common.messaging.DomainEventPublisher;
 import com.surework.common.messaging.event.IdentityEvent;
 import com.surework.common.security.JwtTokenProvider;
 import com.surework.common.security.TenantContext;
+import com.surework.common.security.cache.TenantAwareRedisOps;
 import com.surework.common.web.exception.BusinessRuleException;
 import com.surework.common.web.exception.ResourceNotFoundException;
 import com.surework.common.web.exception.ValidationException;
@@ -65,11 +66,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public AuthDto.LoginResponse login(AuthDto.LoginRequest request, UUID tenantId) {
-        // Find user
-        User user = userRepository.findByEmailAndDeletedFalse(request.email())
+        // Find user scoped to tenant — prevents cross-tenant login
+        User user = userRepository.findByEmailAndTenantIdAndDeletedFalse(request.email(), tenantId)
                 .orElseThrow(() -> {
-                    log.warn("Login attempt for non-existent user: {}", request.email());
-                    return new ValidationException("email", "Invalid email or password");
+                    log.warn("Login attempt for non-existent user: {} (tenant: {})", request.email(), tenantId);
+                    return new ValidationException("Invalid email or password", "email", "Invalid email or password");
                 });
 
         // Check if locked out
@@ -93,7 +94,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             log.warn("Failed login attempt for user: {} (attempts: {})",
                     request.email(), user.getFailedLoginAttempts());
             publishLoginFailed(tenantId, request.email(), "Invalid password");
-            throw new ValidationException("password", "Invalid email or password");
+            throw new ValidationException("Invalid email or password", "password", "Invalid email or password");
         }
 
         // Check MFA
@@ -109,7 +110,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 user.recordFailedLogin(maxFailedAttempts, lockoutMinutes);
                 userRepository.save(user);
                 publishLoginFailed(tenantId, request.email(), "Invalid MFA code");
-                throw new ValidationException("mfaCode", "Invalid MFA code");
+                throw new ValidationException("Invalid MFA code", "mfaCode", "Invalid MFA code");
             }
         }
 
@@ -120,8 +121,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public AuthDto.LoginResponse verifyMfa(AuthDto.MfaVerifyRequest request, UUID tenantId) {
-        // Validate challenge token
-        String key = "mfa:challenge:" + request.challengeToken();
+        // Validate challenge token with tenant-prefixed key
+        String key = TenantAwareRedisOps.key(tenantId, "mfa", "challenge", request.challengeToken());
         String userIdStr = redisTemplate.opsForValue().get(key);
 
         if (userIdStr == null) {
@@ -137,7 +138,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             user.recordFailedLogin(maxFailedAttempts, lockoutMinutes);
             userRepository.save(user);
             publishLoginFailed(tenantId, user.getEmail(), "Invalid MFA code");
-            throw new ValidationException("mfaCode", "Invalid MFA code");
+            throw new ValidationException("Invalid MFA code", "mfaCode", "Invalid MFA code");
         }
 
         // Delete challenge
@@ -149,8 +150,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public AuthDto.LoginResponse refresh(AuthDto.RefreshRequest request, UUID tenantId) {
-        // Validate refresh token
-        if (!jwtTokenProvider.validateToken(request.refreshToken())) {
+        // Validate refresh token and get claims
+        var claimsOpt = jwtTokenProvider.validateToken(request.refreshToken());
+        if (claimsOpt.isEmpty()) {
             throw new BusinessRuleException("Invalid or expired refresh token");
         }
 
@@ -159,14 +161,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new BusinessRuleException("Refresh token has been revoked");
         }
 
-        var claims = jwtTokenProvider.getClaims(request.refreshToken());
-        String tokenType = claims.get("tokenType", String.class);
+        var claims = claimsOpt.get();
 
-        if (!"refresh".equals(tokenType)) {
+        if (!jwtTokenProvider.isRefreshToken(claims)) {
             throw new BusinessRuleException("Invalid token type");
         }
 
-        UUID userId = UUID.fromString(claims.get("userId", String.class));
+        UUID userId = jwtTokenProvider.getUserId(claims)
+                .orElseThrow(() -> new BusinessRuleException("Invalid token: missing user ID"));
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
@@ -181,14 +184,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void logout(UUID userId, String accessToken) {
-        // Blacklist the access token
-        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
-            var claims = jwtTokenProvider.getClaims(accessToken);
-            long expiresIn = claims.getExpiration().getTime() - System.currentTimeMillis();
-            if (expiresIn > 0) {
-                String key = "token:blacklist:" + accessToken;
-                redisTemplate.opsForValue().set(key, "1", Duration.ofMillis(expiresIn));
-            }
+        // Blacklist the access token with tenant-prefixed key
+        if (accessToken != null) {
+            jwtTokenProvider.validateToken(accessToken).ifPresent(claims -> {
+                long expiresIn = claims.getExpiration().getTime() - System.currentTimeMillis();
+                if (expiresIn > 0) {
+                    // Use keyOrGlobal since tenant context might not be set during logout
+                    String key = TenantAwareRedisOps.keyOrGlobal("token", "blacklist", accessToken);
+                    redisTemplate.opsForValue().set(key, "1", Duration.ofMillis(expiresIn));
+                }
+            });
         }
         log.info("User {} logged out", userId);
     }
@@ -199,8 +204,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
+        // Use role code (e.g., HR_MANAGER) for authorization, not display name
         Set<String> roles = user.getRoles().stream()
-                .map(r -> r.getName())
+                .map(r -> r.getCode())
                 .collect(Collectors.toSet());
 
         Set<String> permissions = user.getRoles().stream()
@@ -209,6 +215,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         return new AuthDto.CurrentUserResponse(
                 userId.toString(),
+                user.getEmployeeId() != null ? user.getEmployeeId().toString() : null,
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
@@ -232,8 +239,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // Generate secret
         String secret = secretGenerator.generate();
 
-        // Store pending secret in Redis (expires in 10 minutes)
-        String key = "mfa:pending:" + userId;
+        // Store pending secret in Redis with tenant-prefixed key (expires in 10 minutes)
+        String key = TenantAwareRedisOps.keyOrGlobal("mfa", "pending", userId.toString());
         redisTemplate.opsForValue().set(key, secret, Duration.ofMinutes(10));
 
         // Generate QR code URI
@@ -257,8 +264,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // Get pending secret
-        String key = "mfa:pending:" + userId;
+        // Get pending secret with tenant-prefixed key
+        String key = TenantAwareRedisOps.keyOrGlobal("mfa", "pending", userId.toString());
         String secret = redisTemplate.opsForValue().get(key);
 
         if (secret == null) {
@@ -267,7 +274,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Verify code
         if (!verifyTotpCode(secret, code)) {
-            throw new ValidationException("code", "Invalid verification code");
+            throw new ValidationException("Invalid verification code", "code", "Invalid verification code");
         }
 
         // Enable MFA
@@ -305,7 +312,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Verify password
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
-            throw new ValidationException("password", "Invalid password");
+            throw new ValidationException("Invalid password", "password", "Invalid password");
         }
 
         user.setMfaEnabled(false);
@@ -334,7 +341,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Verify current password
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-            throw new ValidationException("currentPassword", "Invalid current password");
+            throw new ValidationException("Invalid current password", "currentPassword", "Invalid current password");
         }
 
         // Validate new password
@@ -360,11 +367,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public void requestPasswordReset(AuthDto.PasswordResetRequest request, UUID tenantId) {
-        // Always return success to prevent email enumeration
-        userRepository.findByEmailAndDeletedFalse(request.email()).ifPresent(user -> {
-            // Generate reset token
+        // Always return success to prevent email enumeration — scoped to tenant
+        userRepository.findByEmailAndTenantIdAndDeletedFalse(request.email(), tenantId).ifPresent(user -> {
+            // Generate reset token with global key (user not authenticated during password reset)
             String resetToken = UUID.randomUUID().toString();
-            String key = "password:reset:" + resetToken;
+            String key = TenantAwareRedisOps.globalKey("password", "reset", resetToken);
             redisTemplate.opsForValue().set(key, user.getId().toString(), Duration.ofHours(1));
 
             // TODO: Send email via notification service
@@ -375,7 +382,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional
     public void confirmPasswordReset(AuthDto.PasswordResetConfirmRequest request) {
-        String key = "password:reset:" + request.resetToken();
+        // Use global key since user is not authenticated during password reset
+        String key = TenantAwareRedisOps.globalKey("password", "reset", request.resetToken());
         String userIdStr = redisTemplate.opsForValue().get(key);
 
         if (userIdStr == null) {
@@ -413,8 +421,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private AuthDto.LoginResponse issueTokens(User user, UUID tenantId) {
+        // Use role code (e.g., HR_MANAGER) for authorization, not display name
         Set<String> roles = user.getRoles().stream()
-                .map(r -> r.getName())
+                .map(r -> r.getCode())
                 .collect(Collectors.toSet());
 
         Set<String> permissions = user.getRoles().stream()
@@ -422,7 +431,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .collect(Collectors.toSet());
 
         String accessToken = jwtTokenProvider.generateAccessToken(
-                user.getId(), tenantId, roles, permissions
+                user.getId(),
+                tenantId,
+                user.getEmail(),
+                user.getEmployeeId(),
+                roles,
+                permissions
         );
 
         String refreshToken = jwtTokenProvider.generateRefreshToken(
@@ -432,14 +446,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return AuthDto.LoginResponse.withTokens(
                 accessToken,
                 refreshToken,
-                jwtTokenProvider.getAccessTokenExpiry().toMillis(),
-                jwtTokenProvider.getRefreshTokenExpiry().toMillis()
+                jwtTokenProvider.getAccessTokenExpirationSeconds() * 1000,
+                jwtTokenProvider.getRefreshTokenExpirationSeconds() * 1000
         );
     }
 
     private String issueMfaChallenge(UUID userId, UUID tenantId) {
         String challengeToken = UUID.randomUUID().toString();
-        String key = "mfa:challenge:" + challengeToken;
+        // Use tenant-prefixed key for MFA challenges
+        String key = TenantAwareRedisOps.key(tenantId, "mfa", "challenge", challengeToken);
         redisTemplate.opsForValue().set(key, userId.toString(),
                 Duration.ofMinutes(mfaChallengeExpiryMinutes));
         return challengeToken;
@@ -450,7 +465,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private boolean isTokenBlacklisted(String token) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey("token:blacklist:" + token));
+        // Use keyOrGlobal since tenant context might not be set during token validation
+        String key = TenantAwareRedisOps.keyOrGlobal("token", "blacklist", token);
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 
     private void validatePassword(String password) {
@@ -473,7 +490,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         if (!errors.isEmpty()) {
-            throw new ValidationException("newPassword", String.join(". ", errors));
+            String errorMessage = String.join(". ", errors);
+            throw new ValidationException(errorMessage, "newPassword", errorMessage);
         }
     }
 

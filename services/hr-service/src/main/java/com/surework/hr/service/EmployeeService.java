@@ -80,4 +80,26 @@ public interface EmployeeService {
      * Get employee count.
      */
     long getActiveEmployeeCount();
+
+    /**
+     * Get hierarchy data for org chart.
+     */
+    List<EmployeeDto.HierarchyItem> getHierarchyData();
+
+    /**
+     * Get all employees for reporting (includes full details).
+     */
+    List<EmployeeDto.ReportItem> getAllEmployeesForReporting();
+
+    /**
+     * Get the user ID linked to an employee.
+     * Used for notification routing.
+     */
+    Optional<UUID> getEmployeeUserId(UUID employeeId);
+
+    /**
+     * Get the user ID of the employee's manager.
+     * Used for approval notification routing.
+     */
+    Optional<UUID> getManagerUserId(UUID employeeId);
 }

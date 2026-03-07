@@ -17,6 +17,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.surework.payroll.config.JwtHeaderAuthenticationFilter.UserPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -145,12 +149,13 @@ public class PayrollController {
     @GetMapping("/payslips")
     public ResponseEntity<PageResponse<PayrollDto.PayslipSummary>> searchPayslips(
             @RequestParam(required = false) UUID employeeId,
+            @RequestParam(required = false) UUID runId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Payslip.PayslipStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<PayrollDto.PayslipSummary> page = payrollService.searchPayslips(
-                employeeId, year, month, status, pageable);
+                employeeId, runId, year, month, status, pageable);
         return ResponseEntity.ok(PageResponse.from(page));
     }
 
@@ -165,13 +170,79 @@ public class PayrollController {
     }
 
     /**
-     * Get my payslips.
+     * Get my payslips (employee self-service).
+     * Uses the employeeId from JWT claims to fetch payslips for the authenticated employee.
      */
     @GetMapping("/my-payslips")
-    public ResponseEntity<List<PayrollDto.PayslipSummary>> getMyPayslips(
-            @RequestHeader("X-User-Id") UUID userId) {
-        List<PayrollDto.PayslipSummary> payslips = payrollService.getEmployeePayslips(userId);
-        return ResponseEntity.ok(payslips);
+    public ResponseEntity<PageResponse<PayrollDto.PayslipSummary>> getMyPayslips(
+            @PageableDefault(size = 12, sort = "periodYear", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UUID employeeId = principal.employeeId();
+        if (employeeId == null) {
+            // User is not linked to an employee record
+            return ResponseEntity.ok(PageResponse.empty());
+        }
+
+        Page<PayrollDto.PayslipSummary> page = payrollService.searchPayslips(
+                employeeId, null, null, null, null, pageable);
+        return ResponseEntity.ok(PageResponse.from(page));
+    }
+
+    /**
+     * Get a specific payslip detail for the authenticated employee (self-service).
+     * Verifies that the payslip belongs to the authenticated user.
+     */
+    @GetMapping("/my-payslips/{payslipId}")
+    public ResponseEntity<PayrollDto.PayslipResponse> getMyPayslipDetail(@PathVariable UUID payslipId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UUID employeeId = principal.employeeId();
+        if (employeeId == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return payrollService.getPayslip(payslipId)
+                .filter(payslip -> employeeId.equals(payslip.employeeId()))
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResourceNotFoundException("Payslip", payslipId));
+    }
+
+    /**
+     * Download a payslip PDF for the authenticated employee (self-service).
+     * Verifies that the payslip belongs to the authenticated user.
+     */
+    @GetMapping("/my-payslips/{payslipId}/download")
+    public ResponseEntity<byte[]> downloadMyPayslipPdf(@PathVariable UUID payslipId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal principal)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UUID employeeId = principal.employeeId();
+        if (employeeId == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // Verify ownership before generating PDF
+        PayrollDto.PayslipResponse payslip = payrollService.getPayslip(payslipId)
+                .filter(p -> employeeId.equals(p.employeeId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Payslip", payslipId));
+
+        byte[] pdf = payrollService.generatePayslipPdf(payslipId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "payslip-" + payslip.payslipNumber() + ".pdf");
+        headers.setContentLength(pdf.length);
+
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 
     /**

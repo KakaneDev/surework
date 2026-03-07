@@ -35,6 +35,7 @@
         <module>services/admin-service</module>
         <module>services/identity-service</module>
         <module>services/employee-service</module>
+        <module>services/hr-service</module>
         <module>services/leave-service</module>
         <module>services/payroll-service</module>
         <module>services/accounting-service</module>
@@ -42,6 +43,11 @@
         <module>services/time-attendance-service</module>
         <module>services/document-service</module>
         <module>services/reporting-service</module>
+        <module>services/support-service</module>
+        <module>services/notification-service</module>
+        <module>services/tenant-service</module>
+        <module>services/billing-service</module>
+        <module>services/analytics-service</module>
     </modules>
 
     <properties>

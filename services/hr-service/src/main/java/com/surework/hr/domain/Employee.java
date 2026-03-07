@@ -15,6 +15,7 @@ import java.util.UUID;
  * Implements User Story 1: Employee Management.
  *
  * All employee records are tenant-scoped and stored in tenant-specific schemas.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "employees")
@@ -22,6 +23,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class Employee extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(nullable = false, unique = true)
     private String employeeNumber;

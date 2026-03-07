@@ -4,7 +4,7 @@ spring:
   config:
     import: "optional:configserver:http://localhost:8888"
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_recruitment}
@@ -19,7 +19,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:none}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -31,6 +32,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    out-of-order: true
     locations: classpath:db/migration
 
   kafka:
@@ -56,7 +58,7 @@ spring:
       max-request-size: 10MB
 
 server:
-  port: ${SERVER_PORT:8085}
+  port: ${SERVER_PORT:8086}
   servlet:
     context-path: /
 
@@ -83,6 +85,22 @@ surework:
     allowed-resume-types: pdf,doc,docx
     # Maximum resume file size in MB
     max-resume-size-mb: 5
+
+# Portal automation configuration (Playwright-based)
+portal:
+  automation:
+    # Run browser in headless mode (set to false for debugging)
+    headless: ${PORTAL_HEADLESS:true}
+    # Delay between actions in ms (helps avoid bot detection)
+    slow-mo: ${PORTAL_SLOW_MO:100}
+    # Directory to save screenshots on error
+    screenshots-dir: ${PORTAL_SCREENSHOTS_DIR:./screenshots}
+    # Directory for browser data (cookies, sessions)
+    user-data-dir: ${PORTAL_USER_DATA_DIR:./browser-data}
+    # Maximum retries for failed postings
+    max-retries: 3
+    # Batch size for processing pending postings
+    batch-size: 5
 
   storage:
     type: ${STORAGE_TYPE:local}

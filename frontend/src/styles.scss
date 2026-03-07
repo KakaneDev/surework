@@ -1,161 +1,896 @@
-// Global styles for SureWork
+// =============================================================================
+// SureWork Global Styles
+// Tailwind CSS + Custom Design System
+// =============================================================================
 
-// Custom Material theme colors
-$primary-color: #1a73e8;
-$accent-color: #ff6b35;
-$warn-color: #dc3545;
+// Angular CDK Overlay Styles (required for dialogs, dropdowns, etc.)
+@import '@angular/cdk/overlay-prebuilt.css';
 
-// Reset and base styles
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+// Tailwind CSS Directives
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
+// Import Design Tokens
+@import 'styles/tokens';
 
-body {
-  font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
-}
+// =============================================================================
+// Base Layer - Reset and Foundation
+// =============================================================================
 
-// Typography
-h1, h2, h3, h4, h5, h6 {
-  margin-top: 0;
-  font-weight: 500;
-}
+@layer base {
+  // Font loading - Inter for UI
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
 
-a {
-  color: $primary-color;
-  text-decoration: none;
+  html {
+    @apply scroll-smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  &:hover {
-    text-decoration: underline;
+  body {
+    @apply font-sans text-neutral-900 bg-neutral-50;
+    @apply dark:text-neutral-100 dark:bg-dark-bg;
+  }
+
+  // Focus styles for accessibility - updated to teal with subtle ring
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500/50 ring-offset-2;
+    @apply dark:ring-offset-dark-bg;
+  }
+
+  // Selection styles - updated to teal
+  ::selection {
+    @apply bg-primary-500/20 text-primary-900;
+    @apply dark:bg-primary-400/30 dark:text-primary-100;
+  }
+
+  // Scrollbar styling - updated to slate
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-neutral-100 dark:bg-dark-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 rounded-full dark:bg-neutral-600;
+
+    &:hover {
+      @apply bg-neutral-400 dark:bg-neutral-500;
+    }
+  }
+
+  // Link base styles
+  a {
+    @apply text-primary-500 transition-colors hover:text-primary-600;
+    @apply dark:text-primary-400 dark:hover:text-primary-300;
+    text-decoration: none;
+  }
+
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-neutral-900;
+    @apply dark:text-neutral-100;
+  }
+
+  h1 { @apply text-3xl; }
+  h2 { @apply text-2xl; }
+  h3 { @apply text-xl; }
+  h4 { @apply text-lg; }
+
+  // Code blocks
+  code, pre {
+    @apply font-mono text-sm;
+  }
+
+  pre {
+    @apply bg-neutral-100 p-4 rounded-lg overflow-x-auto;
+    @apply dark:bg-dark-elevated;
+  }
+
+  code {
+    @apply bg-neutral-100 px-1.5 py-0.5 rounded;
+    @apply dark:bg-dark-elevated;
   }
 }
 
-// Layout utilities
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 16px;
+// =============================================================================
+// Components Layer - Reusable Component Classes
+// =============================================================================
+
+@layer components {
+  // Card component - TailAdmin style with subtle shadows and borders
+  .sw-card {
+    @apply bg-white rounded-xl shadow-sm p-6;
+    @apply border border-neutral-200;
+    @apply dark:bg-dark-surface dark:border-dark-border;
+    position: relative;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .sw-card:hover {
+    @apply shadow;
+  }
+
+  .sw-card-header {
+    @apply flex items-center justify-between mb-4 pb-4 border-b border-neutral-200;
+    @apply dark:border-dark-border;
+  }
+
+  .sw-card-title {
+    @apply text-lg font-semibold text-neutral-900;
+    @apply dark:text-neutral-100;
+  }
+
+  // Button components - TailAdmin style with teal primary
+  .sw-btn {
+    @apply inline-flex items-center justify-center font-medium rounded-lg;
+    @apply transition-colors duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .sw-btn-primary {
+    @apply sw-btn bg-primary-500 text-white;
+    @apply hover:bg-primary-600 active:bg-primary-700;
+  }
+
+  .sw-btn-secondary {
+    @apply sw-btn border border-neutral-300 bg-white text-neutral-700;
+    @apply hover:bg-neutral-50 active:bg-neutral-100;
+    @apply dark:bg-dark-surface dark:border-dark-border dark:text-neutral-200 dark:hover:bg-dark-elevated;
+  }
+
+  .sw-btn-outline {
+    @apply sw-btn border border-neutral-300 bg-transparent text-neutral-700;
+    @apply hover:bg-neutral-50 active:bg-neutral-100;
+    @apply dark:border-dark-border dark:text-neutral-300 dark:hover:bg-dark-elevated;
+  }
+
+  .sw-btn-ghost {
+    @apply sw-btn bg-transparent text-neutral-700;
+    @apply hover:bg-neutral-100 active:bg-neutral-200;
+    @apply dark:text-neutral-300 dark:hover:bg-dark-elevated;
+  }
+
+  .sw-btn-danger {
+    @apply sw-btn bg-error-500 text-white;
+    @apply hover:bg-error-600 active:bg-error-700;
+    @apply focus:ring-error-500/50;
+  }
+
+  .sw-btn-danger-outline {
+    @apply sw-btn border border-error-500 bg-transparent text-error-600;
+    @apply hover:bg-error-50 active:bg-error-100;
+    @apply dark:text-error-400 dark:hover:bg-error-900/20;
+    @apply focus:ring-error-500/50;
+  }
+
+  .sw-btn-sm { @apply px-3 py-1.5 text-sm gap-1.5; }
+  .sw-btn-md { @apply px-4 py-2 text-sm gap-2; }
+  .sw-btn-lg { @apply px-6 py-3 text-base gap-2.5; }
+
+  // Input components - TailAdmin style with teal focus
+  .sw-input {
+    @apply w-full px-3 py-2 rounded-lg border border-neutral-200;
+    @apply text-neutral-900 placeholder-neutral-400;
+    @apply bg-white;
+    @apply focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20;
+    @apply dark:bg-dark-surface dark:border-dark-border dark:text-neutral-100;
+    @apply dark:placeholder-neutral-500;
+    @apply transition-colors duration-200;
+
+    // Select dropdown options styling
+    &:is(select) {
+      @apply cursor-pointer;
+
+      option {
+        @apply bg-white text-neutral-900 py-2;
+      }
+    }
+  }
+
+  // Ensure select options are visible in both light and dark modes
+  select.sw-input option {
+    background-color: white;
+    color: #0f172a;
+    padding: 8px;
+  }
+
+  .sw-input-error {
+    @apply border-error-500 focus:border-error-500 focus:ring-error-500/20;
+  }
+
+  .sw-input-success {
+    @apply border-success-500 focus:border-success-500 focus:ring-success-500/20;
+  }
+
+  .sw-label {
+    @apply block text-sm font-medium text-neutral-700 mb-1.5;
+    @apply dark:text-neutral-300;
+  }
+
+  .sw-helper-text {
+    @apply text-sm text-neutral-500 mt-1;
+    @apply dark:text-neutral-400;
+  }
+
+  .sw-error-text {
+    @apply text-sm text-error-500 mt-1;
+  }
+
+  // Badge/Chip components
+  .sw-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .sw-badge-primary {
+    @apply bg-primary-100 text-primary-700;
+    @apply dark:bg-primary-900/30 dark:text-primary-300;
+  }
+
+  .sw-badge-success {
+    @apply bg-success-50 text-success-600;
+    @apply dark:bg-success-900/30 dark:text-success-400;
+  }
+
+  .sw-badge-warning {
+    @apply bg-warning-50 text-warning-600;
+    @apply dark:bg-warning-900/30 dark:text-warning-400;
+  }
+
+  .sw-badge-error {
+    @apply bg-error-50 text-error-600;
+    @apply dark:bg-error-900/30 dark:text-error-400;
+  }
+
+  .sw-badge-neutral {
+    @apply bg-neutral-100 text-neutral-600;
+    @apply dark:bg-neutral-800 dark:text-neutral-400;
+  }
+
+  // Table styles - TailAdmin style with rounded container
+  .sw-table {
+    @apply w-full text-sm text-left;
+  }
+
+  .sw-table thead {
+    @apply bg-neutral-50 text-neutral-600 text-xs;
+    @apply dark:bg-dark-surface/50 dark:text-neutral-400;
+  }
+
+  .sw-table th {
+    @apply px-4 py-3 font-semibold;
+  }
+
+  .sw-table td {
+    @apply px-4 py-3 border-b border-neutral-100;
+    @apply dark:border-dark-border;
+  }
+
+  .sw-table tbody tr {
+    @apply hover:bg-neutral-50;
+    @apply dark:hover:bg-dark-elevated/30;
+    transition: background-color 200ms ease;
+  }
+
+  // Table container with border
+  .sw-table-container {
+    @apply rounded-xl border border-neutral-200 overflow-hidden;
+    @apply dark:border-dark-border;
+  }
+
+  // Avatar
+  .sw-avatar {
+    @apply inline-flex items-center justify-center rounded-full bg-primary-500 text-white font-medium;
+  }
+
+  .sw-avatar-sm { @apply w-8 h-8 text-sm; }
+  .sw-avatar-md { @apply w-10 h-10 text-base; }
+  .sw-avatar-lg { @apply w-12 h-12 text-lg; }
+
+  // Spinner
+  .sw-spinner {
+    @apply animate-spin rounded-full border-2 border-neutral-200 border-t-primary-500;
+    @apply dark:border-dark-border dark:border-t-primary-400;
+  }
+
+  .sw-spinner-sm { @apply w-4 h-4; }
+  .sw-spinner-md { @apply w-6 h-6; }
+  .sw-spinner-lg { @apply w-8 h-8; }
+
+  // Page layout
+  .sw-page-header {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6;
+  }
+
+  .sw-page-title {
+    @apply text-2xl font-bold text-neutral-900;
+    @apply dark:text-neutral-100;
+  }
+
+  .sw-page-description {
+    @apply text-neutral-500 mt-1;
+    @apply dark:text-neutral-400;
+  }
+
+  // Empty state
+  .sw-empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .sw-empty-state-icon {
+    @apply w-16 h-16 text-neutral-300 mb-4;
+    @apply dark:text-neutral-600;
+  }
+
+  .sw-empty-state-title {
+    @apply text-lg font-medium text-neutral-900 mb-2;
+    @apply dark:text-neutral-100;
+  }
+
+  .sw-empty-state-description {
+    @apply text-neutral-500 max-w-sm;
+    @apply dark:text-neutral-400;
+  }
+
+  // Dialog/Modal backdrop with fade animation - TailAdmin style
+  .sw-backdrop {
+    @apply fixed inset-0 bg-black/50 z-40;
+    @apply dark:bg-black/70;
+    animation: fadeIn var(--duration-fast, 150ms) var(--ease-out, ease-out);
+  }
+
+  .sw-dialog {
+    @apply bg-white rounded-2xl shadow-xl p-6 w-full max-w-md;
+    @apply border border-neutral-200;
+    @apply dark:bg-dark-surface dark:border-dark-border;
+    animation: scaleIn var(--duration-normal, 200ms) var(--ease-out, ease-out);
+  }
+
+  // Dialog entering animation
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  // Navigation item - TailAdmin style with teal active state
+  .sw-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium;
+    @apply text-neutral-400 hover:text-white hover:bg-white/5;
+    @apply transition-colors duration-200;
+  }
+
+  .sw-nav-item-active {
+    @apply bg-primary-500/10 text-primary-400 border-l-2 border-primary-500;
+  }
+
+  // Sidebar group label
+  .sw-nav-group-label {
+    @apply px-3 mb-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider;
+  }
 }
 
-.flex {
-  display: flex;
+// =============================================================================
+// Utilities Layer - Additional Custom Utilities
+// =============================================================================
+
+@layer utilities {
+  // Text utilities
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  // ==========================================================================
+  // Animation Utilities - GPU-Accelerated (transform & opacity only)
+  // All animations use will-change for compositor hints
+  // ==========================================================================
+
+  // Fade animations
+  .animate-fade-in {
+    animation: fadeIn var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: opacity;
+  }
+
+  .animate-fade-out {
+    animation: fadeOut var(--duration-fast, 150ms) var(--ease-in, ease-in);
+    will-change: opacity;
+  }
+
+  // Slide animations
+  .animate-slide-up {
+    animation: slideUp var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  .animate-slide-down {
+    animation: slideDown var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  .animate-slide-left {
+    animation: slideLeft var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  .animate-slide-right {
+    animation: slideRight var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  // Step transition animations (for wizard steps)
+  .animate-slide-in-right {
+    animation: slideInFromRight var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInFromLeft var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  // Scale animations
+  .animate-scale-in {
+    animation: scaleIn var(--duration-normal, 200ms) var(--ease-out, ease-out);
+    will-change: transform, opacity;
+  }
+
+  .animate-scale-out {
+    animation: scaleOut var(--duration-fast, 150ms) var(--ease-in, ease-in);
+    will-change: transform, opacity;
+  }
+
+  // Bounce animations
+  .animate-bounce-in {
+    animation: bounceIn 400ms var(--ease-bounce, cubic-bezier(0.68, -0.55, 0.265, 1.55));
+    will-change: transform, opacity;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounceSubtle 400ms var(--ease-out, ease-out);
+    will-change: transform;
+  }
+
+  // Shake animation (for errors)
+  .animate-shake {
+    animation: shake 500ms var(--ease-in-out, ease-in-out);
+    will-change: transform;
+  }
+
+  // Skeleton loader
+  .animate-skeleton {
+    background: linear-gradient(
+      90deg,
+      theme('colors.neutral.200') 0%,
+      theme('colors.neutral.100') 50%,
+      theme('colors.neutral.200') 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton 1.5s ease-in-out infinite;
+  }
+
+  .dark .animate-skeleton {
+    background: linear-gradient(
+      90deg,
+      theme('colors.neutral.700') 0%,
+      theme('colors.neutral.600') 50%,
+      theme('colors.neutral.700') 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  // ==========================================================================
+  // Keyframe Definitions - GPU-safe (transform & opacity only)
+  // ==========================================================================
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideLeft {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideRight {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideInFromRight {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slideInFromLeft {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes scaleOut {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.95); }
+  }
+
+  @keyframes bounceIn {
+    0% { opacity: 0; transform: scale(0.3); }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes bounceSubtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  @keyframes skeleton {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  // ==========================================================================
+  // GPU-Accelerated Progress Bar
+  // Use transform: scaleX() instead of width for 60fps animation
+  // ==========================================================================
+
+  .progress-bar {
+    transform-origin: left center;
+    will-change: transform;
+    transition: transform var(--duration-slow, 300ms) var(--ease-out, ease-out);
+  }
+
+  // ==========================================================================
+  // Transition Utility Shortcuts
+  // ==========================================================================
+
+  .transition-gpu {
+    transition-property: transform, opacity;
+    transition-duration: var(--duration-normal, 200ms);
+    transition-timing-function: var(--ease-in-out, ease-in-out);
+  }
+
+  .transition-gpu-fast {
+    transition-property: transform, opacity;
+    transition-duration: var(--duration-fast, 150ms);
+    transition-timing-function: var(--ease-in-out, ease-in-out);
+  }
+
+  .transition-gpu-slow {
+    transition-property: transform, opacity;
+    transition-duration: var(--duration-slow, 300ms);
+    transition-timing-function: var(--ease-in-out, ease-in-out);
+  }
+
+  // Hover transform helper (GPU-accelerated)
+  .hover-lift {
+    transition: transform var(--duration-fast, 150ms) var(--ease-out, ease-out),
+                box-shadow var(--duration-fast, 150ms) var(--ease-out, ease-out);
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  // Interactive scale (for buttons, cards)
+  .hover-scale {
+    transition: transform var(--duration-fast, 150ms) var(--ease-out, ease-out);
+
+    &:hover {
+      transform: scale(1.02);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+
+  // ==========================================================================
+  // Animation Delay Utilities (for staggered animations)
+  // ==========================================================================
+
+  .animation-delay-1 { animation-delay: 50ms; }
+  .animation-delay-2 { animation-delay: 100ms; }
+  .animation-delay-3 { animation-delay: 150ms; }
+  .animation-delay-4 { animation-delay: 200ms; }
+  .animation-delay-5 { animation-delay: 250ms; }
+
+  // ==========================================================================
+  // Reduced Motion - Handled globally in tokens.scss
+  // Additional safety net for any custom animations
+  // ==========================================================================
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in,
+    .animate-fade-out,
+    .animate-slide-up,
+    .animate-slide-down,
+    .animate-slide-left,
+    .animate-slide-right,
+    .animate-slide-in-right,
+    .animate-slide-in-left,
+    .animate-scale-in,
+    .animate-scale-out,
+    .animate-bounce-in,
+    .animate-bounce-subtle,
+    .animate-shake,
+    .animate-skeleton {
+      animation: none !important;
+    }
+
+    .transition-gpu,
+    .transition-gpu-fast,
+    .transition-gpu-slow,
+    .hover-lift,
+    .hover-scale {
+      transition: none !important;
+    }
+
+    .progress-bar {
+      transition: none !important;
+    }
+  }
+
+  // Scrollbar hiding utility
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  // Glass effect
+  .glass {
+    @apply bg-white/80 backdrop-blur-lg;
+    @apply dark:bg-dark-surface/80;
+  }
 }
 
-.flex-column {
-  flex-direction: column;
+// =============================================================================
+// Semantic Status & Account Type Utilities
+// =============================================================================
+
+// Journal Entry Status badges - replaces hardcoded hex colors
+.status-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
 }
 
-.flex-center {
-  justify-content: center;
-  align-items: center;
+.status-draft {
+  @apply bg-orange-50 text-orange-700;
+  @apply dark:bg-orange-900/20 dark:text-orange-400;
 }
 
-.flex-between {
-  justify-content: space-between;
+.status-posted {
+  @apply bg-success-100 text-success-700;
+  @apply dark:bg-success-900/20 dark:text-success-400;
 }
 
-.flex-grow {
-  flex-grow: 1;
+.status-reversed {
+  @apply bg-red-50 text-red-700;
+  @apply dark:bg-red-900/20 dark:text-red-400;
 }
 
-.gap-1 { gap: 8px; }
-.gap-2 { gap: 16px; }
-.gap-3 { gap: 24px; }
-
-// Spacing utilities
-.m-0 { margin: 0; }
-.mt-1 { margin-top: 8px; }
-.mt-2 { margin-top: 16px; }
-.mt-3 { margin-top: 24px; }
-.mb-1 { margin-bottom: 8px; }
-.mb-2 { margin-bottom: 16px; }
-.mb-3 { margin-bottom: 24px; }
-
-.p-0 { padding: 0; }
-.p-1 { padding: 8px; }
-.p-2 { padding: 16px; }
-.p-3 { padding: 24px; }
-
-// Card styles
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 24px;
+.status-void {
+  @apply bg-neutral-100 text-neutral-600;
+  @apply dark:bg-neutral-800/50 dark:text-neutral-400;
 }
 
-// Button enhancements
-.btn-block {
-  width: 100%;
+// Fiscal Period Status badges
+.period-status-future {
+  @apply bg-accent-100 text-accent-700;
+  @apply dark:bg-accent-900/20 dark:text-accent-400;
 }
 
-// Form styles
-.form-group {
-  margin-bottom: 16px;
+.period-status-open {
+  @apply bg-success-100 text-success-700;
+  @apply dark:bg-success-900/20 dark:text-success-400;
 }
 
-.form-error {
-  color: $warn-color;
-  font-size: 12px;
-  margin-top: 4px;
+.period-status-closed {
+  @apply bg-orange-50 text-orange-700;
+  @apply dark:bg-orange-900/20 dark:text-orange-400;
 }
 
-// Status colors
-.status-active { color: #28a745; }
-.status-pending { color: #ffc107; }
-.status-suspended { color: #dc3545; }
-.status-inactive { color: #6c757d; }
-
-// Text utilities
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-muted { color: #6c757d; }
-.text-small { font-size: 12px; }
-
-// Table styles
-.table-container {
-  overflow-x: auto;
+.period-status-locked {
+  @apply bg-neutral-100 text-neutral-600;
+  @apply dark:bg-neutral-800/50 dark:text-neutral-400;
 }
 
-// Loading spinner
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 200px;
+// VAT Report Status badges
+.vat-status-draft {
+  @apply bg-neutral-100 text-neutral-600;
+  @apply dark:bg-neutral-800/50 dark:text-neutral-400;
 }
 
-// Page header
+.vat-status-generated {
+  @apply bg-accent-100 text-accent-700;
+  @apply dark:bg-accent-900/20 dark:text-accent-400;
+}
+
+.vat-status-submitted {
+  @apply bg-success-100 text-success-700;
+  @apply dark:bg-success-900/20 dark:text-success-400;
+}
+
+.vat-status-paid {
+  @apply bg-success-100 text-success-700;
+  @apply dark:bg-success-900/20 dark:text-success-400;
+}
+
+.vat-status-overdue {
+  @apply bg-red-50 text-red-700;
+  @apply dark:bg-red-900/20 dark:text-red-400;
+}
+
+// Invoice Status badges
+.invoice-status-draft {
+  @apply bg-neutral-100 text-neutral-600;
+  @apply dark:bg-neutral-800/50 dark:text-neutral-400;
+}
+
+.invoice-status-sent {
+  @apply bg-accent-100 text-accent-700;
+  @apply dark:bg-accent-900/20 dark:text-accent-400;
+}
+
+.invoice-status-viewed {
+  @apply bg-accent-100 text-accent-700;
+  @apply dark:bg-accent-900/20 dark:text-accent-400;
+}
+
+.invoice-status-partial {
+  @apply bg-orange-50 text-orange-700;
+  @apply dark:bg-orange-900/20 dark:text-orange-400;
+}
+
+.invoice-status-paid {
+  @apply bg-success-100 text-success-700;
+  @apply dark:bg-success-900/20 dark:text-success-400;
+}
+
+.invoice-status-overdue {
+  @apply bg-red-50 text-red-700;
+  @apply dark:bg-red-900/20 dark:text-red-400;
+}
+
+.invoice-status-void {
+  @apply bg-neutral-100 text-neutral-500;
+  @apply dark:bg-neutral-800/50 dark:text-neutral-500;
+}
+
+// Account Type color indicators (border-left accent)
+.account-type-asset {
+  @apply border-l-4 border-l-blue-500;
+}
+
+.account-type-liability {
+  @apply border-l-4 border-l-red-500;
+}
+
+.account-type-equity {
+  @apply border-l-4 border-l-green-500;
+}
+
+.account-type-revenue {
+  @apply border-l-4 border-l-amber-500;
+}
+
+.account-type-expense {
+  @apply border-l-4 border-l-pink-600;
+}
+
+// Account type dot indicator
+.account-dot-asset { @apply bg-blue-500; }
+.account-dot-liability { @apply bg-red-500; }
+.account-dot-equity { @apply bg-green-500; }
+.account-dot-revenue { @apply bg-amber-500; }
+.account-dot-expense { @apply bg-pink-600; }
+
+// Tree node indentation using CSS custom property (performance optimization)
+.tree-node {
+  padding-left: calc(var(--tree-level, 0) * 1.25rem);
+}
+
+// Form field error state
+.form-field-error {
+  .sw-input {
+    @apply border-error-500 focus:border-error-500 focus:ring-error-500;
+  }
+}
+
+// Alert containers with proper ARIA support
+.sw-alert {
+  @apply rounded-xl p-4 flex items-start gap-4;
+}
+
+.sw-alert-error {
+  @apply bg-red-50 border border-red-200 text-red-800;
+  @apply dark:bg-red-900/20 dark:border-red-800 dark:text-red-200;
+}
+
+.sw-alert-warning {
+  @apply bg-amber-50 border border-amber-200 text-amber-800;
+  @apply dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200;
+}
+
+.sw-alert-success {
+  @apply bg-green-50 border border-green-200 text-green-800;
+  @apply dark:bg-green-900/20 dark:border-green-800 dark:text-green-200;
+}
+
+.sw-alert-info {
+  @apply bg-primary-50 border border-primary-200 text-primary-800;
+  @apply dark:bg-primary-900/20 dark:border-primary-800 dark:text-primary-200;
+}
+
+// =============================================================================
+// Legacy Compatibility Classes (will be removed after full migration)
+// =============================================================================
+
+// Status colors (legacy)
+.status-active { @apply text-success-500; }
+.status-pending { @apply text-warning-500; }
+.status-suspended { @apply text-error-500; }
+.status-inactive { @apply text-neutral-500; }
+
+// Page header (legacy)
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  @apply sw-page-header;
 
   h1 {
-    margin: 0;
+    @apply sw-page-title;
   }
 }
 
-// Responsive utilities
-@media (max-width: 768px) {
-  .hide-mobile {
-    display: none !important;
-  }
+// Loading container (legacy)
+.loading-container {
+  @apply flex justify-center items-center min-h-[200px];
 }
 
-@media (min-width: 769px) {
-  .hide-desktop {
-    display: none !important;
-  }
+// Card (legacy)
+.card {
+  @apply sw-card;
+}
+
+// Form error (legacy)
+.form-error {
+  @apply sw-error-text;
 }

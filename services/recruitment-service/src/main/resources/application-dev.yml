@@ -1,0 +1,40 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  flyway:
+    clean-disabled: false
+
+# Development database defaults
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_recruitment
+    username: surework
+    password: surework
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+# Development Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Development storage - local filesystem
+surework:
+  admin:
+    jwt:
+      secret: surework-dev-jwt-secret-key-for-development-only
+  storage:
+    type: local
+    local:
+      base-path: /tmp/surework/recruitment
+
+logging:
+  level:
+    com.surework: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.transaction: DEBUG

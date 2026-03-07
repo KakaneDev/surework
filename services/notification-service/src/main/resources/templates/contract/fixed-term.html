@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #666;
+        }
+        h2 {
+            font-size: 13pt;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        .section {
+            margin-bottom: 15px;
+        }
+        .clause {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table.details td {
+            padding: 5px 10px;
+            vertical-align: top;
+        }
+        table.details td:first-child {
+            font-weight: bold;
+            width: 200px;
+            color: #555;
+        }
+        .highlight-box {
+            background-color: #f8f9fa;
+            border-left: 3px solid #2c3e50;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>FIXED-TERM EMPLOYMENT CONTRACT</h1>
+    <div class="subtitle">
+        In accordance with the Basic Conditions of Employment Act 75 of 1997, Section 29<br/>
+        and the Labour Relations Act 66 of 1995, Section 198B
+    </div>
+    <div class="subtitle" th:text="'Date of Issue: ' + ${issueDate}">Date of Issue: 12 February 2026</div>
+</div>
+
+<div class="section">
+    <h2>1. PARTIES</h2>
+    <div class="clause">
+        This fixed-term contract of employment is entered into between:
+    </div>
+    <table class="details">
+        <tr>
+            <td>Employer:</td>
+            <td th:text="${companyName ?: 'The Company'}">The Company</td>
+        </tr>
+        <tr>
+            <td>Employee / Contractor:</td>
+            <td th:text="${candidateName}">Employee Name</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>2. COMMENCEMENT AND DURATION</h2>
+    <table class="details">
+        <tr>
+            <td>Start Date:</td>
+            <td th:text="${startDate}">1 March 2026</td>
+        </tr>
+        <tr>
+            <td>End Date:</td>
+            <td th:text="${endDate ?: 'Upon completion of the project or as agreed'}">Upon completion of the project</td>
+        </tr>
+        <tr>
+            <td>Place of Work:</td>
+            <td th:text="${location ?: 'As designated by the employer'}">Johannesburg</td>
+        </tr>
+    </table>
+    <div class="highlight-box">
+        <strong>Fixed-Term Notice (LRA S198B):</strong> In terms of Section 198B of the Labour Relations Act, an employee employed on a fixed-term contract for longer than 3 months who earns below the BCEA threshold is deemed to be permanently employed, unless the employer can demonstrate a justifiable reason for the fixed-term nature of the contract.
+    </div>
+</div>
+
+<div class="section">
+    <h2>3. JOB TITLE AND DESCRIPTION</h2>
+    <table class="details">
+        <tr>
+            <td>Job Title:</td>
+            <td th:text="${jobTitle}">Position Title</td>
+        </tr>
+        <tr>
+            <td>Department:</td>
+            <td th:text="${department ?: 'As assigned'}">Department</td>
+        </tr>
+    </table>
+    <div class="clause">
+        The Employee's duties will include those reasonably associated with the position and the specific project or engagement for which this contract is entered into.
+    </div>
+</div>
+
+<div class="section">
+    <h2>4. REMUNERATION</h2>
+    <table class="details">
+        <tr>
+            <td>Monthly Salary:</td>
+            <td th:text="${formattedSalary}">R 25,000.00</td>
+        </tr>
+        <tr>
+            <td>Currency:</td>
+            <td th:text="${salaryCurrency ?: 'ZAR'}">ZAR</td>
+        </tr>
+        <tr>
+            <td>Payment Frequency:</td>
+            <td>Monthly, on or before the last business day of each month</td>
+        </tr>
+        <tr>
+            <td>Payment Method:</td>
+            <td>Electronic transfer to the Employee's nominated bank account</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>5. WORKING HOURS</h2>
+    <div class="clause">
+        The Employee's normal working hours shall be <strong th:text="${workingHours ?: '08:00 - 17:00, Monday to Friday'}">08:00 - 17:00, Monday to Friday</strong>, not exceeding 45 hours per week in accordance with Section 9 of the BCEA.
+    </div>
+    <div class="clause">
+        Overtime shall be compensated in accordance with Section 10 of the BCEA.
+    </div>
+</div>
+
+<div class="section">
+    <h2>6. LEAVE ENTITLEMENT</h2>
+    <div class="clause">
+        <p><strong>6.1 Annual Leave:</strong> The Employee shall be entitled to 15 working days (or 21 consecutive days) of paid annual leave per annual leave cycle, pro-rated for the duration of the contract, in accordance with Section 20 of the BCEA.</p>
+        <p><strong>6.2 Sick Leave:</strong> The Employee shall be entitled to paid sick leave in accordance with Section 22 of the BCEA, pro-rated for the contract period.</p>
+        <p><strong>6.3 Family Responsibility Leave:</strong> 3 days per annual leave cycle, in accordance with Section 27 of the BCEA.</p>
+        <p><strong>6.4 Maternity Leave:</strong> 4 consecutive months, in accordance with Section 25 of the BCEA.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>7. RENEWAL AND EXTENSION</h2>
+    <div class="clause">
+        <p><strong>7.1</strong> This contract may be renewed or extended by mutual written agreement of both parties.</p>
+        <p><strong>7.2</strong> In accordance with Section 198B of the LRA, if this contract is renewed or extended beyond 3 months (and the Employee earns below the BCEA earnings threshold), the Employee may be deemed to be a permanent employee unless the fixed-term nature of the contract is justified.</p>
+        <p><strong>7.3</strong> The Employer shall provide the Employee with reasonable notice of whether the contract will be renewed at least 1 month before the end date.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>8. EARLY TERMINATION</h2>
+    <div class="clause">
+        <p><strong>8.1</strong> Either party may terminate this contract before its natural expiry by giving 4 (four) weeks' written notice, or payment in lieu of notice.</p>
+        <p><strong>8.2</strong> The Employer may summarily dismiss the Employee for serious misconduct in accordance with the provisions of the LRA.</p>
+        <p><strong>8.3</strong> Upon early termination, the Employee shall be entitled to payment for leave not yet taken, calculated on a pro-rata basis.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>9. DEDUCTIONS</h2>
+    <div class="clause">
+        Deductions from remuneration shall only be made in accordance with Section 34 of the BCEA, including statutory deductions (PAYE, UIF, SDL) and any deductions agreed to in writing.
+    </div>
+</div>
+
+<div class="section">
+    <h2>10. CONFIDENTIALITY</h2>
+    <div class="clause">
+        The Employee agrees not to disclose any confidential information relating to the Employer's business, clients, or affairs during or after the term of this contract, except as required by law.
+    </div>
+</div>
+
+<div class="section">
+    <h2>11. DISPUTE RESOLUTION</h2>
+    <div class="clause">
+        Any dispute arising from this contract shall be referred to the CCMA in accordance with the Labour Relations Act 66 of 1995.
+    </div>
+</div>
+
+<div class="section">
+    <h2>12. GENERAL</h2>
+    <div class="clause">
+        <p><strong>12.1</strong> This contract constitutes the entire agreement between the parties.</p>
+        <p><strong>12.2</strong> Any amendments must be in writing and signed by both parties.</p>
+        <p><strong>12.3</strong> This contract is governed by the laws of the Republic of South Africa.</p>
+    </div>
+</div>
+
+<div class="signature-block" style="page-break-inside: avoid; margin-top: 50px;">
+    <h2>SIGNATURES</h2>
+    <div class="clause">
+        By signing below, both parties acknowledge that they have read, understood, and agree to the terms of this fixed-term employment contract.
+    </div>
+
+    <table style="width: 100%; margin-top: 30px;">
+        <tr>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Employer / Authorised Representative</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${companyName ?: 'The Company'}">The Company</span><br/>
+                        Title: Authorised Representative<br/>
+                        Date: <span th:text="${signatureDate}">Date</span>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: ___________________________<br/>
+                        Title: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+            <td style="width: 10%;"></td>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Employee / Contractor</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        Date: <span th:text="${acceptanceDate}">Date</span><br/>
+                        <em>Electronic acceptance (SureWork ERP)</em>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        ID No: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="footer" th:if="${signed}">
+    This contract was electronically signed via SureWork ERP on <span th:text="${acceptanceDate}">date</span>.
+    Both parties have indicated their acceptance of the terms set forth in this agreement.
+</div>
+<div class="footer" th:unless="${signed}">
+    This contract is provided for your review. Please review the terms carefully before responding to the offer.
+</div>
+
+</body>
+</html>

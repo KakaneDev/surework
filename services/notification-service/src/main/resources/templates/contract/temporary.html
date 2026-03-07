@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #666;
+        }
+        h2 {
+            font-size: 13pt;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        .section {
+            margin-bottom: 15px;
+        }
+        .clause {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table.details td {
+            padding: 5px 10px;
+            vertical-align: top;
+        }
+        table.details td:first-child {
+            font-weight: bold;
+            width: 200px;
+            color: #555;
+        }
+        .highlight-box {
+            background-color: #f8f9fa;
+            border-left: 3px solid #e67e22;
+            padding: 10px 15px;
+            margin: 10px 0;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>TEMPORARY EMPLOYMENT CONTRACT</h1>
+    <div class="subtitle">
+        In accordance with the Basic Conditions of Employment Act 75 of 1997, Section 29<br/>
+        and the Labour Relations Act 66 of 1995, Section 198A
+    </div>
+    <div class="subtitle" th:text="'Date of Issue: ' + ${issueDate}">Date of Issue: 12 February 2026</div>
+</div>
+
+<div class="section">
+    <h2>1. PARTIES</h2>
+    <table class="details">
+        <tr>
+            <td>Employer:</td>
+            <td th:text="${companyName ?: 'The Company'}">The Company</td>
+        </tr>
+        <tr>
+            <td>Temporary Employee:</td>
+            <td th:text="${candidateName}">Employee Name</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>2. NATURE OF EMPLOYMENT</h2>
+    <div class="clause">
+        This is a temporary employment contract. The Employee is engaged on a temporary basis for the period and purpose specified below.
+    </div>
+    <div class="highlight-box">
+        <strong>TES Compliance (LRA S198A):</strong> In terms of Section 198A of the Labour Relations Act, a temporary employee who earns below the BCEA earnings threshold and who has been employed for longer than 3 months is deemed to be permanently employed by the client, unless the temporary nature of the work can be justified.
+    </div>
+</div>
+
+<div class="section">
+    <h2>3. COMMENCEMENT AND DURATION</h2>
+    <table class="details">
+        <tr>
+            <td>Start Date:</td>
+            <td th:text="${startDate}">1 March 2026</td>
+        </tr>
+        <tr>
+            <td>Expected End Date:</td>
+            <td th:text="${endDate ?: 'To be confirmed based on operational requirements'}">To be confirmed</td>
+        </tr>
+        <tr>
+            <td>Place of Work:</td>
+            <td th:text="${location ?: 'As designated by the employer'}">Johannesburg</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>4. JOB TITLE AND DESCRIPTION</h2>
+    <table class="details">
+        <tr>
+            <td>Job Title:</td>
+            <td th:text="${jobTitle}">Position Title</td>
+        </tr>
+        <tr>
+            <td>Department:</td>
+            <td th:text="${department ?: 'As assigned'}">Department</td>
+        </tr>
+    </table>
+    <div class="clause">
+        The Employee's duties will include those reasonably associated with the temporary position as directed by the Employer.
+    </div>
+</div>
+
+<div class="section">
+    <h2>5. REMUNERATION</h2>
+    <table class="details">
+        <tr>
+            <td>Monthly Salary:</td>
+            <td th:text="${formattedSalary}">R 25,000.00</td>
+        </tr>
+        <tr>
+            <td>Currency:</td>
+            <td th:text="${salaryCurrency ?: 'ZAR'}">ZAR</td>
+        </tr>
+        <tr>
+            <td>Payment Frequency:</td>
+            <td>Monthly</td>
+        </tr>
+        <tr>
+            <td>Payment Method:</td>
+            <td>Electronic transfer</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>6. WORKING HOURS</h2>
+    <div class="clause">
+        Normal working hours shall be <strong th:text="${workingHours ?: '08:00 - 17:00, Monday to Friday'}">08:00 - 17:00, Monday to Friday</strong>, not exceeding 45 hours per week per Section 9 of the BCEA. Overtime shall be compensated per Section 10.
+    </div>
+</div>
+
+<div class="section">
+    <h2>7. LEAVE ENTITLEMENT</h2>
+    <div class="clause">
+        Leave entitlements are calculated on a pro-rata basis for the duration of the temporary engagement:
+    </div>
+    <div class="clause">
+        <p><strong>7.1 Annual Leave:</strong> Pro-rata entitlement of 15 working days per annum (BCEA S20).</p>
+        <p><strong>7.2 Sick Leave:</strong> Pro-rata entitlement per BCEA S22. During the first 6 months, 1 day per 26 days worked.</p>
+        <p><strong>7.3 Family Responsibility Leave:</strong> 3 days per annual cycle (BCEA S27).</p>
+        <p><strong>7.4 Maternity Leave:</strong> 4 consecutive months (BCEA S25).</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>8. TERMINATION</h2>
+    <div class="clause">
+        <p><strong>8.1</strong> This contract terminates automatically on the expected end date or upon completion of the assignment.</p>
+        <p><strong>8.2</strong> Either party may terminate before the end date with 1 (one) week's written notice if employed for less than 6 months, or 2 (two) weeks' notice if employed for 6 months or more (BCEA S37).</p>
+        <p><strong>8.3</strong> The Employer may summarily dismiss for serious misconduct per the LRA.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>9. DEDUCTIONS</h2>
+    <div class="clause">
+        Only lawful deductions per BCEA S34, including PAYE, UIF, SDL, and written-consent deductions.
+    </div>
+</div>
+
+<div class="section">
+    <h2>10. CONFIDENTIALITY</h2>
+    <div class="clause">
+        The Employee agrees to maintain confidentiality of the Employer's business information during and after the engagement.
+    </div>
+</div>
+
+<div class="section">
+    <h2>11. DISPUTE RESOLUTION</h2>
+    <div class="clause">
+        Disputes shall be referred to the CCMA per the LRA.
+    </div>
+</div>
+
+<div class="section">
+    <h2>12. GENERAL</h2>
+    <div class="clause">
+        <p><strong>12.1</strong> This contract constitutes the entire agreement between the parties.</p>
+        <p><strong>12.2</strong> Amendments must be in writing and signed by both parties.</p>
+        <p><strong>12.3</strong> Governed by the laws of the Republic of South Africa.</p>
+    </div>
+</div>
+
+<div class="signature-block" style="page-break-inside: avoid; margin-top: 50px;">
+    <h2>SIGNATURES</h2>
+    <table style="width: 100%; margin-top: 30px;">
+        <tr>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Employer / Authorised Representative</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${companyName ?: 'The Company'}">The Company</span><br/>
+                        Title: Authorised Representative<br/>
+                        Date: <span th:text="${signatureDate}">Date</span>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: ___________________________<br/>
+                        Title: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+            <td style="width: 10%;"></td>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Temporary Employee</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        Date: <span th:text="${acceptanceDate}">Date</span><br/>
+                        <em>Electronic acceptance (SureWork ERP)</em>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        ID No: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="footer" th:if="${signed}">
+    This contract was electronically signed via SureWork ERP on <span th:text="${acceptanceDate}">date</span>.
+    Both parties have indicated their acceptance of the terms set forth in this agreement.
+</div>
+<div class="footer" th:unless="${signed}">
+    This contract is provided for your review. Please review the terms carefully before responding to the offer.
+</div>
+
+</body>
+</html>

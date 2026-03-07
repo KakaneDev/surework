@@ -50,8 +50,9 @@ public class User {
     @Column(name = "employee_id")
     private UUID employeeId;
 
-    // Roles
-    @ManyToMany(fetch = FetchType.EAGER)
+    // Roles - LAZY fetch to prevent N+1 queries
+    // Use explicit JOIN FETCH in repository when roles are needed
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),

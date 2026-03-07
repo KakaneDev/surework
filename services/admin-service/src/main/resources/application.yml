@@ -1,9 +1,11 @@
 server:
-  port: 8088
+  port: 8087
 
 spring:
   application:
     name: admin-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://localhost:5432/surework_admin
@@ -13,7 +15,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -67,7 +70,8 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: always
+      show-components: always
 
 # OpenAPI Configuration
 springdoc:
@@ -81,7 +85,9 @@ surework:
   admin:
     # JWT Configuration
     jwt:
-      secret: ${JWT_SECRET:surework-jwt-secret-key-for-development-only-change-in-production}
+      # IMPORTANT: In production, set JWT_SECRET environment variable with a secure 256-bit key
+      # This default is for development only - DO NOT use in production
+      secret: ${JWT_SECRET:surework-dev-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256}
       expiration-hours: 8
       refresh-expiration-days: 7
 

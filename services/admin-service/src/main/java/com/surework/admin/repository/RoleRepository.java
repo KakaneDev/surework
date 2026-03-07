@@ -36,5 +36,12 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
     @Query("SELECT r FROM Role r WHERE r.tenantId = :tenantId OR r.systemRole = true")
     List<Role> findByTenantIdOrSystemRoleTrue(@Param("tenantId") UUID tenantId);
 
+    /**
+     * Fetches roles with parent role eagerly loaded to prevent N+1 queries
+     * when mapping role responses that include parent role name.
+     */
+    @Query("SELECT r FROM Role r LEFT JOIN FETCH r.parentRole WHERE r.tenantId = :tenantId OR r.systemRole = true")
+    List<Role> findByTenantIdOrSystemRoleTrueWithParent(@Param("tenantId") UUID tenantId);
+
     boolean existsByTenantIdAndCode(UUID tenantId, String code);
 }

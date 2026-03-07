@@ -13,6 +13,7 @@ import java.util.UUID;
  * Leave request entity.
  * Implements User Story 2: Leave Management.
  * Implements BCEA compliance for leave entitlements.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "leave_requests")
@@ -20,6 +21,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class LeaveRequest extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)

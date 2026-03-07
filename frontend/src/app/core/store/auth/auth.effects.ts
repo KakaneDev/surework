@@ -1,10 +1,28 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
-import { map, exhaustMap, catchError, tap } from 'rxjs/operators';
+import { of, merge } from 'rxjs';
+import { map, exhaustMap, catchError, tap, mergeMap } from 'rxjs/operators';
 import { AuthService } from '@core/services/auth.service';
-import * as AuthActions from './auth.actions';
+import {
+  login,
+  loginSuccess,
+  loginFailure,
+  mfaRequired,
+  verifyMfa,
+  verifyMfaSuccess,
+  verifyMfaFailure,
+  loadCurrentUser,
+  loadCurrentUserSuccess,
+  loadCurrentUserFailure,
+  logout,
+  logoutSuccess,
+  checkSession,
+  sessionExpired,
+  loginRateLimited,
+  accountLocked,
+  clearRateLimit
+} from './auth.actions';
 
 @Injectable()
 export class AuthEffects {
@@ -14,16 +32,59 @@ export class AuthEffects {
 
   login$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.login),
+      ofType(login),
       exhaustMap(({ request }) =>
         this.authService.login(request).pipe(
-          map(response => {
-            if (response.mfaRequired) {
-              return AuthActions.mfaRequired({ challengeToken: response.mfaChallengeToken! });
+          mergeMap(response => {
+            // Check if login failed (accessToken is null but we got a response)
+            // This happens when credentials are invalid - backend returns 200 with null tokens
+            if (!response.accessToken && !response.mfaRequired) {
+              // Handle remaining attempts from response body
+              if (response.remainingAttempts !== undefined && response.remainingAttempts !== null) {
+                if (response.remainingAttempts === 0) {
+                  // Account is locked - 30 minute lockout
+                  const lockoutEndTime = Date.now() + (30 * 60 * 1000);
+                  return of(accountLocked({ lockoutEndTime }));
+                }
+                return merge(
+                  of(loginFailure({ error: 'Invalid credentials' })),
+                  of(loginRateLimited({ remainingAttempts: response.remainingAttempts }))
+                );
+              }
+              return of(loginFailure({ error: 'Invalid credentials' }));
             }
-            return AuthActions.loginSuccess({ response });
+
+            if (response.mfaRequired) {
+              return of(mfaRequired({ challengeToken: response.mfaChallengeToken! }));
+            }
+            return of(loginSuccess({ response }));
           }),
-          catchError(error => of(AuthActions.loginFailure({ error: error.error?.detail || 'Login failed' })))
+          catchError(error => {
+            // Handle rate limiting (429 Too Many Requests)
+            if (error.status === 429) {
+              const retryAfter = error.headers?.get('Retry-After');
+              const remainingAttempts = error.headers?.get('X-RateLimit-Remaining');
+
+              if (retryAfter) {
+                // Account is locked
+                const lockoutEndTime = Date.now() + (parseInt(retryAfter, 10) * 1000);
+                return of(accountLocked({ lockoutEndTime }));
+              } else if (remainingAttempts !== null) {
+                return of(loginRateLimited({ remainingAttempts: parseInt(remainingAttempts, 10) }));
+              }
+            }
+
+            // Extract remaining attempts from response if available
+            const remaining = error.error?.remainingAttempts;
+            if (remaining !== undefined && remaining <= 3) {
+              return merge(
+                of(loginFailure({ error: error.error?.detail || 'Login failed' })),
+                of(loginRateLimited({ remainingAttempts: remaining }))
+              );
+            }
+
+            return of(loginFailure({ error: error.error?.detail || error.error?.message || 'Login failed' }));
+          })
         )
       )
     )
@@ -31,36 +92,43 @@ export class AuthEffects {
 
   loginSuccess$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.loginSuccess, AuthActions.verifyMfaSuccess),
+      ofType(loginSuccess, verifyMfaSuccess),
       map(action => {
         // Extract user from login response instead of making separate API call
         const user = action.response.user;
         if (user) {
-          return AuthActions.loadCurrentUserSuccess({
+          // Extract unique permission codes from all roles
+          const permissions = [...new Set(
+            (user.roles as Array<{ code: string; permissions?: { code: string }[] }>).flatMap(
+              r => r.permissions?.map(p => p.code) ?? []
+            )
+          )];
+          return loadCurrentUserSuccess({
             user: {
               userId: user.id,
+              employeeId: user.employeeId ?? null,
               email: user.email,
               firstName: user.firstName,
               lastName: user.lastName,
               fullName: `${user.firstName} ${user.lastName}`,
               roles: user.roles.map((r: { code: string }) => r.code),
-              permissions: [],
-              mfaEnabled: false
+              permissions,
+              mfaEnabled: user.mfaEnabled ?? false
             }
           });
         }
-        return AuthActions.loadCurrentUser();
+        return loadCurrentUser();
       })
     )
   );
 
   verifyMfa$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.verifyMfa),
+      ofType(verifyMfa),
       exhaustMap(({ request }) =>
         this.authService.verifyMfa(request).pipe(
-          map(response => AuthActions.verifyMfaSuccess({ response })),
-          catchError(error => of(AuthActions.verifyMfaFailure({ error: error.error?.detail || 'MFA verification failed' })))
+          map(response => verifyMfaSuccess({ response })),
+          catchError(error => of(verifyMfaFailure({ error: error.error?.detail || 'MFA verification failed' })))
         )
       )
     )
@@ -68,11 +136,11 @@ export class AuthEffects {
 
   loadCurrentUser$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.loadCurrentUser),
+      ofType(loadCurrentUser),
       exhaustMap(() =>
         this.authService.getCurrentUser().pipe(
-          map(user => AuthActions.loadCurrentUserSuccess({ user })),
-          catchError(error => of(AuthActions.loadCurrentUserFailure({ error: error.message })))
+          map(user => loadCurrentUserSuccess({ user })),
+          catchError(error => of(loadCurrentUserFailure({ error: error.message })))
         )
       )
     )
@@ -80,11 +148,14 @@ export class AuthEffects {
 
   loadCurrentUserSuccess$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.loadCurrentUserSuccess),
+      ofType(loadCurrentUserSuccess),
       tap(() => {
-        // Navigate to dashboard or return URL after successful login
-        const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
-        this.router.navigateByUrl(returnUrl || '/dashboard');
+        // Only navigate if on login page (not when session is being restored)
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/auth/')) {
+          const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+          this.router.navigateByUrl(returnUrl || '/dashboard');
+        }
       })
     ),
     { dispatch: false }
@@ -92,14 +163,14 @@ export class AuthEffects {
 
   logout$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.logout),
+      ofType(logout),
       exhaustMap(() =>
         this.authService.logout().pipe(
-          map(() => AuthActions.logoutSuccess()),
+          map(() => logoutSuccess()),
           catchError(() => {
             // Even if logout fails on server, clear local state
             this.authService.clearTokens();
-            return of(AuthActions.logoutSuccess());
+            return of(logoutSuccess());
           })
         )
       )
@@ -108,7 +179,7 @@ export class AuthEffects {
 
   logoutSuccess$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.logoutSuccess, AuthActions.sessionExpired),
+      ofType(logoutSuccess, sessionExpired),
       tap(() => this.router.navigate(['/auth/login']))
     ),
     { dispatch: false }
@@ -116,13 +187,20 @@ export class AuthEffects {
 
   checkSession$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(AuthActions.checkSession),
+      ofType(checkSession),
       map(() => {
         if (this.authService.isAuthenticated()) {
-          return AuthActions.loadCurrentUser();
+          return loadCurrentUser();
         }
-        return AuthActions.sessionExpired();
+        return sessionExpired();
       })
+    )
+  );
+
+  clearRateLimitOnSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(loginSuccess),
+      map(() => clearRateLimit())
     )
   );
 }

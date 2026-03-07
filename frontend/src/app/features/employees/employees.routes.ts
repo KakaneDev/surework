@@ -6,6 +6,10 @@ export const EMPLOYEES_ROUTES: Routes = [
     loadComponent: () => import('./employees-list/employees-list.component').then(m => m.EmployeesListComponent)
   },
   {
+    path: 'organogram',
+    loadComponent: () => import('./employees-organogram/employees-organogram.component').then(m => m.EmployeesOrganogramComponent)
+  },
+  {
     path: 'new',
     loadComponent: () => import('./employee-form/employee-form.component').then(m => m.EmployeeFormComponent)
   },

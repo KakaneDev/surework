@@ -1,0 +1,19 @@
+# Production Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=prod or --spring.profiles.active=prod
+# All secrets MUST be provided via environment variables
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${CONFIG_GIT_URI}
+          default-label: ${CONFIG_GIT_BRANCH:main}
+          username: ${CONFIG_GIT_USERNAME:}
+          password: ${CONFIG_GIT_PASSWORD:}
+          clone-on-start: true
+
+logging:
+  level:
+    org.springframework.cloud.config: INFO
+    root: INFO

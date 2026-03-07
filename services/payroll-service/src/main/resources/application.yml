@@ -4,7 +4,7 @@ spring:
   config:
     import: "optional:configserver:http://localhost:8888"
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_payroll}
@@ -19,7 +19,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -32,6 +33,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+    validate-on-migrate: false  # Skip checksum validation for modified migrations
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

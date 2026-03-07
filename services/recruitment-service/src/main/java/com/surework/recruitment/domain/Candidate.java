@@ -13,6 +13,7 @@ import java.util.UUID;
 
 /**
  * Represents a candidate/job seeker in the system.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "candidates", indexes = {
@@ -24,6 +25,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class Candidate extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(name = "candidate_reference", nullable = false, unique = true)
     private String candidateReference;
@@ -141,13 +149,13 @@ public class Candidate extends BaseEntity {
     private String notes;
 
     // Internal fields
-    @Column(name = "is_internal_candidate")
+    @Column(name = "internal_candidate")
     private boolean internalCandidate = false;
 
     @Column(name = "employee_id")
     private UUID employeeId; // If internal candidate
 
-    @Column(name = "is_blacklisted")
+    @Column(name = "blacklisted")
     private boolean blacklisted = false;
 
     @Column(name = "blacklist_reason")

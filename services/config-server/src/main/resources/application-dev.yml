@@ -1,0 +1,13 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config
+
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG

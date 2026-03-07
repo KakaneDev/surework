@@ -2,6 +2,16 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
+import {
+  getJobStatusConfig,
+  getCandidateStatusConfig,
+  getApplicationStageConfig,
+  getInterviewStatusConfig,
+  getRecommendationConfig,
+  getStatusHexColors,
+  getVariantClasses,
+  HexColorPair
+} from '@shared/ui/status-config';
 
 // === Enums ===
 
@@ -15,6 +25,61 @@ export type InterviewType = 'PHONE_SCREEN' | 'VIDEO_CALL' | 'IN_PERSON' | 'TECHN
 export type LocationType = 'ONSITE' | 'REMOTE' | 'HYBRID';
 export type InterviewStatus = 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'FEEDBACK_PENDING' | 'FEEDBACK_SUBMITTED' | 'CANCELLED' | 'NO_SHOW' | 'RESCHEDULED';
 export type Recommendation = 'STRONG_HIRE' | 'HIRE' | 'LEAN_HIRE' | 'NEUTRAL' | 'LEAN_NO_HIRE' | 'NO_HIRE' | 'STRONG_NO_HIRE';
+
+// External Portal Publishing Types
+export type Province = 'GAUTENG' | 'WESTERN_CAPE' | 'KWAZULU_NATAL' | 'EASTERN_CAPE' | 'FREE_STATE' | 'LIMPOPO' | 'MPUMALANGA' | 'NORTH_WEST' | 'NORTHERN_CAPE';
+export type Industry = 'IT_SOFTWARE' | 'FINANCE_BANKING' | 'HEALTHCARE' | 'RETAIL' | 'MANUFACTURING' | 'CONSTRUCTION' | 'EDUCATION' | 'HOSPITALITY_TOURISM' | 'LOGISTICS_TRANSPORT' | 'LEGAL' | 'MARKETING_ADVERTISING' | 'HUMAN_RESOURCES' | 'ENGINEERING' | 'MINING' | 'AGRICULTURE' | 'TELECOMMUNICATIONS' | 'REAL_ESTATE' | 'MEDIA_ENTERTAINMENT' | 'GOVERNMENT_PUBLIC_SECTOR' | 'NON_PROFIT' | 'OTHER';
+export type EducationLevel = 'NO_REQUIREMENT' | 'MATRIC' | 'CERTIFICATE' | 'DIPLOMA' | 'DEGREE' | 'HONOURS' | 'MASTERS' | 'DOCTORATE';
+export type CompanyMentionPreference = 'ANONYMOUS' | 'NAMED_BY_SUREWORK' | 'DIRECT_MENTION';
+export type JobPortal = 'PNET' | 'LINKEDIN' | 'INDEED' | 'CAREERS24';
+export type ExternalPostingStatus = 'PENDING' | 'QUEUED' | 'POSTING' | 'POSTED' | 'FAILED' | 'REQUIRES_MANUAL' | 'EXPIRED' | 'REMOVED';
+
+// Client & Compensation Types
+export type CompensationType = 'HOURLY' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL';
+export type ClientVisibility = 'SHOW_NAME' | 'CONFIDENTIAL' | 'HIDDEN';
+
+// === Client DTOs ===
+
+export interface CreateClientRequest {
+  name: string;
+  industry?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  notes?: string;
+}
+
+export interface UpdateClientRequest {
+  name?: string;
+  industry?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  notes?: string;
+  active?: boolean;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  industry?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  notes?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface ClientSummary {
+  id: string;
+  name: string;
+  industry?: string;
+  active: boolean;
+}
 
 // === Page Response ===
 
@@ -54,6 +119,24 @@ export interface CreateJobRequest {
   recruiterName?: string;
   internalOnly: boolean;
   remote: boolean;
+  // Client & Compensation fields
+  clientId?: string;
+  clientVisibility?: ClientVisibility;
+  compensationType?: CompensationType;
+  salaryCurrency?: string;
+  projectName?: string;
+  // External portal publishing fields
+  city?: string;
+  province?: Province;
+  postalCode?: string;
+  countryCode?: string;
+  industry?: Industry;
+  educationLevel?: EducationLevel;
+  keywords?: string;
+  contractDuration?: string;
+  publishToExternal?: boolean;
+  externalPortals?: JobPortal[];
+  companyMentionPreference?: CompanyMentionPreference;
 }
 
 export interface UpdateJobRequest {
@@ -73,6 +156,24 @@ export interface UpdateJobRequest {
   positionsAvailable?: number;
   internalOnly?: boolean;
   remote?: boolean;
+  // Client & Compensation fields
+  clientId?: string;
+  clientVisibility?: ClientVisibility;
+  compensationType?: CompensationType;
+  salaryCurrency?: string;
+  projectName?: string;
+  // External portal publishing fields
+  city?: string;
+  province?: Province;
+  postalCode?: string;
+  countryCode?: string;
+  industry?: Industry;
+  educationLevel?: EducationLevel;
+  keywords?: string;
+  contractDuration?: string;
+  publishToExternal?: boolean;
+  externalPortals?: JobPortal[];
+  companyMentionPreference?: CompanyMentionPreference;
 }
 
 export interface JobPosting {
@@ -106,9 +207,28 @@ export interface JobPosting {
   recruiterName?: string;
   internalOnly: boolean;
   remote: boolean;
+  // Client & Compensation fields
+  clientId?: string;
+  clientName?: string;
+  clientVisibility?: ClientVisibility;
+  compensationType?: CompensationType;
+  salaryCurrency?: string;
+  projectName?: string;
   applicationCount: number;
   viewCount: number;
   createdAt: string;
+  // External portal publishing fields
+  city?: string;
+  province?: Province;
+  postalCode?: string;
+  countryCode?: string;
+  industry?: Industry;
+  educationLevel?: EducationLevel;
+  keywords?: string;
+  contractDuration?: string;
+  publishToExternal?: boolean;
+  externalPortals?: JobPortal[];
+  companyMentionPreference?: CompanyMentionPreference;
 }
 
 export interface JobPostingSummary {
@@ -122,6 +242,10 @@ export interface JobPostingSummary {
   closingDate?: string;
   applicationCount: number;
   remote: boolean;
+  // Client & Compensation fields
+  clientName?: string;
+  compensationType?: CompensationType;
+  projectName?: string;
 }
 
 // === Candidate DTOs ===
@@ -284,6 +408,7 @@ export interface InterviewFeedback {
 export interface Interview {
   id: string;
   applicationId: string;
+  candidateId: string;
   candidateName: string;
   jobTitle: string;
   interviewType: InterviewType;
@@ -325,6 +450,140 @@ export interface RecruitmentDashboard {
   pipeline: PipelineStage[];
   recentJobs: JobPostingSummary[];
   upcomingInterviews: Interview[];
+}
+
+// === External Job Posting DTOs ===
+
+export interface ExternalJobPosting {
+  id: string;
+  jobPostingId: string;
+  jobTitle: string;
+  jobReference: string;
+  portal: JobPortal;
+  externalJobId?: string;
+  externalUrl?: string;
+  status: ExternalPostingStatus;
+  errorMessage?: string;
+  retryCount: number;
+  postedAt?: string;
+  expiresAt?: string;
+  lastCheckedAt?: string;
+  createdAt: string;
+}
+
+export interface ExternalPostingSummary {
+  id: string;
+  portal: JobPortal;
+  status: ExternalPostingStatus;
+  externalUrl?: string;
+  postedAt?: string;
+}
+
+export interface ExternalPostingStats {
+  totalPending: number;
+  totalPosted: number;
+  totalFailed: number;
+  totalRequiresManual: number;
+  byPortal: PortalStats[];
+}
+
+export interface PortalStats {
+  portal: JobPortal;
+  pending: number;
+  posted: number;
+  failed: number;
+  postedToday: number;
+}
+
+export interface PortalStatus {
+  portal: JobPortal;
+  connectionStatus: 'NOT_CONFIGURED' | 'CONNECTED' | 'SESSION_EXPIRED' | 'INVALID_CREDENTIALS' | 'RATE_LIMITED' | 'CAPTCHA_REQUIRED' | 'ERROR';
+  isActive: boolean;
+  dailyRateLimit: number;
+  postsToday: number;
+  lastVerifiedAt?: string;
+  lastError?: string;
+}
+
+export interface PostToPortalsRequest {
+  companyMentionPreference?: CompanyMentionPreference;
+}
+
+export interface ExternalPostingAudit {
+  id: string;
+  externalJobPostingId: string;
+  action: string;
+  details?: string;
+  performedBy?: string;
+  createdAt: string;
+}
+
+// === Analytics DTOs ===
+
+export interface PortalPerformanceStats {
+  portals: PortalDetail[];
+  totalPosted: number;
+  totalActive: number;
+  totalFailed: number;
+  totalExpired: number;
+}
+
+export interface PortalDetail {
+  portal: string;
+  totalPostings: number;
+  activePostings: number;
+  failedPostings: number;
+  expiredPostings: number;
+  avgDaysLive: number;
+  postsToday: number;
+}
+
+export interface AdvertPerformanceStats {
+  adverts: AdvertDetail[];
+  avgConversionRate: number;
+  avgDaysLive: number;
+  totalViews: number;
+  totalApplications: number;
+}
+
+export interface AdvertDetail {
+  jobId: string;
+  title: string;
+  status: string;
+  departmentName: string;
+  views: number;
+  applications: number;
+  conversionRate: number;
+  postingDate?: string;
+  closingDate?: string;
+  daysLive: number;
+}
+
+export interface SourceEffectivenessStats {
+  applicationsBySource: Record<string, number>;
+  hiredBySource: Record<string, number>;
+  conversionRateBySource: Record<string, number>;
+  avgDaysToHireBySource: Record<string, number>;
+  totalApplications: number;
+  totalHires: number;
+}
+
+export interface OfferAcceptanceStats {
+  totalOffersMade: number;
+  totalAccepted: number;
+  totalDeclined: number;
+  acceptanceRatePercent: number;
+  avgDaysToAccept: number;
+  acceptanceRateByDepartment: Record<string, number>;
+  monthlyTrend: OfferTrend[];
+}
+
+export interface OfferTrend {
+  month: string;
+  offers: number;
+  accepted: number;
+  declined: number;
+  acceptanceRate: number;
 }
 
 /**
@@ -377,7 +636,8 @@ export class RecruitmentService {
     departmentId?: string,
     employmentType?: EmploymentType,
     location?: string,
-    searchTerm?: string
+    searchTerm?: string,
+    clientId?: string
   ): Observable<PageResponse<JobPostingSummary>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -388,6 +648,7 @@ export class RecruitmentService {
     if (employmentType) params = params.set('employmentType', employmentType);
     if (location) params = params.set('location', location);
     if (searchTerm) params = params.set('searchTerm', searchTerm);
+    if (clientId) params = params.set('clientId', clientId);
 
     return this.http.get<PageResponse<JobPostingSummary>>(`${this.apiUrl}/jobs`, { params });
   }
@@ -822,6 +1083,159 @@ export class RecruitmentService {
     return this.http.get<Application[]>(`${this.apiUrl}/applications/stale`, { params });
   }
 
+  // === External Job Posting Methods ===
+
+  /**
+   * Get external postings for a job.
+   */
+  getExternalPostingsForJob(jobId: string): Observable<ExternalJobPosting[]> {
+    return this.http.get<ExternalJobPosting[]>(`${this.apiUrl}/jobs/${jobId}/external-postings`);
+  }
+
+  /**
+   * Get all external postings (for admin).
+   */
+  searchExternalPostings(
+    page: number = 0,
+    size: number = 10,
+    status?: ExternalPostingStatus,
+    portal?: JobPortal
+  ): Observable<PageResponse<ExternalJobPosting>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (status) params = params.set('status', status);
+    if (portal) params = params.set('portal', portal);
+
+    return this.http.get<PageResponse<ExternalJobPosting>>(`${this.apiUrl}/external-postings`, { params });
+  }
+
+  /**
+   * Retry a failed external posting.
+   */
+  retryExternalPosting(externalPostingId: string): Observable<ExternalJobPosting> {
+    return this.http.post<ExternalJobPosting>(`${this.apiUrl}/external-postings/${externalPostingId}/retry`, null);
+  }
+
+  /**
+   * Get external posting statistics.
+   */
+  getExternalPostingStats(): Observable<ExternalPostingStats> {
+    return this.http.get<ExternalPostingStats>(`${this.apiUrl}/external-postings/stats`);
+  }
+
+  /**
+   * Post a job to external portals.
+   */
+  postToPortals(jobId: string, portals: JobPortal[], options: PostToPortalsRequest): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/jobs/${jobId}/post-to-portals`, {
+      portals,
+      ...options
+    });
+  }
+
+  /**
+   * Get a single external posting by ID.
+   */
+  getExternalPosting(id: string): Observable<ExternalJobPosting> {
+    return this.http.get<ExternalJobPosting>(`${this.apiUrl}/external-postings/${id}`);
+  }
+
+  /**
+   * Resolve manual intervention for an external posting.
+   */
+  resolveManualIntervention(id: string, externalJobId: string, externalUrl: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/external-postings/${id}/resolve`, {
+      externalJobId,
+      externalUrl
+    });
+  }
+
+  /**
+   * Get portal statuses (connection status for each portal).
+   */
+  getPortalStatuses(): Observable<PortalStatus[]> {
+    return this.http.get<PortalStatus[]>(`${this.apiUrl}/portals/status`);
+  }
+
+  /**
+   * Get audit trail for an external posting.
+   */
+  getExternalPostingAudit(id: string): Observable<ExternalPostingAudit[]> {
+    return this.http.get<ExternalPostingAudit[]>(`${this.apiUrl}/external-postings/${id}/audit`);
+  }
+
+  /**
+   * Remove an external posting from a portal.
+   */
+  removeExternalPosting(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/external-postings/${id}`);
+  }
+
+  // === Analytics Methods ===
+
+  getPortalPerformance(): Observable<PortalPerformanceStats> {
+    return this.http.get<PortalPerformanceStats>(`${this.apiUrl}/analytics/portal-performance`);
+  }
+
+  getPortalJobs(portal: string, page: number = 0, size: number = 10): Observable<PageResponse<ExternalJobPosting>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    return this.http.get<PageResponse<ExternalJobPosting>>(`${this.apiUrl}/analytics/portal-performance/${portal}/jobs`, { params });
+  }
+
+  getAdvertPerformance(): Observable<AdvertPerformanceStats> {
+    return this.http.get<AdvertPerformanceStats>(`${this.apiUrl}/analytics/advert-performance`);
+  }
+
+  getSourceEffectiveness(): Observable<SourceEffectivenessStats> {
+    return this.http.get<SourceEffectivenessStats>(`${this.apiUrl}/analytics/source-effectiveness`);
+  }
+
+  getOfferAcceptance(): Observable<OfferAcceptanceStats> {
+    return this.http.get<OfferAcceptanceStats>(`${this.apiUrl}/analytics/offer-acceptance`);
+  }
+
+  // === Client Methods ===
+
+  createClient(request: CreateClientRequest): Observable<Client> {
+    return this.http.post<Client>(`${this.apiUrl}/clients`, request);
+  }
+
+  updateClient(clientId: string, request: UpdateClientRequest): Observable<Client> {
+    return this.http.put<Client>(`${this.apiUrl}/clients/${clientId}`, request);
+  }
+
+  getClient(clientId: string): Observable<Client> {
+    return this.http.get<Client>(`${this.apiUrl}/clients/${clientId}`);
+  }
+
+  searchClients(
+    page: number = 0,
+    size: number = 10,
+    active?: boolean,
+    searchTerm?: string
+  ): Observable<PageResponse<Client>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (active !== undefined) params = params.set('active', active.toString());
+    if (searchTerm) params = params.set('searchTerm', searchTerm);
+
+    return this.http.get<PageResponse<Client>>(`${this.apiUrl}/clients`, { params });
+  }
+
+  getActiveClients(): Observable<ClientSummary[]> {
+    return this.http.get<ClientSummary[]>(`${this.apiUrl}/clients/active`);
+  }
+
+  deactivateClient(clientId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/clients/${clientId}/deactivate`, null);
+  }
+
   // === Static Utility Methods ===
 
   /**
@@ -840,18 +1254,21 @@ export class RecruitmentService {
   }
 
   /**
-   * Get color styles for job status.
+   * Get hex color styles for job status (for inline styles).
+   * Uses centralized status config for consistency.
    */
-  static getJobStatusColor(status: JobStatus): { background: string; color: string } {
-    const colors: Record<JobStatus, { background: string; color: string }> = {
-      DRAFT: { background: '#fff3e0', color: '#f57c00' },
-      OPEN: { background: '#e8f5e9', color: '#2e7d32' },
-      ON_HOLD: { background: '#e3f2fd', color: '#1565c0' },
-      CLOSED: { background: '#eceff1', color: '#546e7a' },
-      FILLED: { background: '#c8e6c9', color: '#1b5e20' },
-      CANCELLED: { background: '#ffcdd2', color: '#b71c1c' }
-    };
-    return colors[status] || { background: '#eceff1', color: '#546e7a' };
+  static getJobStatusColor(status: JobStatus): HexColorPair {
+    const config = getJobStatusConfig(status);
+    // Use dark variant for "filled" status to differentiate from "open"
+    return getStatusHexColors(config, status === 'FILLED');
+  }
+
+  /**
+   * Get Tailwind classes for job status (recommended for dark mode support).
+   */
+  static getJobStatusClasses(status: JobStatus): string {
+    const config = getJobStatusConfig(status);
+    return getVariantClasses(config.variant);
   }
 
   /**
@@ -884,17 +1301,21 @@ export class RecruitmentService {
   }
 
   /**
-   * Get color styles for candidate status.
+   * Get hex color styles for candidate status (for inline styles).
+   * Uses centralized status config for consistency.
    */
-  static getCandidateStatusColor(status: CandidateStatus): { background: string; color: string } {
-    const colors: Record<CandidateStatus, { background: string; color: string }> = {
-      ACTIVE: { background: '#e8f5e9', color: '#2e7d32' },
-      INACTIVE: { background: '#eceff1', color: '#546e7a' },
-      HIRED: { background: '#c8e6c9', color: '#1b5e20' },
-      BLACKLISTED: { background: '#ffcdd2', color: '#b71c1c' },
-      ARCHIVED: { background: '#f5f5f5', color: '#9e9e9e' }
-    };
-    return colors[status] || { background: '#eceff1', color: '#546e7a' };
+  static getCandidateStatusColor(status: CandidateStatus): HexColorPair {
+    const config = getCandidateStatusConfig(status);
+    // Use dark variant for "hired" status to differentiate from "active"
+    return getStatusHexColors(config, status === 'HIRED');
+  }
+
+  /**
+   * Get Tailwind classes for candidate status (recommended for dark mode support).
+   */
+  static getCandidateStatusClasses(status: CandidateStatus): string {
+    const config = getCandidateStatusConfig(status);
+    return getVariantClasses(config.variant);
   }
 
   /**
@@ -941,23 +1362,13 @@ export class RecruitmentService {
 
   /**
    * Get color styles for recruitment stage.
+   * Uses centralized status config for consistency.
    */
-  static getStageColor(stage: RecruitmentStage): { background: string; color: string } {
-    const colors: Record<RecruitmentStage, { background: string; color: string }> = {
-      NEW: { background: '#e3f2fd', color: '#1565c0' },
-      SCREENING: { background: '#fff3e0', color: '#f57c00' },
-      PHONE_SCREEN: { background: '#fce4ec', color: '#c2185b' },
-      ASSESSMENT: { background: '#f3e5f5', color: '#6a1b9a' },
-      FIRST_INTERVIEW: { background: '#e1bee7', color: '#4a148c' },
-      SECOND_INTERVIEW: { background: '#d1c4e9', color: '#311b92' },
-      FINAL_INTERVIEW: { background: '#c5cae9', color: '#1a237e' },
-      REFERENCE_CHECK: { background: '#bbdefb', color: '#0d47a1' },
-      BACKGROUND_CHECK: { background: '#b3e5fc', color: '#01579b' },
-      OFFER: { background: '#c5cae9', color: '#283593' },
-      ONBOARDING: { background: '#dcedc8', color: '#33691e' },
-      COMPLETED: { background: '#c8e6c9', color: '#1b5e20' }
-    };
-    return colors[stage] || { background: '#eceff1', color: '#546e7a' };
+  static getStageColor(stage: RecruitmentStage): HexColorPair {
+    const config = getApplicationStageConfig(stage);
+    // Use dark variant for terminal stages
+    const useDark = stage === 'COMPLETED' || stage === 'ONBOARDING';
+    return getStatusHexColors(config, useDark);
   }
 
   /**
@@ -997,21 +1408,21 @@ export class RecruitmentService {
   }
 
   /**
-   * Get color styles for interview status.
+   * Get hex color styles for interview status (for inline styles).
+   * Uses centralized status config for consistency.
    */
-  static getInterviewStatusColor(status: InterviewStatus): { background: string; color: string } {
-    const colors: Record<InterviewStatus, { background: string; color: string }> = {
-      SCHEDULED: { background: '#e3f2fd', color: '#1565c0' },
-      CONFIRMED: { background: '#e8f5e9', color: '#2e7d32' },
-      IN_PROGRESS: { background: '#fff3e0', color: '#f57c00' },
-      COMPLETED: { background: '#c8e6c9', color: '#1b5e20' },
-      FEEDBACK_PENDING: { background: '#fff8e1', color: '#f9a825' },
-      FEEDBACK_SUBMITTED: { background: '#e0f7fa', color: '#00838f' },
-      CANCELLED: { background: '#ffcdd2', color: '#b71c1c' },
-      NO_SHOW: { background: '#fce4ec', color: '#c2185b' },
-      RESCHEDULED: { background: '#f3e5f5', color: '#6a1b9a' }
-    };
-    return colors[status] || { background: '#eceff1', color: '#546e7a' };
+  static getInterviewStatusColor(status: InterviewStatus): HexColorPair {
+    const config = getInterviewStatusConfig(status);
+    // Use dark variant for completed status
+    return getStatusHexColors(config, status === 'COMPLETED');
+  }
+
+  /**
+   * Get Tailwind classes for interview status (recommended for dark mode support).
+   */
+  static getInterviewStatusClasses(status: InterviewStatus): string {
+    const config = getInterviewStatusConfig(status);
+    return getVariantClasses(config.variant);
   }
 
   /**
@@ -1032,17 +1443,189 @@ export class RecruitmentService {
 
   /**
    * Get color styles for recommendation.
+   * Uses centralized status config for consistency.
    */
-  static getRecommendationColor(rec: Recommendation): { background: string; color: string } {
-    const colors: Record<Recommendation, { background: string; color: string }> = {
-      STRONG_HIRE: { background: '#c8e6c9', color: '#1b5e20' },
-      HIRE: { background: '#dcedc8', color: '#33691e' },
-      LEAN_HIRE: { background: '#f0f4c3', color: '#827717' },
-      NEUTRAL: { background: '#fff9c4', color: '#f9a825' },
-      LEAN_NO_HIRE: { background: '#ffe0b2', color: '#ef6c00' },
-      NO_HIRE: { background: '#ffccbc', color: '#d84315' },
-      STRONG_NO_HIRE: { background: '#ffcdd2', color: '#b71c1c' }
+  static getRecommendationColor(rec: Recommendation): HexColorPair {
+    const config = getRecommendationConfig(rec);
+    // Use dark variant for strong hire recommendations
+    return getStatusHexColors(config, rec === 'STRONG_HIRE');
+  }
+
+  // === External Portal Publishing Utility Methods ===
+
+  /**
+   * Get label for province.
+   */
+  static getProvinceLabel(province: Province): string {
+    const labels: Record<Province, string> = {
+      GAUTENG: 'Gauteng',
+      WESTERN_CAPE: 'Western Cape',
+      KWAZULU_NATAL: 'KwaZulu-Natal',
+      EASTERN_CAPE: 'Eastern Cape',
+      FREE_STATE: 'Free State',
+      LIMPOPO: 'Limpopo',
+      MPUMALANGA: 'Mpumalanga',
+      NORTH_WEST: 'North West',
+      NORTHERN_CAPE: 'Northern Cape'
     };
-    return colors[rec] || { background: '#eceff1', color: '#546e7a' };
+    return labels[province] || province;
+  }
+
+  /**
+   * Get label for industry.
+   */
+  static getIndustryLabel(industry: Industry): string {
+    const labels: Record<Industry, string> = {
+      IT_SOFTWARE: 'IT & Software',
+      FINANCE_BANKING: 'Finance & Banking',
+      HEALTHCARE: 'Healthcare',
+      RETAIL: 'Retail',
+      MANUFACTURING: 'Manufacturing',
+      CONSTRUCTION: 'Construction',
+      EDUCATION: 'Education',
+      HOSPITALITY_TOURISM: 'Hospitality & Tourism',
+      LOGISTICS_TRANSPORT: 'Logistics & Transport',
+      LEGAL: 'Legal',
+      MARKETING_ADVERTISING: 'Marketing & Advertising',
+      HUMAN_RESOURCES: 'Human Resources',
+      ENGINEERING: 'Engineering',
+      MINING: 'Mining',
+      AGRICULTURE: 'Agriculture',
+      TELECOMMUNICATIONS: 'Telecommunications',
+      REAL_ESTATE: 'Real Estate',
+      MEDIA_ENTERTAINMENT: 'Media & Entertainment',
+      GOVERNMENT_PUBLIC_SECTOR: 'Government & Public Sector',
+      NON_PROFIT: 'Non-Profit',
+      OTHER: 'Other'
+    };
+    return labels[industry] || industry;
+  }
+
+  /**
+   * Get label for education level.
+   */
+  static getEducationLevelLabel(level: EducationLevel): string {
+    const labels: Record<EducationLevel, string> = {
+      NO_REQUIREMENT: 'No Requirement',
+      MATRIC: 'Matric / Grade 12',
+      CERTIFICATE: 'Certificate',
+      DIPLOMA: 'Diploma',
+      DEGREE: 'Bachelor\'s Degree',
+      HONOURS: 'Honours Degree',
+      MASTERS: 'Master\'s Degree',
+      DOCTORATE: 'Doctorate / PhD'
+    };
+    return labels[level] || level;
+  }
+
+  /**
+   * Get label for job portal.
+   */
+  static getJobPortalLabel(portal: JobPortal): string {
+    const labels: Record<JobPortal, string> = {
+      PNET: 'Pnet',
+      LINKEDIN: 'LinkedIn',
+      INDEED: 'Indeed',
+      CAREERS24: 'Careers24'
+    };
+    return labels[portal] || portal;
+  }
+
+  /**
+   * Get label for external posting status.
+   */
+  static getExternalPostingStatusLabel(status: ExternalPostingStatus): string {
+    const labels: Record<ExternalPostingStatus, string> = {
+      PENDING: 'Pending',
+      QUEUED: 'Queued',
+      POSTING: 'Posting...',
+      POSTED: 'Posted',
+      FAILED: 'Failed',
+      REQUIRES_MANUAL: 'Requires Manual',
+      EXPIRED: 'Expired',
+      REMOVED: 'Removed'
+    };
+    return labels[status] || status;
+  }
+
+  /**
+   * Get color for external posting status.
+   */
+  static getExternalPostingStatusColor(status: ExternalPostingStatus): HexColorPair {
+    const colors: Record<ExternalPostingStatus, HexColorPair> = {
+      PENDING: { background: '#fef3c7', color: '#92400e' },
+      QUEUED: { background: '#e0e7ff', color: '#3730a3' },
+      POSTING: { background: '#dbeafe', color: '#1e40af' },
+      POSTED: { background: '#d1fae5', color: '#065f46' },
+      FAILED: { background: '#fee2e2', color: '#991b1b' },
+      REQUIRES_MANUAL: { background: '#fecaca', color: '#7f1d1d' },
+      EXPIRED: { background: '#e5e7eb', color: '#374151' },
+      REMOVED: { background: '#f3f4f6', color: '#6b7280' }
+    };
+    return colors[status] || { background: '#f3f4f6', color: '#374151' };
+  }
+
+  /**
+   * Get label for company mention preference.
+   */
+  static getCompanyMentionPreferenceLabel(pref: CompanyMentionPreference): string {
+    const labels: Record<CompanyMentionPreference, string> = {
+      ANONYMOUS: 'Anonymous',
+      NAMED_BY_SUREWORK: 'SureWork on behalf of...',
+      DIRECT_MENTION: 'Direct company mention'
+    };
+    return labels[pref] || pref;
+  }
+
+  // === Client & Compensation Utility Methods ===
+
+  static getCompensationTypeLabel(type: CompensationType): string {
+    const labels: Record<CompensationType, string> = {
+      HOURLY: 'Hourly',
+      DAILY: 'Daily',
+      WEEKLY: 'Weekly',
+      MONTHLY: 'Monthly',
+      ANNUAL: 'Annual'
+    };
+    return labels[type] || type;
+  }
+
+  static getClientVisibilityLabel(visibility: ClientVisibility): string {
+    const labels: Record<ClientVisibility, string> = {
+      SHOW_NAME: 'Show Client Name',
+      CONFIDENTIAL: 'Confidential',
+      HIDDEN: 'Hidden'
+    };
+    return labels[visibility] || visibility;
+  }
+
+  static getCurrencySymbol(currency: string): string {
+    const symbols: Record<string, string> = {
+      ZAR: 'R',
+      USD: '$',
+      EUR: '€',
+      GBP: '£'
+    };
+    return symbols[currency] || currency + ' ';
+  }
+
+  static getSalaryLabel(
+    salaryMin?: number,
+    salaryMax?: number,
+    currency: string = 'ZAR',
+    compensationType: CompensationType = 'MONTHLY',
+    showSalary: boolean = true
+  ): string {
+    if (!showSalary || (salaryMin == null && salaryMax == null)) return 'Negotiable';
+    const prefix = RecruitmentService.getCurrencySymbol(currency);
+    const suffix: Record<CompensationType, string> = {
+      HOURLY: '/hr', DAILY: '/day', WEEKLY: '/wk', MONTHLY: '/mo', ANNUAL: '/yr'
+    };
+    const fmt = (n: number) => n.toLocaleString('en-ZA');
+    if (salaryMin != null && salaryMax != null) {
+      return `${prefix}${fmt(salaryMin)} - ${prefix}${fmt(salaryMax)}${suffix[compensationType]}`;
+    }
+    if (salaryMin != null) return `From ${prefix}${fmt(salaryMin)}${suffix[compensationType]}`;
+    return `Up to ${prefix}${fmt(salaryMax!)}${suffix[compensationType]}`;
   }
 }

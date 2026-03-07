@@ -44,6 +44,35 @@ public sealed interface LeaveDto {
     ) implements LeaveDto {}
 
     /**
+     * Request to adjust a leave balance (HR only).
+     */
+    record AdjustmentRequest(
+            @NotNull(message = "Leave type is required")
+            LeaveRequest.LeaveType leaveType,
+
+            @NotNull(message = "Adjustment amount is required")
+            Double adjustment,
+
+            @NotNull(message = "Reason is required")
+            @Size(min = 10, max = 500, message = "Reason must be between 10 and 500 characters")
+            String reason
+    ) implements LeaveDto {}
+
+    /**
+     * Response for leave balance adjustment.
+     */
+    record AdjustmentResponse(
+            UUID balanceId,
+            LeaveRequest.LeaveType leaveType,
+            double previousEntitlement,
+            double newEntitlement,
+            double adjustment,
+            String reason,
+            UUID adjustedBy,
+            Instant adjustedAt
+    ) implements LeaveDto {}
+
+    /**
      * Leave request response DTO.
      */
     record Response(
@@ -126,5 +155,29 @@ public sealed interface LeaveDto {
             UUID employeeId,
             String employeeName,
             java.util.List<BalanceResponse> balances
+    ) implements LeaveDto {}
+
+    /**
+     * Sick leave cycle information.
+     * BCEA: 30 days sick leave per 36-month cycle.
+     */
+    record SickLeaveCycleInfo(
+            LocalDate cycleStart,
+            LocalDate cycleEnd,
+            double entitlement,
+            double used,
+            double pending,
+            double available
+    ) implements LeaveDto {}
+
+    /**
+     * Tax year information.
+     * South African tax year: 1 March to 28/29 February.
+     */
+    record TaxYearInfo(
+            int taxYear,
+            LocalDate taxYearStart,
+            LocalDate taxYearEnd,
+            String taxYearLabel
     ) implements LeaveDto {}
 }

@@ -71,4 +71,11 @@ public interface FiscalPeriodRepository extends JpaRepository<FiscalPeriod, UUID
      */
     @Query("SELECT COUNT(fp) > 0 FROM FiscalPeriod fp WHERE fp.fiscalYear = :year AND fp.deleted = false")
     boolean existsByFiscalYear(@Param("year") int year);
+
+    /**
+     * Find the period containing a specific date (tenant ignored since FiscalPeriod doesn't have tenantId).
+     * Provided for backward compatibility with tenant-aware services.
+     */
+    @Query("SELECT fp FROM FiscalPeriod fp WHERE :date BETWEEN fp.startDate AND fp.endDate AND fp.deleted = false")
+    Optional<FiscalPeriod> findByTenantIdAndDate(@Param("tenantId") UUID tenantId, @Param("date") LocalDate date);
 }

@@ -35,8 +35,9 @@ public class Role {
     @OneToMany(mappedBy = "parentRole", fetch = FetchType.LAZY)
     private Set<Role> childRoles = new HashSet<>();
 
-    // Permissions
-    @ManyToMany(fetch = FetchType.EAGER)
+    // Permissions - LAZY fetch to prevent N+1 queries
+    // Use explicit JOIN FETCH in repository when permissions are needed
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "role_permissions",
         joinColumns = @JoinColumn(name = "role_id"),

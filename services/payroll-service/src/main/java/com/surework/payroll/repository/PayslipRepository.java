@@ -127,12 +127,14 @@ public interface PayslipRepository extends JpaRepository<Payslip, UUID> {
      */
     @Query("SELECT p FROM Payslip p WHERE p.deleted = false " +
             "AND (:employeeId IS NULL OR p.employeeId = :employeeId) " +
+            "AND (:runId IS NULL OR p.payrollRun.id = :runId) " +
             "AND (:year IS NULL OR p.periodYear = :year) " +
             "AND (:month IS NULL OR p.periodMonth = :month) " +
             "AND (:status IS NULL OR p.status = :status) " +
             "ORDER BY p.periodYear DESC, p.periodMonth DESC, p.employeeName")
     Page<Payslip> search(
             @Param("employeeId") UUID employeeId,
+            @Param("runId") UUID runId,
             @Param("year") Integer year,
             @Param("month") Integer month,
             @Param("status") Payslip.PayslipStatus status,

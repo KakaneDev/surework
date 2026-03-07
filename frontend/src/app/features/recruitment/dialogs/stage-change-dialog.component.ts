@@ -1,17 +1,13 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Application,
   RecruitmentStage
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ButtonComponent, DialogRef } from '@shared/ui';
 
 interface DialogData {
   application: Application;
@@ -23,91 +19,79 @@ interface DialogData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatButtonModule,
-    MatProgressSpinnerModule
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent
   ],
   template: `
-    <h2 mat-dialog-title>Change Stage</h2>
-    <mat-dialog-content>
-      <p class="dialog-info">
-        Move <strong>{{ data.application.candidate.fullName }}</strong> to a new stage
+    <div class="p-6 min-w-[400px]">
+      <h2 class="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2 flex items-center gap-2">
+        <span class="material-icons text-primary-500">swap_horiz</span>
+        {{ 'recruitment.stageChange.title' | translate }}
+      </h2>
+      <p class="text-neutral-500 dark:text-neutral-400 mb-6">
+        {{ 'recruitment.stageChange.subtitle' | translate: { candidateName: data.application.candidate.fullName } }}
       </p>
-      <form [formGroup]="form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>New Stage</mat-label>
-          <mat-select formControlName="stage">
+
+      <form [formGroup]="form" class="space-y-4">
+        <div>
+          <label class="sw-label">{{ 'recruitment.stageChange.newStage' | translate }}</label>
+          <select formControlName="stage" class="sw-input w-full">
+            <option value="">{{ 'recruitment.stageChange.selectStage' | translate }}</option>
             @for (stage of stages; track stage.value) {
-              <mat-option [value]="stage.value" [disabled]="stage.value === data.application.stage">
-                {{ stage.label }}
-              </mat-option>
+              <option [value]="stage.value" [disabled]="stage.value === data.application.stage">
+                {{ stage.label | translate }}
+              </option>
             }
-          </mat-select>
-        </mat-form-field>
+          </select>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Notes (optional)</mat-label>
-          <textarea matInput formControlName="notes" rows="3"
-                    placeholder="Add any notes about this stage change..."></textarea>
-        </mat-form-field>
+        <div>
+          <label class="sw-label">{{ 'recruitment.stageChange.notes' | translate }}</label>
+          <textarea formControlName="notes" class="sw-input w-full" rows="3"
+                    [placeholder]="'recruitment.stageChange.notesPlaceholder' | translate"></textarea>
+        </div>
       </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-              [disabled]="form.invalid || saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Update Stage
-        }
-      </button>
-    </mat-dialog-actions>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-dark-border">
+        <sw-button variant="ghost" size="md" [disabled]="saving()" (clicked)="cancel()">
+          {{ 'common.cancel' | translate }}
+        </sw-button>
+        <sw-button variant="primary" size="md" [disabled]="form.invalid" [loading]="saving()" (clicked)="onSubmit()">
+          <span class="material-icons text-lg" aria-hidden="true">check</span>
+          {{ 'recruitment.stageChange.submit' | translate }}
+        </sw-button>
+      </div>
+    </div>
   `,
-  styles: [`
-    .dialog-info {
-      margin-bottom: 16px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    mat-dialog-content {
-      min-width: 350px;
-    }
-
-    mat-dialog-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class StageChangeDialogComponent {
-  readonly dialogRef = inject(MatDialogRef<StageChangeDialogComponent>);
-  readonly data: DialogData = inject(MAT_DIALOG_DATA);
+  private readonly dialogRef: DialogRef = inject('DIALOG_REF' as any);
+  readonly data: DialogData = inject('DIALOG_DATA' as any);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
+  private readonly translate = inject(TranslateService);
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
 
   form: FormGroup;
   saving = signal(false);
 
   stages: { value: RecruitmentStage; label: string }[] = [
-    { value: 'NEW', label: 'New' },
-    { value: 'SCREENING', label: 'Screening' },
-    { value: 'PHONE_SCREEN', label: 'Phone Screen' },
-    { value: 'ASSESSMENT', label: 'Assessment' },
-    { value: 'FIRST_INTERVIEW', label: 'First Interview' },
-    { value: 'SECOND_INTERVIEW', label: 'Second Interview' },
-    { value: 'FINAL_INTERVIEW', label: 'Final Interview' },
-    { value: 'REFERENCE_CHECK', label: 'Reference Check' },
-    { value: 'BACKGROUND_CHECK', label: 'Background Check' },
-    { value: 'OFFER', label: 'Offer' },
-    { value: 'ONBOARDING', label: 'Onboarding' }
+    { value: 'NEW', label: 'recruitment.stageChange.stageNew' },
+    { value: 'SCREENING', label: 'recruitment.stageChange.stageScreening' },
+    { value: 'PHONE_SCREEN', label: 'recruitment.stageChange.stagePhoneScreen' },
+    { value: 'ASSESSMENT', label: 'recruitment.stageChange.stageAssessment' },
+    { value: 'FIRST_INTERVIEW', label: 'recruitment.stageChange.stageFirstInterview' },
+    { value: 'SECOND_INTERVIEW', label: 'recruitment.stageChange.stageSecondInterview' },
+    { value: 'FINAL_INTERVIEW', label: 'recruitment.stageChange.stageFinalInterview' },
+    { value: 'REFERENCE_CHECK', label: 'recruitment.stageChange.stageReferenceCheck' },
+    { value: 'BACKGROUND_CHECK', label: 'recruitment.stageChange.stageBackgroundCheck' },
+    { value: 'OFFER', label: 'recruitment.stageChange.stageOffer' },
+    { value: 'ONBOARDING', label: 'recruitment.stageChange.stageOnboarding' }
   ];
 
   constructor() {
@@ -144,7 +128,8 @@ export class StageChangeDialogComponent {
         this.dialogRef.close(true);
       },
       error: (err) => {
-        console.error('Failed to change stage', err);
+        const errorMessage = this.translate.instant('recruitment.stageChange.error');
+        console.error(errorMessage, err);
         this.saving.set(false);
       }
     });

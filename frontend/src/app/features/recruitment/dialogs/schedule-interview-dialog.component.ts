@@ -1,14 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Application,
@@ -16,6 +9,7 @@ import {
   LocationType,
   ScheduleInterviewRequest
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ButtonComponent, DialogRef } from '@shared/ui';
 
 interface DialogData {
   application: Application;
@@ -27,146 +21,122 @@ interface DialogData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatButtonModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatProgressSpinnerModule
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent
   ],
   template: `
-    <h2 mat-dialog-title>Schedule Interview</h2>
-    <mat-dialog-content>
-      <p class="dialog-info">
-        Schedule an interview for <strong>{{ data.application.candidate.fullName }}</strong>
+    <div class="p-6 min-w-[450px]">
+      <h2 class="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2 flex items-center gap-2">
+        <span class="material-icons text-primary-500">event</span>
+        {{ 'recruitment.scheduleInterview.title' | translate }}
+      </h2>
+      <p class="text-neutral-500 dark:text-neutral-400 mb-6">
+        {{ 'recruitment.scheduleInterview.subtitle' | translate: { candidateName: data.application.candidate.fullName } }}
       </p>
-      <form [formGroup]="form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Interview Type</mat-label>
-          <mat-select formControlName="interviewType">
+
+      <form [formGroup]="form" class="space-y-4">
+        <div>
+          <label for="interviewType" class="sw-label">{{ 'recruitment.scheduleInterview.interviewType' | translate }}</label>
+          <select id="interviewType" formControlName="interviewType" class="sw-input w-full" aria-required="true">
             @for (type of interviewTypes; track type.value) {
-              <mat-option [value]="type.value">{{ type.label }}</mat-option>
+              <option [value]="type.value">{{ type.label | translate }}</option>
             }
-          </mat-select>
-        </mat-form-field>
-
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Date</mat-label>
-            <input matInput [matDatepicker]="datePicker" formControlName="date">
-            <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
-            <mat-datepicker #datePicker></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Time</mat-label>
-            <input matInput type="time" formControlName="time">
-          </mat-form-field>
+          </select>
         </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Duration (minutes)</mat-label>
-          <mat-select formControlName="durationMinutes">
-            <mat-option [value]="15">15 minutes</mat-option>
-            <mat-option [value]="30">30 minutes</mat-option>
-            <mat-option [value]="45">45 minutes</mat-option>
-            <mat-option [value]="60">1 hour</mat-option>
-            <mat-option [value]="90">1.5 hours</mat-option>
-            <mat-option [value]="120">2 hours</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="interviewDate" class="sw-label">{{ 'recruitment.scheduleInterview.date' | translate }}</label>
+            <input id="interviewDate" type="date" formControlName="date" class="sw-input w-full" aria-required="true">
+          </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Location Type</mat-label>
-          <mat-select formControlName="locationType">
-            <mat-option value="REMOTE">Remote (Video Call)</mat-option>
-            <mat-option value="ONSITE">On-site</mat-option>
-            <mat-option value="HYBRID">Hybrid</mat-option>
-          </mat-select>
-        </mat-form-field>
+          <div>
+            <label for="interviewTime" class="sw-label">{{ 'recruitment.scheduleInterview.time' | translate }}</label>
+            <input id="interviewTime" type="time" formControlName="time" class="sw-input w-full" aria-required="true">
+          </div>
+        </div>
+
+        <div>
+          <label for="durationMinutes" class="sw-label">{{ 'recruitment.scheduleInterview.duration' | translate }}</label>
+          <select id="durationMinutes" formControlName="durationMinutes" class="sw-input w-full" aria-required="true">
+            <option [value]="15">{{ 'recruitment.scheduleInterview.duration15Min' | translate }}</option>
+            <option [value]="30">{{ 'recruitment.scheduleInterview.duration30Min' | translate }}</option>
+            <option [value]="45">{{ 'recruitment.scheduleInterview.duration45Min' | translate }}</option>
+            <option [value]="60">{{ 'recruitment.scheduleInterview.duration1Hour' | translate }}</option>
+            <option [value]="90">{{ 'recruitment.scheduleInterview.duration1_5Hours' | translate }}</option>
+            <option [value]="120">{{ 'recruitment.scheduleInterview.duration2Hours' | translate }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="locationType" class="sw-label">{{ 'recruitment.scheduleInterview.locationType' | translate }}</label>
+          <select id="locationType" formControlName="locationType" class="sw-input w-full" aria-required="true">
+            <option value="REMOTE">{{ 'recruitment.scheduleInterview.locationRemote' | translate }}</option>
+            <option value="ONSITE">{{ 'recruitment.scheduleInterview.locationOnsite' | translate }}</option>
+            <option value="HYBRID">{{ 'recruitment.scheduleInterview.locationHybrid' | translate }}</option>
+          </select>
+        </div>
 
         @if (form.get('locationType')?.value === 'REMOTE') {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Meeting Link</mat-label>
-            <input matInput formControlName="meetingLink" placeholder="https://...">
-          </mat-form-field>
+          <div>
+            <label for="meetingLink" class="sw-label">{{ 'recruitment.scheduleInterview.meetingLink' | translate }}</label>
+            <input id="meetingLink" type="url" formControlName="meetingLink" class="sw-input w-full"
+                   [placeholder]="'recruitment.scheduleInterview.meetingLinkPlaceholder' | translate">
+          </div>
         } @else {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Location Details</mat-label>
-            <input matInput formControlName="locationDetails" placeholder="Office address or room number">
-          </mat-form-field>
+          <div>
+            <label for="locationDetails" class="sw-label">{{ 'recruitment.scheduleInterview.locationDetails' | translate }}</label>
+            <input id="locationDetails" type="text" formControlName="locationDetails" class="sw-input w-full"
+                   [placeholder]="'recruitment.scheduleInterview.locationDetailsPlaceholder' | translate">
+          </div>
         }
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Interviewer Name</mat-label>
-          <input matInput formControlName="interviewerName" placeholder="Name of the interviewer">
-        </mat-form-field>
+        <div>
+          <label for="interviewerName" class="sw-label">{{ 'recruitment.scheduleInterview.interviewerName' | translate }}</label>
+          <input id="interviewerName" type="text" formControlName="interviewerName" class="sw-input w-full" aria-required="true"
+                 [placeholder]="'recruitment.scheduleInterview.interviewerNamePlaceholder' | translate">
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Agenda (optional)</mat-label>
-          <textarea matInput formControlName="agenda" rows="3"
-                    placeholder="Interview agenda and topics to cover..."></textarea>
-        </mat-form-field>
+        <div>
+          <label for="agenda" class="sw-label">{{ 'recruitment.scheduleInterview.agenda' | translate }}</label>
+          <textarea id="agenda" formControlName="agenda" class="sw-input w-full" rows="3"
+                    [placeholder]="'recruitment.scheduleInterview.agendaPlaceholder' | translate"></textarea>
+        </div>
       </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-              [disabled]="form.invalid || saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Schedule Interview
-        }
-      </button>
-    </mat-dialog-actions>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-dark-border">
+        <sw-button variant="ghost" size="md" [disabled]="saving()" (clicked)="cancel()">
+          {{ 'common.cancel' | translate }}
+        </sw-button>
+        <sw-button variant="primary" size="md" [disabled]="form.invalid" [loading]="saving()" (clicked)="onSubmit()">
+          <span class="material-icons text-lg" aria-hidden="true">event</span>
+          {{ 'recruitment.scheduleInterview.submit' | translate }}
+        </sw-button>
+      </div>
+    </div>
   `,
-  styles: [`
-    .dialog-info {
-      margin-bottom: 16px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    mat-dialog-content {
-      min-width: 400px;
-    }
-
-    mat-dialog-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ScheduleInterviewDialogComponent {
-  readonly dialogRef = inject(MatDialogRef<ScheduleInterviewDialogComponent>);
-  readonly data: DialogData = inject(MAT_DIALOG_DATA);
+  readonly dialogRef: DialogRef = inject('DIALOG_REF' as any);
+  readonly data: DialogData = inject('DIALOG_DATA' as any);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
+  private readonly translate = inject(TranslateService);
 
   form: FormGroup;
   saving = signal(false);
 
   interviewTypes: { value: InterviewType; label: string }[] = [
-    { value: 'PHONE_SCREEN', label: 'Phone Screen' },
-    { value: 'VIDEO_CALL', label: 'Video Call' },
-    { value: 'IN_PERSON', label: 'In Person' },
-    { value: 'TECHNICAL', label: 'Technical Interview' },
-    { value: 'BEHAVIORAL', label: 'Behavioral Interview' },
-    { value: 'PANEL', label: 'Panel Interview' },
-    { value: 'CASE_STUDY', label: 'Case Study' },
-    { value: 'FINAL', label: 'Final Interview' }
+    { value: 'PHONE_SCREEN', label: 'recruitment.scheduleInterview.typePhoneScreen' },
+    { value: 'VIDEO_CALL', label: 'recruitment.scheduleInterview.typeVideoCall' },
+    { value: 'IN_PERSON', label: 'recruitment.scheduleInterview.typeInPerson' },
+    { value: 'TECHNICAL', label: 'recruitment.scheduleInterview.typeTechnical' },
+    { value: 'BEHAVIORAL', label: 'recruitment.scheduleInterview.typeBehavioral' },
+    { value: 'PANEL', label: 'recruitment.scheduleInterview.typePanel' },
+    { value: 'CASE_STUDY', label: 'recruitment.scheduleInterview.typeCaseStudy' },
+    { value: 'FINAL', label: 'recruitment.scheduleInterview.typeFinal' }
   ];
 
   constructor() {
@@ -175,7 +145,7 @@ export class ScheduleInterviewDialogComponent {
 
     this.form = this.fb.group({
       interviewType: ['VIDEO_CALL', Validators.required],
-      date: [tomorrow, Validators.required],
+      date: [this.formatDate(tomorrow), Validators.required],
       time: ['10:00', Validators.required],
       durationMinutes: [60, Validators.required],
       locationType: ['REMOTE', Validators.required],
@@ -184,6 +154,14 @@ export class ScheduleInterviewDialogComponent {
       interviewerName: ['', Validators.required],
       agenda: ['']
     });
+  }
+
+  private formatDate(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  cancel(): void {
+    this.dialogRef.close();
   }
 
   onSubmit(): void {
@@ -205,7 +183,7 @@ export class ScheduleInterviewDialogComponent {
       locationType: formValue.locationType,
       locationDetails: formValue.locationDetails,
       meetingLink: formValue.meetingLink,
-      interviewerId: 'current-user-id', // Would come from auth service
+      interviewerId: '00000000-0000-0000-0000-000000000100', // Dev user ID - would come from auth service in production
       interviewerName: formValue.interviewerName,
       agenda: formValue.agenda
     };
@@ -216,7 +194,8 @@ export class ScheduleInterviewDialogComponent {
         this.dialogRef.close(true);
       },
       error: (err) => {
-        console.error('Failed to schedule interview', err);
+        const errorMsg = this.translate.instant('recruitment.scheduleInterview.error');
+        console.error(errorMsg, err);
         this.saving.set(false);
       }
     });

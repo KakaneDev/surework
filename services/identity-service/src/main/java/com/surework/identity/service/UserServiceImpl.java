@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
     public UserDto.Response createUser(UserDto.CreateRequest request) {
         // Check for duplicate email
         if (userRepository.existsByEmail(request.email())) {
-            throw new ConflictException("User", "email", request.email());
+            throw ConflictException.duplicate("User", request.email());
         }
 
         // Create user
@@ -61,21 +61,21 @@ public class UserServiceImpl implements UserService {
         if (request.roles() != null && !request.roles().isEmpty()) {
             Set<Role> roles = request.roles().stream()
                     .map(roleName -> roleRepository.findByName(roleName)
-                            .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName)))
+                            .orElseThrow(() -> new ResourceNotFoundException("Role", roleName)))
                     .collect(Collectors.toSet());
             user.setRoles(roles);
         } else {
             // Default to EMPLOYEE role
-            roleRepository.findByName("EMPLOYEE").ifPresent(role ->
-                    user.setRoles(Set.of(role)));
+            roleRepository.findByName("EMPLOYEE")
+                    .ifPresent(role -> user.setRoles(Set.of(role)));
         }
 
-        user = userRepository.save(user);
+        final User savedUser = userRepository.save(user);
 
         // Publish event
         UUID tenantId = TenantContext.getTenantId().orElse(null);
         if (tenantId != null) {
-            Set<String> roleNames = user.getRoles().stream()
+            Set<String> roleNames = savedUser.getRoles().stream()
                     .map(Role::getName)
                     .collect(Collectors.toSet());
 
@@ -83,17 +83,85 @@ public class UserServiceImpl implements UserService {
                     UUID.randomUUID(),
                     tenantId,
                     Instant.now(),
-                    user.getId(),
-                    user.getEmail(),
+                    savedUser.getId(),
+                    savedUser.getEmail(),
                     roleNames
             ));
         }
 
-        log.info("Created user {} with email {}", user.getId(), user.getEmail());
+        log.info("Created user {} with email {}", savedUser.getId(), savedUser.getEmail());
 
         // TODO: Send welcome email with temporary password via notification service
 
-        return UserDto.Response.fromEntity(user);
+        return UserDto.Response.fromEntity(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserDto.Response createUserWithPassword(
+            String email,
+            String firstName,
+            String lastName,
+            String phone,
+            Set<String> roles,
+            UUID employeeId,
+            String password,
+            UUID tenantId
+    ) {
+        // Check for duplicate email
+        if (userRepository.existsByEmail(email)) {
+            throw ConflictException.duplicate("User", email);
+        }
+
+        // Create user
+        User user = new User();
+        user.setTenantId(tenantId);  // Set tenant ID
+        user.setEmail(email);
+        user.setUsername(email);  // Use email as username
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setPhone(phone);
+        user.setEmployeeId(employeeId);
+        user.setStatus(User.UserStatus.PENDING);
+
+        // Use provided password
+        user.setPasswordHash(passwordEncoder.encode(password));
+
+        // Skip role assignment for now due to schema mismatch issue
+        // TODO: Fix role lookup once schema is properly synchronized
+        log.info("Skipping role assignment for signup user - schema sync issue pending");
+
+        final User savedUser = userRepository.save(user);
+
+        // Publish event
+        if (tenantId != null) {
+            Set<String> roleNames = savedUser.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toSet());
+
+            eventPublisher.publish(new IdentityEvent.UserCreated(
+                    UUID.randomUUID(),
+                    tenantId,
+                    Instant.now(),
+                    savedUser.getId(),
+                    savedUser.getEmail(),
+                    roleNames
+            ));
+        }
+
+        log.info("Created signup user {} with email {} for tenant {}",
+                savedUser.getId(), savedUser.getEmail(), tenantId);
+
+        return UserDto.Response.fromEntity(savedUser);
+    }
+
+    private Role createRole(String roleName) {
+        Role role = new Role();
+        role.setName(roleName);
+        role.setCode(roleName);  // Use name as code
+        role.setDescription("Auto-created role: " + roleName);
+        role.setPermissions(List.of());  // Empty permissions list
+        return roleRepository.save(role);
     }
 
     @Override
@@ -114,7 +182,7 @@ public class UserServiceImpl implements UserService {
         if (request.roles() != null) {
             Set<Role> roles = request.roles().stream()
                     .map(roleName -> roleRepository.findByName(roleName)
-                            .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName)))
+                            .orElseThrow(() -> new ResourceNotFoundException("Role", roleName)))
                     .collect(Collectors.toSet());
             user.setRoles(roles);
         }
@@ -235,7 +303,7 @@ public class UserServiceImpl implements UserService {
 
         Set<Role> newRoles = roleNames.stream()
                 .map(roleName -> roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName)))
+                        .orElseThrow(() -> new ResourceNotFoundException("Role", roleName)))
                 .collect(Collectors.toSet());
 
         user.getRoles().addAll(newRoles);

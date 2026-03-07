@@ -1,0 +1,37 @@
+# Production Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=prod or --spring.profiles.active=prod
+# All secrets MUST be provided via environment variables
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    clean-disabled: true
+
+# Production database - requires environment variables
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+
+# Production Kafka
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+# Production JWT - MUST be set via environment variable
+surework:
+  admin:
+    jwt:
+      secret: ${JWT_SECRET}
+
+logging:
+  level:
+    com.surework: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.transaction: WARN
+    root: INFO

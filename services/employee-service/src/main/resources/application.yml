@@ -1,16 +1,19 @@
 server:
-  port: ${SERVER_PORT:8086}
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: employee-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_employee}
     username: ${DB_USERNAME:surework}
     password: ${DB_PASSWORD:surework}
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
     show-sql: false
     properties:
       hibernate:

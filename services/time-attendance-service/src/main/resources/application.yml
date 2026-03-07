@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: time-attendance-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://localhost:5432/surework_time_attendance
@@ -16,7 +18,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

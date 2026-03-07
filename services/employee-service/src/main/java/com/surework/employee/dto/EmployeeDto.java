@@ -9,6 +9,7 @@ import java.util.UUID;
 public sealed interface EmployeeDto permits
         EmployeeDto.EmployeeResponse,
         EmployeeDto.EmployeeListItem,
+        EmployeeDto.EmployeeHierarchyItem,
         EmployeeDto.CreateEmployeeRequest,
         EmployeeDto.DepartmentResponse {
 
@@ -53,6 +54,16 @@ public sealed interface EmployeeDto permits
             String jobTitle,
             EmploymentStatus status,
             LocalDate hireDate
+    ) implements EmployeeDto {}
+
+    record EmployeeHierarchyItem(
+            UUID id,
+            String employeeNumber,
+            String fullName,
+            String jobTitle,
+            String department,
+            EmploymentStatus status,
+            UUID managerId
     ) implements EmployeeDto {}
 
     record CreateEmployeeRequest(

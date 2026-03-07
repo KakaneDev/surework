@@ -2,18 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@ang
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDividerModule } from '@angular/material/divider';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Candidate,
@@ -21,6 +10,7 @@ import {
   UpdateCandidateRequest,
   Gender
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ToastService } from '@shared/ui';
 
 @Component({
   selector: 'app-candidate-form',
@@ -29,394 +19,294 @@ import {
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatCheckboxModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatSnackBarModule,
-    MatDividerModule
+    TranslateModule,
+    SpinnerComponent
   ],
   template: `
-    <div class="candidate-form-container">
-      <header class="form-header">
-        <div class="header-left">
-          <a [routerLink]="isEditMode() ? ['/recruitment/candidates', candidateId()] : '/recruitment/candidates'" class="back-link">
-            <mat-icon>arrow_back</mat-icon>
+    <div class="space-y-6 max-w-4xl mx-auto">
+      <!-- Header -->
+      <div class="sw-page-header">
+        <div class="flex items-center gap-3">
+          <a [routerLink]="isEditMode() ? ['/recruitment/candidates', candidateId()] : '/recruitment/candidates'"
+             class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-elevated transition-colors"
+             [attr.aria-label]="'common.back' | translate">
+            <span class="material-icons" aria-hidden="true">arrow_back</span>
           </a>
-          <h1>{{ isEditMode() ? 'Edit Candidate' : 'Add Candidate' }}</h1>
+          <span class="material-icons text-3xl text-primary-500">person_add</span>
+          <div>
+            <h1 class="sw-page-title">{{ isEditMode() ? ('recruitment.candidateForm.editTitle' | translate) : ('recruitment.candidateForm.addTitle' | translate) }}</h1>
+            <p class="sw-page-description">{{ isEditMode() ? ('recruitment.candidateForm.editDescription' | translate) : ('recruitment.candidateForm.addDescription' | translate) }}</p>
+          </div>
         </div>
-      </header>
+      </div>
 
       @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner diameter="48"></mat-spinner>
+        <div class="flex justify-center items-center py-24">
+          <sw-spinner size="lg" />
         </div>
       } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <mat-card>
-            <mat-card-content>
-              <!-- Personal Information -->
-              <section class="form-section">
-                <h3>Personal Information</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>First Name</mat-label>
-                    <input matInput formControlName="firstName">
-                    @if (form.get('firstName')?.hasError('required')) {
-                      <mat-error>First name is required</mat-error>
-                    }
-                  </mat-form-field>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border overflow-hidden">
+            <!-- Personal Information -->
+            <section class="p-6 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+                <span class="material-icons text-primary-500">person</span>
+                {{ 'recruitment.candidateForm.personalInformation' | translate }}
+              </h3>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Last Name</mat-label>
-                    <input matInput formControlName="lastName">
-                    @if (form.get('lastName')?.hasError('required')) {
-                      <mat-error>Last name is required</mat-error>
-                    }
-                  </mat-form-field>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.firstName' | translate }} *</label>
+                  <input type="text" formControlName="firstName" class="sw-input w-full"
+                         [class.border-error-500]="form.get('firstName')?.touched && form.get('firstName')?.hasError('required')">
+                  @if (form.get('firstName')?.touched && form.get('firstName')?.hasError('required')) {
+                    <p class="text-sm text-error-500 mt-1">{{ 'recruitment.candidateForm.firstNameRequired' | translate }}</p>
+                  }
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Email</mat-label>
-                    <input matInput type="email" formControlName="email">
-                    @if (form.get('email')?.hasError('required')) {
-                      <mat-error>Email is required</mat-error>
-                    }
-                    @if (form.get('email')?.hasError('email')) {
-                      <mat-error>Invalid email format</mat-error>
-                    }
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Phone</mat-label>
-                    <input matInput formControlName="phone" placeholder="+27 XX XXX XXXX">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.lastName' | translate }} *</label>
+                  <input type="text" formControlName="lastName" class="sw-input w-full"
+                         [class.border-error-500]="form.get('lastName')?.touched && form.get('lastName')?.hasError('required')">
+                  @if (form.get('lastName')?.touched && form.get('lastName')?.hasError('required')) {
+                    <p class="text-sm text-error-500 mt-1">{{ 'recruitment.candidateForm.lastNameRequired' | translate }}</p>
+                  }
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>ID Number</mat-label>
-                    <input matInput formControlName="idNumber">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Date of Birth</mat-label>
-                    <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth">
-                    <mat-datepicker-toggle matIconSuffix [for]="dobPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #dobPicker></mat-datepicker>
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.email' | translate }} *</label>
+                  <input type="email" formControlName="email" class="sw-input w-full"
+                         [class.border-error-500]="form.get('email')?.touched && form.get('email')?.invalid">
+                  @if (form.get('email')?.touched && form.get('email')?.hasError('required')) {
+                    <p class="text-sm text-error-500 mt-1">{{ 'recruitment.candidateForm.emailRequired' | translate }}</p>
+                  }
+                  @if (form.get('email')?.touched && form.get('email')?.hasError('email')) {
+                    <p class="text-sm text-error-500 mt-1">{{ 'recruitment.candidateForm.emailInvalid' | translate }}</p>
+                  }
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Gender</mat-label>
-                    <mat-select formControlName="gender">
-                      <mat-option value="">Prefer not to say</mat-option>
-                      <mat-option value="MALE">Male</mat-option>
-                      <mat-option value="FEMALE">Female</mat-option>
-                      <mat-option value="OTHER">Other</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Nationality</mat-label>
-                    <input matInput formControlName="nationality" placeholder="e.g. South African">
-                  </mat-form-field>
-                </div>
-              </section>
-
-              <mat-divider></mat-divider>
-
-              <!-- Address -->
-              <section class="form-section">
-                <h3>Address</h3>
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Address Line 1</mat-label>
-                    <input matInput formControlName="addressLine1">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.phone' | translate }}</label>
+                  <input type="tel" formControlName="phone" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.phonePlaceholder' | translate">
                 </div>
 
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Address Line 2</mat-label>
-                    <input matInput formControlName="addressLine2">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.idNumber' | translate }}</label>
+                  <input type="text" formControlName="idNumber" class="sw-input w-full">
                 </div>
 
-                <div class="form-row three-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>City</mat-label>
-                    <input matInput formControlName="city">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Province</mat-label>
-                    <input matInput formControlName="province">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Postal Code</mat-label>
-                    <input matInput formControlName="postalCode">
-                  </mat-form-field>
-                </div>
-              </section>
-
-              <mat-divider></mat-divider>
-
-              <!-- Professional Information -->
-              <section class="form-section">
-                <h3>Professional Information</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Current Job Title</mat-label>
-                    <input matInput formControlName="currentJobTitle">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Current Employer</mat-label>
-                    <input matInput formControlName="currentEmployer">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.dateOfBirth' | translate }}</label>
+                  <input type="date" formControlName="dateOfBirth" class="sw-input w-full">
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Years of Experience</mat-label>
-                    <input matInput type="number" formControlName="yearsExperience" min="0">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Highest Qualification</mat-label>
-                    <input matInput formControlName="highestQualification" placeholder="e.g. Bachelor's Degree">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.gender' | translate }}</label>
+                  <select formControlName="gender" class="sw-input w-full">
+                    <option value="">{{ 'recruitment.candidateForm.genderPreferNotToSay' | translate }}</option>
+                    <option value="MALE">{{ 'recruitment.candidateForm.genderMale' | translate }}</option>
+                    <option value="FEMALE">{{ 'recruitment.candidateForm.genderFemale' | translate }}</option>
+                    <option value="OTHER">{{ 'recruitment.candidateForm.genderOther' | translate }}</option>
+                  </select>
                 </div>
 
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Field of Study</mat-label>
-                    <input matInput formControlName="fieldOfStudy" placeholder="e.g. Computer Science">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.nationality' | translate }}</label>
+                  <input type="text" formControlName="nationality" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.nationalityPlaceholder' | translate">
+                </div>
+              </div>
+            </section>
+
+            <!-- Address -->
+            <section class="p-6 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+                <span class="material-icons text-primary-500">location_on</span>
+                {{ 'recruitment.candidateForm.address' | translate }}
+              </h3>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.addressLine1' | translate }}</label>
+                  <input type="text" formControlName="addressLine1" class="sw-input w-full">
                 </div>
 
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Skills</mat-label>
-                    <textarea matInput formControlName="skills" rows="3"
-                              placeholder="List relevant skills (e.g. Java, Python, Project Management)"></textarea>
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.addressLine2' | translate }}</label>
+                  <input type="text" formControlName="addressLine2" class="sw-input w-full">
                 </div>
 
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Languages</mat-label>
-                    <input matInput formControlName="languages" placeholder="e.g. English (Fluent), Afrikaans (Conversational)">
-                  </mat-form-field>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="sw-label">{{ 'recruitment.candidateForm.city' | translate }}</label>
+                    <input type="text" formControlName="city" class="sw-input w-full">
+                  </div>
+
+                  <div>
+                    <label class="sw-label">{{ 'recruitment.candidateForm.province' | translate }}</label>
+                    <input type="text" formControlName="province" class="sw-input w-full">
+                  </div>
+
+                  <div>
+                    <label class="sw-label">{{ 'recruitment.candidateForm.postalCode' | translate }}</label>
+                    <input type="text" formControlName="postalCode" class="sw-input w-full">
+                  </div>
                 </div>
-              </section>
+              </div>
+            </section>
 
-              <mat-divider></mat-divider>
+            <!-- Professional Information -->
+            <section class="p-6 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+                <span class="material-icons text-primary-500">work</span>
+                {{ 'recruitment.candidateForm.professionalInformation' | translate }}
+              </h3>
 
-              <!-- Preferences -->
-              <section class="form-section">
-                <h3>Preferences</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Expected Salary (ZAR)</mat-label>
-                    <input matInput type="number" formControlName="expectedSalary" min="0">
-                    <span matTextPrefix>R&nbsp;</span>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Notice Period (Days)</mat-label>
-                    <input matInput type="number" formControlName="noticePeriodDays" min="0">
-                  </mat-form-field>
-                </div>
-
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Available From</mat-label>
-                    <input matInput [matDatepicker]="availablePicker" formControlName="availableFrom">
-                    <mat-datepicker-toggle matIconSuffix [for]="availablePicker"></mat-datepicker-toggle>
-                    <mat-datepicker #availablePicker></mat-datepicker>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Preferred Locations</mat-label>
-                    <input matInput formControlName="preferredLocations" placeholder="e.g. Johannesburg, Cape Town">
-                  </mat-form-field>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.currentJobTitle' | translate }}</label>
+                  <input type="text" formControlName="currentJobTitle" class="sw-input w-full">
                 </div>
 
-                <div class="form-row">
-                  <mat-checkbox formControlName="willingToRelocate">Willing to relocate</mat-checkbox>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.currentEmployer' | translate }}</label>
+                  <input type="text" formControlName="currentEmployer" class="sw-input w-full">
                 </div>
-              </section>
 
-              <mat-divider></mat-divider>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.yearsExperience' | translate }}</label>
+                  <input type="number" formControlName="yearsExperience" class="sw-input w-full" min="0">
+                </div>
 
-              <!-- Links & Source -->
-              <section class="form-section">
-                <h3>Links & Source</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>LinkedIn URL</mat-label>
-                    <input matInput formControlName="linkedinUrl" placeholder="https://linkedin.com/in/...">
-                  </mat-form-field>
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.highestQualification' | translate }}</label>
+                  <input type="text" formControlName="highestQualification" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.highestQualificationPlaceholder' | translate">
+                </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Portfolio URL</mat-label>
-                    <input matInput formControlName="portfolioUrl" placeholder="https://...">
-                  </mat-form-field>
+                <div class="md:col-span-2">
+                  <label class="sw-label">{{ 'recruitment.candidateForm.fieldOfStudy' | translate }}</label>
+                  <input type="text" formControlName="fieldOfStudy" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.fieldOfStudyPlaceholder' | translate">
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="sw-label">{{ 'recruitment.candidateForm.skills' | translate }}</label>
+                  <textarea formControlName="skills" class="sw-input w-full" rows="3"
+                            [placeholder]="'recruitment.candidateForm.skillsPlaceholder' | translate"></textarea>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="sw-label">{{ 'recruitment.candidateForm.languages' | translate }}</label>
+                  <input type="text" formControlName="languages" class="sw-input w-full"
+                         [placeholder]="'recruitment.candidateForm.languagesPlaceholder' | translate">
+                </div>
+              </div>
+            </section>
+
+            <!-- Preferences -->
+            <section class="p-6 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+                <span class="material-icons text-primary-500">tune</span>
+                {{ 'recruitment.candidateForm.preferences' | translate }}
+              </h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.expectedSalary' | translate }}</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">R</span>
+                    <input type="number" formControlName="expectedSalary" class="sw-input w-full pl-8" min="0">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.noticePeriodDays' | translate }}</label>
+                  <input type="number" formControlName="noticePeriodDays" class="sw-input w-full" min="0">
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.availableFrom' | translate }}</label>
+                  <input type="date" formControlName="availableFrom" class="sw-input w-full">
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.preferredLocations' | translate }}</label>
+                  <input type="text" formControlName="preferredLocations" class="sw-input w-full"
+                         [placeholder]="'recruitment.candidateForm.preferredLocationsPlaceholder' | translate">
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" formControlName="willingToRelocate"
+                           class="w-5 h-5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <span class="text-neutral-700 dark:text-neutral-300">{{ 'recruitment.candidateForm.willingToRelocate' | translate }}</span>
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <!-- Links & Source -->
+            <section class="p-6">
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
+                <span class="material-icons text-primary-500">link</span>
+                {{ 'recruitment.candidateForm.linksAndSource' | translate }}
+              </h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.linkedinUrl' | translate }}</label>
+                  <input type="url" formControlName="linkedinUrl" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.linkedinUrlPlaceholder' | translate">
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'recruitment.candidateForm.portfolioUrl' | translate }}</label>
+                  <input type="url" formControlName="portfolioUrl" class="sw-input w-full" [placeholder]="'recruitment.candidateForm.portfolioUrlPlaceholder' | translate">
                 </div>
 
                 @if (!isEditMode()) {
-                  <div class="form-row two-cols">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Source</mat-label>
-                      <mat-select formControlName="source">
-                        <mat-option value="">Select source</mat-option>
-                        <mat-option value="CAREER_SITE">Career Site</mat-option>
-                        <mat-option value="LINKEDIN">LinkedIn</mat-option>
-                        <mat-option value="REFERRAL">Employee Referral</mat-option>
-                        <mat-option value="JOB_BOARD">Job Board</mat-option>
-                        <mat-option value="RECRUITMENT_AGENCY">Recruitment Agency</mat-option>
-                        <mat-option value="DIRECT">Direct Application</mat-option>
-                        <mat-option value="OTHER">Other</mat-option>
-                      </mat-select>
-                    </mat-form-field>
+                  <div>
+                    <label class="sw-label">{{ 'recruitment.candidateForm.source' | translate }}</label>
+                    <select formControlName="source" class="sw-input w-full">
+                      <option value="">{{ 'recruitment.candidateForm.selectSource' | translate }}</option>
+                      <option value="CAREER_SITE">{{ 'recruitment.candidateForm.sourceCareerSite' | translate }}</option>
+                      <option value="LINKEDIN">{{ 'recruitment.candidateForm.sourceLinkedin' | translate }}</option>
+                      <option value="REFERRAL">{{ 'recruitment.candidateForm.sourceEmployeeReferral' | translate }}</option>
+                      <option value="JOB_BOARD">{{ 'recruitment.candidateForm.sourceJobBoard' | translate }}</option>
+                      <option value="RECRUITMENT_AGENCY">{{ 'recruitment.candidateForm.sourceRecruitmentAgency' | translate }}</option>
+                      <option value="DIRECT">{{ 'recruitment.candidateForm.sourceDirectApplication' | translate }}</option>
+                      <option value="OTHER">{{ 'recruitment.candidateForm.sourceOther' | translate }}</option>
+                    </select>
+                  </div>
 
-                    <mat-form-field appearance="outline">
-                      <mat-label>Referred By</mat-label>
-                      <input matInput formControlName="referredBy" placeholder="Name of referrer (if applicable)">
-                    </mat-form-field>
+                  <div>
+                    <label class="sw-label">{{ 'recruitment.candidateForm.referredBy' | translate }}</label>
+                    <input type="text" formControlName="referredBy" class="sw-input w-full"
+                           [placeholder]="'recruitment.candidateForm.referredByPlaceholder' | translate">
                   </div>
                 }
-              </section>
-            </mat-card-content>
-          </mat-card>
+              </div>
+            </section>
+          </div>
 
           <!-- Actions -->
-          <div class="form-actions">
-            <button mat-button type="button" (click)="cancel()">Cancel</button>
-            <button mat-raised-button color="primary" type="submit"
-                    [disabled]="form.invalid || saving()">
+          <div class="flex justify-between items-center mt-6">
+            <button type="button" (click)="cancel()"
+                    class="px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-dark-elevated rounded-lg transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+            <button type="submit"
+                    [disabled]="form.invalid || saving()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-fast">
               @if (saving()) {
-                <mat-spinner diameter="20"></mat-spinner>
+                <sw-spinner size="sm" />
               } @else {
-                {{ isEditMode() ? 'Update Candidate' : 'Add Candidate' }}
+                <span class="material-icons text-lg">save</span>
               }
+              {{ isEditMode() ? ('recruitment.candidateForm.updateButton' | translate) : ('recruitment.candidateForm.addButton' | translate) }}
             </button>
           </div>
         </form>
       }
     </div>
   `,
-  styles: [`
-    .candidate-form-container {
-      padding: 24px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .form-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .back-link {
-      color: rgba(0, 0, 0, 0.6);
-      display: flex;
-    }
-
-    .form-header h1 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 500;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 300px;
-    }
-
-    .form-section {
-      padding: 24px 0;
-    }
-
-    .form-section:first-child {
-      padding-top: 0;
-    }
-
-    .form-section h3 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
-    }
-
-    .form-row {
-      margin-bottom: 16px;
-    }
-
-    .form-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .form-row.two-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .form-row.three-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-    }
-
-    @media (max-width: 600px) {
-      .form-row.two-cols,
-      .form-row.three-cols {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    mat-divider {
-      margin: 0;
-    }
-
-    .form-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 24px;
-      padding: 16px 0;
-    }
-
-    .form-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CandidateFormComponent implements OnInit {
@@ -424,7 +314,7 @@ export class CandidateFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast = inject(ToastService);
 
   form: FormGroup;
   loading = signal(false);
@@ -485,7 +375,7 @@ export class CandidateFormComponent implements OnInit {
           email: candidate.email,
           phone: candidate.phone,
           idNumber: candidate.idNumber,
-          dateOfBirth: candidate.dateOfBirth ? new Date(candidate.dateOfBirth) : null,
+          dateOfBirth: candidate.dateOfBirth ? this.toInputDate(candidate.dateOfBirth) : null,
           gender: candidate.gender || '',
           nationality: candidate.nationality,
           city: candidate.city,
@@ -499,7 +389,7 @@ export class CandidateFormComponent implements OnInit {
           languages: candidate.languages,
           expectedSalary: candidate.expectedSalary,
           noticePeriodDays: candidate.noticePeriodDays,
-          availableFrom: candidate.availableFrom ? new Date(candidate.availableFrom) : null,
+          availableFrom: candidate.availableFrom ? this.toInputDate(candidate.availableFrom) : null,
           willingToRelocate: candidate.willingToRelocate,
           preferredLocations: candidate.preferredLocations,
           linkedinUrl: candidate.linkedinUrl,
@@ -509,11 +399,15 @@ export class CandidateFormComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load candidate', err);
-        this.snackBar.open('Failed to load candidate details', 'Dismiss', { duration: 5000 });
+        this.toast.error('recruitment.candidateForm.loadError');
         this.loading.set(false);
         this.router.navigate(['/recruitment/candidates']);
       }
     });
+  }
+
+  private toInputDate(dateStr: string): string {
+    return dateStr.split('T')[0];
   }
 
   onSubmit(): void {
@@ -539,13 +433,13 @@ export class CandidateFormComponent implements OnInit {
       this.recruitmentService.updateCandidate(this.candidateId()!, request).subscribe({
         next: (candidate) => {
           this.saving.set(false);
-          this.snackBar.open('Candidate updated successfully', 'Dismiss', { duration: 3000 });
+          this.toast.success('recruitment.candidateForm.updateSuccess');
           this.router.navigate(['/recruitment/candidates', candidate.id]);
         },
         error: (err) => {
           console.error('Failed to update candidate', err);
           this.saving.set(false);
-          this.snackBar.open('Failed to update candidate', 'Dismiss', { duration: 5000 });
+          this.toast.error('recruitment.candidateForm.updateError');
         }
       });
     } else {
@@ -555,7 +449,7 @@ export class CandidateFormComponent implements OnInit {
         email: formValue.email,
         phone: formValue.phone,
         idNumber: formValue.idNumber,
-        dateOfBirth: formValue.dateOfBirth ? this.formatDate(formValue.dateOfBirth) : undefined,
+        dateOfBirth: formValue.dateOfBirth || undefined,
         gender: formValue.gender || undefined,
         nationality: formValue.nationality,
         addressLine1: formValue.addressLine1,
@@ -572,7 +466,7 @@ export class CandidateFormComponent implements OnInit {
         languages: formValue.languages,
         expectedSalary: formValue.expectedSalary,
         noticePeriodDays: formValue.noticePeriodDays,
-        availableFrom: formValue.availableFrom ? this.formatDate(formValue.availableFrom) : undefined,
+        availableFrom: formValue.availableFrom || undefined,
         willingToRelocate: formValue.willingToRelocate,
         preferredLocations: formValue.preferredLocations,
         linkedinUrl: formValue.linkedinUrl,
@@ -584,20 +478,16 @@ export class CandidateFormComponent implements OnInit {
       this.recruitmentService.createCandidate(request).subscribe({
         next: (candidate) => {
           this.saving.set(false);
-          this.snackBar.open('Candidate added successfully', 'Dismiss', { duration: 3000 });
+          this.toast.success('recruitment.candidateForm.createSuccess');
           this.router.navigate(['/recruitment/candidates', candidate.id]);
         },
         error: (err) => {
           console.error('Failed to create candidate', err);
           this.saving.set(false);
-          this.snackBar.open('Failed to add candidate', 'Dismiss', { duration: 5000 });
+          this.toast.error('recruitment.candidateForm.createError');
         }
       });
     }
-  }
-
-  private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
   }
 
   cancel(): void {

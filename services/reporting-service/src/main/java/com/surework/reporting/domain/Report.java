@@ -1,6 +1,8 @@
 package com.surework.reporting.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,8 +46,8 @@ public class Report {
     private ReportStatus status = ReportStatus.PENDING;
 
     // Parameters used to generate the report
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "parameters", columnDefinition = "jsonb")
-    @Convert(converter = MapToJsonConverter.class)
     private Map<String, Object> parameters = new HashMap<>();
 
     // Date range for report data
@@ -175,6 +177,8 @@ public class Report {
         TIME_TO_HIRE,
         SOURCE_EFFECTIVENESS,
         OFFER_ACCEPTANCE,
+        EXTERNAL_PORTAL_PERFORMANCE,
+        JOB_ADVERT_EFFECTIVENESS,
 
         // Statutory Reports (South Africa)
         EMP201,      // Monthly PAYE/UIF/SDL

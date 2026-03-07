@@ -26,6 +26,16 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /**
+     * Role code used for authorization checks (e.g., HR_MANAGER, SUPER_ADMIN).
+     * This is the value used in @PreAuthorize annotations and JWT tokens.
+     */
+    @Column(nullable = false)
+    private String code;
+
+    /**
+     * Human-readable display name (e.g., "HR Manager", "Super Administrator").
+     */
     @Column(nullable = false, unique = true)
     private String name;
 

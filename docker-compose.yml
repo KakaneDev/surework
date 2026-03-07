@@ -358,6 +358,79 @@ services:
     networks:
       - surework-network
 
+  # Analytics Service (Admin Dashboard)
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: surework-analytics
+    ports:
+      - "8092:8092"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_analytics
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Billing Service (Admin Dashboard)
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile
+    container_name: surework-billing
+    ports:
+      - "8093:8093"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: surework_billing
+      DB_USERNAME: surework
+      DB_PASSWORD: surework
+      EUREKA_URI: http://eureka-server:8761/eureka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres
+      - eureka-server
+      - kafka
+    networks:
+      - surework-network
+
+  # Admin Dashboard Frontend
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: surework-frontend-admin
+    ports:
+      - "4201:80"
+    environment:
+      API_URL: http://api-gateway:8080
+    depends_on:
+      - api-gateway
+    networks:
+      - surework-network
+
+  # MailHog (Email testing)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: surework-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - surework-network
+
 # ==================== Networks ====================
 networks:
   surework-network:

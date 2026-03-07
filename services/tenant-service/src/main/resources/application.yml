@@ -1,11 +1,19 @@
 spring:
   application:
     name: tenant-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   config:
     import: optional:configserver:http://localhost:8888
 
 server:
   port: 8081
+
+# SureWork Services Configuration
+surework:
+  services:
+    identity-service:
+      url: http://localhost:8085
 
 # Logging
 logging:

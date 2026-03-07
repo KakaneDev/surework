@@ -52,3 +52,52 @@ export const selectHasPermission = (permission: string) => createSelector(
   selectUserPermissions,
   (permissions) => permissions.includes(permission) || permissions.includes('*')
 );
+
+/**
+ * Check if user can approve leave requests (manager, HR, or admin).
+ * Role check is case-insensitive and handles ROLE_ prefix.
+ */
+export const selectCanApproveLeave = createSelector(
+  selectUserRoles,
+  selectUserPermissions,
+  (roles, permissions) => {
+    // Match actual role codes from the database
+    const approverRoles = [
+      'SUPER_ADMIN',      // Full system access
+      'TENANT_ADMIN',     // Full tenant access
+      'HR_MANAGER',       // HR operations
+      'DEPARTMENT_MANAGER', // Department management
+      // Legacy/alternative names for compatibility
+      'ADMIN', 'HR_ADMIN', 'MANAGER', 'DEPARTMENT_HEAD'
+    ];
+    const approverPermissions = ['leave:approve', 'leave:*', '*', 'LEAVE_APPROVE', 'LEAVE_MANAGE', 'ALL', 'TENANT_ALL'];
+
+    // Normalize roles: handle both string and object formats, uppercase and strip ROLE_ prefix
+    const normalizedRoles = roles
+      .filter(r => r != null)
+      .map(r => {
+        // Handle both string roles and object roles with 'code' property
+        const roleStr = typeof r === 'string' ? r : (r as any)?.code ?? '';
+        return roleStr.toUpperCase().replace(/^ROLE_/, '');
+      });
+
+    return normalizedRoles.some(r => approverRoles.includes(r)) ||
+           permissions.some(p => approverPermissions.includes(p));
+  }
+);
+
+/**
+ * Get the employee ID for the current user (used for leave API calls).
+ */
+export const selectCurrentEmployeeId = createSelector(
+  selectCurrentUser,
+  (user) => user?.employeeId ?? null
+);
+
+/**
+ * Get rate limiting information (for login lockout feedback).
+ */
+export const selectRateLimitInfo = createSelector(
+  selectAuthState,
+  (state) => state.rateLimit
+);

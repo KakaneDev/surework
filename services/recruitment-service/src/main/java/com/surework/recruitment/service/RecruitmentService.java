@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.surework.recruitment.domain.Client;
+
 /**
  * Service interface for recruitment operations.
  */
@@ -23,6 +25,10 @@ public interface RecruitmentService {
 
     Optional<RecruitmentDto.JobPostingResponse> getJob(UUID jobId);
 
+    Optional<JobPosting> getJobEntity(UUID jobId);
+
+    JobPosting saveJobPosting(JobPosting job);
+
     Optional<RecruitmentDto.JobPostingResponse> getJobByReference(String jobReference);
 
     Page<RecruitmentDto.JobPostingSummary> searchJobs(
@@ -31,6 +37,7 @@ public interface RecruitmentService {
             JobPosting.EmploymentType employmentType,
             String location,
             String searchTerm,
+            UUID clientId,
             Pageable pageable);
 
     Page<RecruitmentDto.JobPostingSummary> getPublicJobs(Pageable pageable);
@@ -48,6 +55,26 @@ public interface RecruitmentService {
     void cancelJob(UUID jobId);
 
     void incrementJobViews(UUID jobId);
+
+    /**
+     * Get the hiring manager's user ID for a job posting.
+     * Used for notification routing.
+     */
+    Optional<UUID> getHiringManagerUserId(UUID jobPostingId);
+
+    // === Client Operations ===
+
+    RecruitmentDto.ClientResponse createClient(RecruitmentDto.CreateClientRequest request);
+
+    RecruitmentDto.ClientResponse updateClient(UUID clientId, RecruitmentDto.UpdateClientRequest request);
+
+    Optional<RecruitmentDto.ClientResponse> getClient(UUID clientId);
+
+    Page<RecruitmentDto.ClientResponse> searchClients(Boolean active, String searchTerm, Pageable pageable);
+
+    List<RecruitmentDto.ClientSummary> getActiveClients();
+
+    void deactivateClient(UUID clientId);
 
     // === Candidate Operations ===
 
@@ -155,5 +182,17 @@ public interface RecruitmentService {
 
     List<RecruitmentDto.InterviewResponse> getTodaysInterviews();
 
+    List<RecruitmentDto.InterviewResponse> getUpcomingInterviews();
+
     List<RecruitmentDto.ApplicationResponse> getStaleApplications(int daysOld);
+
+    // === Analytics ===
+
+    RecruitmentDto.PortalPerformanceStats getPortalPerformanceStats();
+
+    RecruitmentDto.AdvertPerformanceStats getAdvertPerformanceStats();
+
+    RecruitmentDto.SourceEffectivenessStats getSourceEffectivenessStats();
+
+    RecruitmentDto.OfferAcceptanceStats getOfferAcceptanceStats();
 }

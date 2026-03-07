@@ -55,6 +55,11 @@ public class EmployeeController {
         return ResponseEntity.ok(Map.of("count", employeeService.countActiveEmployees()));
     }
 
+    @GetMapping("/employees/hierarchy")
+    public ResponseEntity<List<EmployeeHierarchyItem>> getHierarchyData() {
+        return ResponseEntity.ok(employeeService.getHierarchyData());
+    }
+
     @GetMapping("/departments")
     public ResponseEntity<List<DepartmentResponse>> getDepartments() {
         return ResponseEntity.ok(employeeService.getDepartments());

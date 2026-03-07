@@ -80,6 +80,8 @@ public class DocumentServiceImpl implements DocumentService {
                     request.ownerId(),
                     uploaderId
             );
+            // Set tenant ID - TODO: Get from security context in production
+            document.setTenantId(UUID.fromString("00000000-0000-0000-0000-000000000099"));
             document.setDescription(request.description());
             document.setOwnerName(request.ownerName());
             document.setFileName(originalFilename);
@@ -697,6 +699,7 @@ public class DocumentServiceImpl implements DocumentService {
 
     private void setRetentionPolicy(Document document) {
         // Set retention based on South African requirements
+        // Note: OTHER category has no retention to allow user-managed deletion
         Integer years = switch (document.getCategory()) {
             case EMPLOYMENT_CONTRACT, IRP5, PAYSLIP, BANK_CONFIRMATION,
                  TAX_NUMBER, UIF_DECLARATION, TRAINING_CERTIFICATE -> 5;
@@ -704,6 +707,7 @@ public class DocumentServiceImpl implements DocumentService {
                  WARNING_LETTER, PERFORMANCE_REVIEW -> 3;
             case CV -> 2;
             case ID_DOCUMENT, QUALIFICATION, CERTIFICATION, PASSPORT -> null; // Keep indefinitely
+            case OTHER -> null; // No retention - user can delete anytime
             default -> 3;
         };
 

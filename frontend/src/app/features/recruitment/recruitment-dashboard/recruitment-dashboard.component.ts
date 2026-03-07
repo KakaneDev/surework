@@ -1,13 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   RecruitmentService,
   RecruitmentDashboard,
@@ -15,6 +9,7 @@ import {
   Interview,
   PipelineStage
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent } from '@shared/ui';
 
 @Component({
   selector: 'app-recruitment-dashboard',
@@ -22,479 +17,218 @@ import {
   imports: [
     CommonModule,
     RouterLink,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatTableModule,
-    MatChipsModule,
-    MatTooltipModule,
+    TranslateModule,
+    SpinnerComponent,
     DatePipe
   ],
   template: `
-    <div class="recruitment-dashboard">
-      <header class="dashboard-header">
-        <h1>Recruitment</h1>
-        <div class="header-actions">
-          <a mat-raised-button color="primary" routerLink="/recruitment/jobs/new">
-            <mat-icon>add</mat-icon>
-            Post Job
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="sw-page-header">
+        <div class="flex items-center gap-3">
+          <span class="material-icons text-3xl text-primary-500">diversity_3</span>
+          <div>
+            <h1 class="sw-page-title">{{ 'recruitment.title' | translate }}</h1>
+            <p class="sw-page-description">{{ 'recruitment.dashboardPage.subtitle' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <a routerLink="/recruitment/candidates" class="sw-btn sw-btn-outline sw-btn-md">
+            <span class="material-icons text-lg">people</span>
+            {{ 'recruitment.candidates' | translate }}
           </a>
-          <a mat-raised-button routerLink="/recruitment/candidates/new">
-            <mat-icon>person_add</mat-icon>
-            Add Candidate
+          <a routerLink="/recruitment/jobs/new" class="sw-btn sw-btn-primary sw-btn-md">
+            <span class="material-icons text-lg">add</span>
+            {{ 'recruitment.dashboardPage.postJob' | translate }}
+          </a>
+          <a routerLink="/recruitment/candidates/new" class="sw-btn sw-btn-primary sw-btn-md bg-accent-500 hover:bg-accent-600">
+            <span class="material-icons text-lg">person_add</span>
+            {{ 'recruitment.candidate.addCandidate' | translate }}
           </a>
         </div>
-      </header>
+      </div>
 
       @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner diameter="48"></mat-spinner>
+        <div class="flex justify-center items-center py-24">
+          <sw-spinner size="lg" />
         </div>
       } @else if (error()) {
-        <mat-card class="error-card">
-          <mat-card-content>
-            <mat-icon color="warn">error</mat-icon>
-            <p>{{ error() }}</p>
-            <button mat-button color="primary" (click)="loadDashboard()">Retry</button>
-          </mat-card-content>
-        </mat-card>
+        <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-12 text-center">
+          <span class="material-icons text-5xl text-error-500 mb-4">error</span>
+          <p class="text-neutral-600 dark:text-neutral-400 mb-4">{{ error() }}</p>
+          <button (click)="loadDashboard()" class="px-4 py-2 text-primary-500 hover:text-primary-600 font-medium">{{ 'common.retry' | translate }}</button>
+        </div>
       } @else {
         <!-- Stats Cards -->
-        <div class="stats-grid">
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon open-jobs">
-                <mat-icon>work</mat-icon>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center">
+                <span class="material-icons text-white text-2xl">work</span>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ dashboard()?.openJobs || 0 }}</span>
-                <span class="stat-label">Open Jobs</span>
+              <div>
+                <p class="text-2xl font-bold text-neutral-800 dark:text-neutral-200">{{ dashboard()?.openJobs || 0 }}</p>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.dashboardPage.stats.openJobs' | translate }}</p>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
 
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon candidates">
-                <mat-icon>people</mat-icon>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
+                <span class="material-icons text-white text-2xl">people</span>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ dashboard()?.totalApplications || 0 }}</span>
-                <span class="stat-label">Total Applications</span>
+              <div>
+                <p class="text-2xl font-bold text-neutral-800 dark:text-neutral-200">{{ dashboard()?.totalApplications || 0 }}</p>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.dashboardPage.stats.totalApplications' | translate }}</p>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
 
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon interviews">
-                <mat-icon>event</mat-icon>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                <span class="material-icons text-white text-2xl">event</span>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ dashboard()?.interviewsThisWeek || 0 }}</span>
-                <span class="stat-label">Interviews This Week</span>
+              <div>
+                <p class="text-2xl font-bold text-neutral-800 dark:text-neutral-200">{{ dashboard()?.interviewsThisWeek || 0 }}</p>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.dashboardPage.stats.interviewsThisWeek' | translate }}</p>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
 
-          <mat-card class="stat-card">
-            <mat-card-content>
-              <div class="stat-icon offers">
-                <mat-icon>local_offer</mat-icon>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
+                <span class="material-icons text-white text-2xl">local_offer</span>
               </div>
-              <div class="stat-info">
-                <span class="stat-value">{{ dashboard()?.offersPending || 0 }}</span>
-                <span class="stat-label">Pending Offers</span>
+              <div>
+                <p class="text-2xl font-bold text-neutral-800 dark:text-neutral-200">{{ dashboard()?.offersPending || 0 }}</p>
+                <p class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.dashboardPage.stats.pendingOffers' | translate }}</p>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
         </div>
 
         <!-- Pipeline and Interviews -->
-        <div class="content-grid">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Pipeline Overview -->
-          <mat-card class="pipeline-card">
-            <mat-card-header>
-              <mat-card-title>Pipeline Overview</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border overflow-hidden">
+            <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">{{ 'recruitment.dashboardPage.pipelineOverview' | translate }}</h3>
+            </div>
+            <div class="p-4">
               @if (dashboard()?.pipeline?.length) {
-                <div class="pipeline-stages">
+                <div class="flex items-end justify-around h-48">
                   @for (stage of dashboard()!.pipeline; track stage.stage) {
-                    <div class="pipeline-stage">
-                      <div class="stage-bar" [style.height.%]="getBarHeight(stage.count)">
-                        <span class="stage-count">{{ stage.count }}</span>
+                    <div class="flex flex-col items-center flex-1">
+                      <div class="w-10 rounded-t transition-all duration-300 bg-gradient-to-t from-purple-700 to-violet-500 flex items-start justify-center pt-1"
+                           [style.height.%]="getBarHeight(stage.count)">
+                        <span class="text-white text-xs font-semibold">{{ stage.count }}</span>
                       </div>
-                      <span class="stage-name">{{ stage.stageName }}</span>
+                      <span class="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center max-w-[60px] truncate">{{ stage.stageName }}</span>
                     </div>
                   }
                 </div>
               } @else {
-                <div class="empty-state">
-                  <mat-icon>analytics</mat-icon>
-                  <p>No pipeline data available</p>
+                <div class="flex flex-col items-center py-12 text-neutral-400">
+                  <span class="material-icons text-5xl mb-4 opacity-50">analytics</span>
+                  <p>{{ 'recruitment.dashboardPage.noPipelineData' | translate }}</p>
                 </div>
               }
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
 
           <!-- Upcoming Interviews -->
-          <mat-card class="interviews-card">
-            <mat-card-header>
-              <mat-card-title>Upcoming Interviews</mat-card-title>
-              <a mat-button color="primary" routerLink="/recruitment/jobs">View All</a>
-            </mat-card-header>
-            <mat-card-content>
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border overflow-hidden">
+            <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-dark-border">
+              <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">{{ 'recruitment.dashboardPage.upcomingInterviews' | translate }}</h3>
+              <a routerLink="/recruitment/interviews" class="text-primary-500 hover:text-primary-600 text-sm font-medium">{{ 'common.viewAll' | translate }}</a>
+            </div>
+            <div class="p-4">
               @if (dashboard()?.upcomingInterviews?.length) {
-                <div class="interview-list">
+                <div class="space-y-0 divide-y divide-neutral-100 dark:divide-dark-border">
                   @for (interview of dashboard()!.upcomingInterviews.slice(0, 5); track interview.id) {
-                    <div class="interview-item">
-                      <div class="interview-info">
-                        <span class="candidate-name">{{ interview.candidateName }}</span>
-                        <span class="job-title">{{ interview.jobTitle }}</span>
+                    <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                      <div class="flex flex-col">
+                        <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ interview.candidateName }}</span>
+                        <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ interview.jobTitle }}</span>
                       </div>
-                      <div class="interview-meta">
-                        <span class="interview-type" [style.background]="getInterviewTypeColor(interview.interviewType).background"
+                      <div class="flex flex-col items-end gap-1">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                              [style.background]="getInterviewTypeColor(interview.interviewType).background"
                               [style.color]="getInterviewTypeColor(interview.interviewType).color">
                           {{ getInterviewTypeLabel(interview.interviewType) }}
                         </span>
-                        <span class="interview-time">{{ interview.scheduledAt | date:'MMM d, h:mm a' }}</span>
+                        <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ interview.scheduledAt | date:'MMM d, h:mm a' }}</span>
                       </div>
                     </div>
                   }
                 </div>
               } @else {
-                <div class="empty-state">
-                  <mat-icon>event_available</mat-icon>
-                  <p>No upcoming interviews</p>
+                <div class="flex flex-col items-center py-12 text-neutral-400">
+                  <span class="material-icons text-5xl mb-4 opacity-50">event_available</span>
+                  <p>{{ 'recruitment.dashboardPage.noUpcomingInterviews' | translate }}</p>
                 </div>
               }
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
         </div>
 
         <!-- Recent Job Postings -->
-        <mat-card class="jobs-card">
-          <mat-card-header>
-            <mat-card-title>Recent Job Postings</mat-card-title>
-            <a mat-button color="primary" routerLink="/recruitment/jobs">View All Jobs</a>
-          </mat-card-header>
-          <mat-card-content>
-            @if (dashboard()?.recentJobs?.length) {
-              <table mat-table [dataSource]="dashboard()!.recentJobs" class="jobs-table">
-                <ng-container matColumnDef="title">
-                  <th mat-header-cell *matHeaderCellDef>Title</th>
-                  <td mat-cell *matCellDef="let job">
-                    <a [routerLink]="['/recruitment/jobs', job.id]" class="job-link">
-                      {{ job.title }}
-                    </a>
-                  </td>
-                </ng-container>
-
-                <ng-container matColumnDef="department">
-                  <th mat-header-cell *matHeaderCellDef>Department</th>
-                  <td mat-cell *matCellDef="let job">{{ job.departmentName || '-' }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>Status</th>
-                  <td mat-cell *matCellDef="let job">
-                    <span class="status-badge" [style.background]="getJobStatusColor(job.status).background"
-                          [style.color]="getJobStatusColor(job.status).color">
-                      {{ getJobStatusLabel(job.status) }}
-                    </span>
-                  </td>
-                </ng-container>
-
-                <ng-container matColumnDef="applications">
-                  <th mat-header-cell *matHeaderCellDef>Applications</th>
-                  <td mat-cell *matCellDef="let job">{{ job.applicationCount }}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="closingDate">
-                  <th mat-header-cell *matHeaderCellDef>Closing Date</th>
-                  <td mat-cell *matCellDef="let job">{{ job.closingDate | date:'mediumDate' }}</td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="jobColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: jobColumns;"></tr>
+        <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-dark-border">
+            <h3 class="text-lg font-semibold text-neutral-900 dark:text-white">{{ 'recruitment.dashboardPage.recentJobPostings' | translate }}</h3>
+            <a routerLink="/recruitment/jobs" class="text-primary-500 hover:text-primary-600 text-sm font-medium">{{ 'recruitment.dashboardPage.viewAllJobs' | translate }}</a>
+          </div>
+          @if (dashboard()?.recentJobs?.length) {
+            <div class="overflow-x-auto">
+              <table class="sw-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'recruitment.dashboardPage.table.title' | translate }}</th>
+                    <th>{{ 'recruitment.dashboardPage.table.department' | translate }}</th>
+                    <th>{{ 'recruitment.dashboardPage.table.status' | translate }}</th>
+                    <th>{{ 'recruitment.dashboardPage.table.applications' | translate }}</th>
+                    <th>{{ 'recruitment.dashboardPage.table.closingDate' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (job of dashboard()!.recentJobs; track job.id) {
+                    <tr class="cursor-pointer hover:bg-neutral-50 dark:hover:bg-dark-elevated" [routerLink]="['/recruitment/jobs', job.id]">
+                      <td>
+                        <a [routerLink]="['/recruitment/jobs', job.id]" class="text-primary-500 hover:text-primary-600 font-medium">
+                          {{ job.title }}
+                        </a>
+                      </td>
+                      <td class="text-neutral-600 dark:text-neutral-400">{{ job.departmentName || '-' }}</td>
+                      <td>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-medium"
+                              [style.background]="getJobStatusColor(job.status).background"
+                              [style.color]="getJobStatusColor(job.status).color">
+                          {{ getJobStatusLabel(job.status) }}
+                        </span>
+                      </td>
+                      <td>{{ job.applicationCount }}</td>
+                      <td class="text-neutral-600 dark:text-neutral-400">{{ job.closingDate | date:'mediumDate' }}</td>
+                    </tr>
+                  }
+                </tbody>
               </table>
-            } @else {
-              <div class="empty-state">
-                <mat-icon>work_off</mat-icon>
-                <p>No job postings yet</p>
-                <a mat-raised-button color="primary" routerLink="/recruitment/jobs/new">Post a Job</a>
-              </div>
-            }
-          </mat-card-content>
-        </mat-card>
+            </div>
+          } @else {
+            <div class="p-12 text-center">
+              <span class="material-icons text-5xl text-neutral-300 dark:text-neutral-600 mb-4">work_off</span>
+              <p class="text-neutral-500 dark:text-neutral-400 mb-4">{{ 'recruitment.dashboardPage.noJobPostings' | translate }}</p>
+              <a routerLink="/recruitment/jobs/new" class="sw-btn sw-btn-primary sw-btn-md">
+                {{ 'recruitment.dashboardPage.postJob' | translate }}
+              </a>
+            </div>
+          }
+        </div>
       }
     </div>
   `,
-  styles: [`
-    .recruitment-dashboard {
-      padding: 24px;
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .dashboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    .dashboard-header h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 500;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 400px;
-    }
-
-    .error-card mat-card-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px;
-      text-align: center;
-    }
-
-    .error-card mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 16px;
-    }
-
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .stat-card mat-card-content {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 16px;
-    }
-
-    .stat-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .stat-icon mat-icon {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
-      color: white;
-    }
-
-    .stat-icon.open-jobs { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .stat-icon.candidates { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .stat-icon.interviews { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-    .stat-icon.offers { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-
-    .stat-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .stat-label {
-      font-size: 14px;
-      color: rgba(0, 0, 0, 0.6);
-      margin-top: 4px;
-    }
-
-    /* Content Grid */
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 900px) {
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* Pipeline Card */
-    .pipeline-card mat-card-header,
-    .interviews-card mat-card-header,
-    .jobs-card mat-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .pipeline-stages {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-around;
-      height: 200px;
-      padding: 16px 0;
-    }
-
-    .pipeline-stage {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-    }
-
-    .stage-bar {
-      width: 40px;
-      min-height: 20px;
-      background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
-      border-radius: 4px 4px 0 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 4px;
-      transition: height 0.3s ease;
-    }
-
-    .stage-count {
-      color: white;
-      font-weight: 600;
-      font-size: 12px;
-    }
-
-    .stage-name {
-      font-size: 11px;
-      color: rgba(0, 0, 0, 0.6);
-      margin-top: 8px;
-      text-align: center;
-      max-width: 60px;
-    }
-
-    /* Interview List */
-    .interview-list {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .interview-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .interview-item:last-child {
-      border-bottom: none;
-    }
-
-    .interview-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .candidate-name {
-      font-weight: 500;
-    }
-
-    .job-title {
-      font-size: 13px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .interview-meta {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
-    }
-
-    .interview-type {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-weight: 500;
-    }
-
-    .interview-time {
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    /* Jobs Table */
-    .jobs-card {
-      margin-bottom: 24px;
-    }
-
-    .jobs-table {
-      width: 100%;
-    }
-
-    .job-link {
-      color: #1976d2;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .job-link:hover {
-      text-decoration: underline;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 16px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    /* Empty State */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px 24px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .empty-state mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state p {
-      margin-bottom: 16px;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RecruitmentDashboardComponent implements OnInit {

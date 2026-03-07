@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 /**
  * Implementation of AccountingService.
  * Implements double-entry bookkeeping with South African compliance.
+ * All methods enforce tenant isolation for multi-tenant security.
  */
 @Service
 @Slf4j
@@ -41,7 +42,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional
-    public AccountingDto.AccountResponse createAccount(AccountingDto.CreateAccountRequest request) {
+    public AccountingDto.AccountResponse createAccount(UUID tenantId, AccountingDto.CreateAccountRequest request) {
         if (accountRepository.existsByAccountCode(request.accountCode())) {
             throw new BusinessRuleException("Account code already exists: " + request.accountCode());
         }
@@ -51,7 +52,6 @@ public class AccountingServiceImpl implements AccountingService {
                 request.accountName(),
                 request.accountType()
         );
-
         account.setDescription(request.description());
         account.setAccountSubtype(request.accountSubtype());
         account.setHeader(request.header());
@@ -59,21 +59,21 @@ public class AccountingServiceImpl implements AccountingService {
         account.setVatRate(request.vatRate());
 
         if (request.parentId() != null) {
-            Account parent = accountRepository.findById(request.parentId())
+            Account parent = accountRepository.findByIdNotDeleted(request.parentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Account", request.parentId()));
             account.setParent(parent);
         }
 
         account = accountRepository.save(account);
-        log.info("Created account: {} - {}", account.getAccountCode(), account.getAccountName());
+        log.info("Created account: {} - {} for tenant: {}", account.getAccountCode(), account.getAccountName(), tenantId);
 
         return AccountingDto.AccountResponse.fromEntity(account);
     }
 
     @Override
     @Transactional
-    public AccountingDto.AccountResponse updateAccount(UUID accountId, AccountingDto.UpdateAccountRequest request) {
-        Account account = accountRepository.findById(accountId)
+    public AccountingDto.AccountResponse updateAccount(UUID tenantId, UUID accountId, AccountingDto.UpdateAccountRequest request) {
+        Account account = accountRepository.findByIdNotDeleted(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
 
         if (account.isSystemAccount()) {
@@ -98,30 +98,30 @@ public class AccountingServiceImpl implements AccountingService {
         }
 
         account = accountRepository.save(account);
-        log.info("Updated account: {}", account.getAccountCode());
+        log.info("Updated account: {} for tenant: {}", account.getAccountCode(), tenantId);
 
         return AccountingDto.AccountResponse.fromEntity(account);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.AccountResponse> getAccount(UUID accountId) {
-        return accountRepository.findById(accountId)
+    public Optional<AccountingDto.AccountResponse> getAccount(UUID tenantId, UUID accountId) {
+        return accountRepository.findByIdNotDeleted(accountId)
                 .filter(a -> !a.isDeleted())
                 .map(AccountingDto.AccountResponse::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.AccountResponse> getAccountByCode(String accountCode) {
-        return accountRepository.findByAccountCode(accountCode)
+    public Optional<AccountingDto.AccountResponse> getAccountByCode(UUID tenantId, String accountCode) {
+        return accountRepository.findByAccountCodeNotDeleted(accountCode)
                 .filter(a -> !a.isDeleted())
                 .map(AccountingDto.AccountResponse::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountingDto.AccountResponse> getAllAccounts() {
+    public List<AccountingDto.AccountResponse> getAllAccounts(UUID tenantId) {
         return accountRepository.findAllActive().stream()
                 .map(AccountingDto.AccountResponse::fromEntity)
                 .toList();
@@ -129,7 +129,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountingDto.AccountResponse> getAccountsByType(Account.AccountType type) {
+    public List<AccountingDto.AccountResponse> getAccountsByType(UUID tenantId, Account.AccountType type) {
         return accountRepository.findByAccountType(type).stream()
                 .map(AccountingDto.AccountResponse::fromEntity)
                 .toList();
@@ -137,7 +137,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountingDto.AccountResponse> getPostableAccounts() {
+    public List<AccountingDto.AccountResponse> getPostableAccounts(UUID tenantId) {
         return accountRepository.findAllPostable().stream()
                 .map(AccountingDto.AccountResponse::fromEntity)
                 .toList();
@@ -146,6 +146,7 @@ public class AccountingServiceImpl implements AccountingService {
     @Override
     @Transactional(readOnly = true)
     public Page<AccountingDto.AccountResponse> searchAccounts(
+            UUID tenantId,
             String searchTerm,
             Account.AccountType type,
             boolean activeOnly,
@@ -156,8 +157,8 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional
-    public void deactivateAccount(UUID accountId) {
-        Account account = accountRepository.findById(accountId)
+    public void deactivateAccount(UUID tenantId, UUID accountId) {
+        Account account = accountRepository.findByIdNotDeleted(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
 
         if (account.getCurrentBalance().compareTo(BigDecimal.ZERO) != 0) {
@@ -166,36 +167,37 @@ public class AccountingServiceImpl implements AccountingService {
 
         account.setActive(false);
         accountRepository.save(account);
-        log.info("Deactivated account: {}", account.getAccountCode());
+        log.info("Deactivated account: {} for tenant: {}", account.getAccountCode(), tenantId);
     }
 
     @Override
     @Transactional
-    public void activateAccount(UUID accountId) {
-        Account account = accountRepository.findById(accountId)
+    public void activateAccount(UUID tenantId, UUID accountId) {
+        Account account = accountRepository.findByIdNotDeleted(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
 
         account.setActive(true);
         accountRepository.save(account);
-        log.info("Activated account: {}", account.getAccountCode());
+        log.info("Activated account: {} for tenant: {}", account.getAccountCode(), tenantId);
     }
 
     // === Journal Entry Operations ===
 
     @Override
     @Transactional
-    public AccountingDto.JournalEntryResponse createJournalEntry(AccountingDto.CreateJournalEntryRequest request) {
+    public AccountingDto.JournalEntryResponse createJournalEntry(UUID tenantId, AccountingDto.CreateJournalEntryRequest request) {
         JournalEntry entry = JournalEntry.create(
                 request.transactionDate(),
                 request.description(),
                 request.entryType()
         );
+        entry.setTenantId(tenantId);
 
         entry.setReference(request.reference());
         entry.setNotes(request.notes());
 
         for (AccountingDto.JournalEntryLineRequest lineRequest : request.lines()) {
-            Account account = accountRepository.findById(lineRequest.accountId())
+            Account account = accountRepository.findByIdNotDeleted(lineRequest.accountId())
                     .orElseThrow(() -> new ResourceNotFoundException("Account", lineRequest.accountId()));
 
             if (!account.isPostable()) {
@@ -224,23 +226,23 @@ public class AccountingServiceImpl implements AccountingService {
         }
 
         entry = journalEntryRepository.save(entry);
-        log.info("Created journal entry: {}", entry.getEntryNumber());
+        log.info("Created journal entry: {} for tenant: {}", entry.getEntryNumber(), tenantId);
 
         return AccountingDto.JournalEntryResponse.fromEntity(entry);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.JournalEntryResponse> getJournalEntry(UUID entryId) {
-        return journalEntryRepository.findById(entryId)
+    public Optional<AccountingDto.JournalEntryResponse> getJournalEntry(UUID tenantId, UUID entryId) {
+        return journalEntryRepository.findByIdAndTenantId(entryId, tenantId)
                 .filter(e -> !e.isDeleted())
                 .map(AccountingDto.JournalEntryResponse::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.JournalEntryResponse> getJournalEntryByNumber(String entryNumber) {
-        return journalEntryRepository.findByEntryNumber(entryNumber)
+    public Optional<AccountingDto.JournalEntryResponse> getJournalEntryByNumber(UUID tenantId, String entryNumber) {
+        return journalEntryRepository.findByTenantIdAndEntryNumber(tenantId, entryNumber)
                 .filter(e -> !e.isDeleted())
                 .map(AccountingDto.JournalEntryResponse::fromEntity);
     }
@@ -248,6 +250,7 @@ public class AccountingServiceImpl implements AccountingService {
     @Override
     @Transactional(readOnly = true)
     public Page<AccountingDto.JournalEntryResponse> searchJournalEntries(
+            UUID tenantId,
             LocalDate startDate,
             LocalDate endDate,
             JournalEntry.EntryStatus status,
@@ -260,8 +263,8 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional
-    public AccountingDto.JournalEntryResponse postJournalEntry(UUID entryId, UUID postedBy) {
-        JournalEntry entry = journalEntryRepository.findById(entryId)
+    public AccountingDto.JournalEntryResponse postJournalEntry(UUID tenantId, UUID entryId, UUID postedBy) {
+        JournalEntry entry = journalEntryRepository.findByIdAndTenantId(entryId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("JournalEntry", entryId));
 
         var transactionDate = entry.getTransactionDate();
@@ -281,7 +284,7 @@ public class AccountingServiceImpl implements AccountingService {
         }
 
         entry = journalEntryRepository.save(entry);
-        log.info("Posted journal entry: {}", entry.getEntryNumber());
+        log.info("Posted journal entry: {} for tenant: {}", entry.getEntryNumber(), tenantId);
 
         return AccountingDto.JournalEntryResponse.fromEntity(entry);
     }
@@ -289,11 +292,12 @@ public class AccountingServiceImpl implements AccountingService {
     @Override
     @Transactional
     public AccountingDto.JournalEntryResponse reverseJournalEntry(
-            UUID entryId, LocalDate reversalDate, String reason, UUID reversedBy) {
-        JournalEntry original = journalEntryRepository.findById(entryId)
+            UUID tenantId, UUID entryId, LocalDate reversalDate, String reason, UUID reversedBy) {
+        JournalEntry original = journalEntryRepository.findByIdAndTenantId(entryId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("JournalEntry", entryId));
 
         JournalEntry reversal = original.createReversal(reversalDate, reason);
+        reversal.setTenantId(tenantId);
         reversal = journalEntryRepository.save(reversal);
 
         // Post the reversal
@@ -313,15 +317,16 @@ public class AccountingServiceImpl implements AccountingService {
         original.markAsReversed(reversal.getId(), reversedBy);
         journalEntryRepository.save(original);
 
-        log.info("Reversed journal entry: {} with reversal: {}", original.getEntryNumber(), reversal.getEntryNumber());
+        log.info("Reversed journal entry: {} with reversal: {} for tenant: {}",
+                original.getEntryNumber(), reversal.getEntryNumber(), tenantId);
 
         return AccountingDto.JournalEntryResponse.fromEntity(reversal);
     }
 
     @Override
     @Transactional
-    public void deleteJournalEntry(UUID entryId) {
-        JournalEntry entry = journalEntryRepository.findById(entryId)
+    public void deleteJournalEntry(UUID tenantId, UUID entryId) {
+        JournalEntry entry = journalEntryRepository.findByIdAndTenantId(entryId, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("JournalEntry", entryId));
 
         if (entry.getStatus() != JournalEntry.EntryStatus.DRAFT) {
@@ -330,12 +335,12 @@ public class AccountingServiceImpl implements AccountingService {
 
         entry.setDeleted(true);
         journalEntryRepository.save(entry);
-        log.info("Deleted journal entry: {}", entry.getEntryNumber());
+        log.info("Deleted journal entry: {} for tenant: {}", entry.getEntryNumber(), tenantId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountingDto.JournalEntryResponse> getDraftEntries() {
+    public List<AccountingDto.JournalEntryResponse> getDraftEntries(UUID tenantId) {
         return journalEntryRepository.findDraftEntries().stream()
                 .map(AccountingDto.JournalEntryResponse::fromEntity)
                 .toList();
@@ -345,7 +350,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional
-    public List<AccountingDto.FiscalPeriodResponse> generateFiscalYear(int fiscalYear) {
+    public List<AccountingDto.FiscalPeriodResponse> generateFiscalYear(UUID tenantId, int fiscalYear) {
         if (fiscalPeriodRepository.existsByFiscalYear(fiscalYear)) {
             throw new BusinessRuleException("Fiscal periods already exist for year: " + fiscalYear);
         }
@@ -353,7 +358,7 @@ public class AccountingServiceImpl implements AccountingService {
         List<FiscalPeriod> periods = FiscalPeriod.generateFiscalYear(fiscalYear, 2); // February year-end
         periods = fiscalPeriodRepository.saveAll(periods);
 
-        log.info("Generated fiscal periods for year: {}", fiscalYear);
+        log.info("Generated fiscal periods for year: {} for tenant: {}", fiscalYear, tenantId);
 
         return periods.stream()
                 .map(AccountingDto.FiscalPeriodResponse::fromEntity)
@@ -362,7 +367,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AccountingDto.FiscalPeriodResponse> getFiscalPeriodsForYear(int fiscalYear) {
+    public List<AccountingDto.FiscalPeriodResponse> getFiscalPeriodsForYear(UUID tenantId, int fiscalYear) {
         return fiscalPeriodRepository.findByFiscalYear(fiscalYear).stream()
                 .map(AccountingDto.FiscalPeriodResponse::fromEntity)
                 .toList();
@@ -370,66 +375,66 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.FiscalPeriodResponse> getCurrentPeriod() {
+    public Optional<AccountingDto.FiscalPeriodResponse> getCurrentPeriod(UUID tenantId) {
         return fiscalPeriodRepository.findCurrentOpenPeriod()
                 .map(AccountingDto.FiscalPeriodResponse::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AccountingDto.FiscalPeriodResponse> getPeriodForDate(LocalDate date) {
+    public Optional<AccountingDto.FiscalPeriodResponse> getPeriodForDate(UUID tenantId, LocalDate date) {
         return fiscalPeriodRepository.findByDate(date)
                 .map(AccountingDto.FiscalPeriodResponse::fromEntity);
     }
 
     @Override
     @Transactional
-    public AccountingDto.FiscalPeriodResponse openPeriod(UUID periodId) {
-        FiscalPeriod period = fiscalPeriodRepository.findById(periodId)
+    public AccountingDto.FiscalPeriodResponse openPeriod(UUID tenantId, UUID periodId) {
+        FiscalPeriod period = fiscalPeriodRepository.findById(periodId).filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("FiscalPeriod", periodId));
 
         period.open();
         period = fiscalPeriodRepository.save(period);
-        log.info("Opened fiscal period: {}", period.getPeriodName());
+        log.info("Opened fiscal period: {} for tenant: {}", period.getPeriodName(), tenantId);
 
         return AccountingDto.FiscalPeriodResponse.fromEntity(period);
     }
 
     @Override
     @Transactional
-    public AccountingDto.FiscalPeriodResponse closePeriod(UUID periodId, UUID closedBy) {
-        FiscalPeriod period = fiscalPeriodRepository.findById(periodId)
+    public AccountingDto.FiscalPeriodResponse closePeriod(UUID tenantId, UUID periodId, UUID closedBy) {
+        FiscalPeriod period = fiscalPeriodRepository.findById(periodId).filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("FiscalPeriod", periodId));
 
         period.close(closedBy);
         period = fiscalPeriodRepository.save(period);
-        log.info("Closed fiscal period: {}", period.getPeriodName());
+        log.info("Closed fiscal period: {} for tenant: {}", period.getPeriodName(), tenantId);
 
         return AccountingDto.FiscalPeriodResponse.fromEntity(period);
     }
 
     @Override
     @Transactional
-    public AccountingDto.FiscalPeriodResponse reopenPeriod(UUID periodId, UUID reopenedBy) {
-        FiscalPeriod period = fiscalPeriodRepository.findById(periodId)
+    public AccountingDto.FiscalPeriodResponse reopenPeriod(UUID tenantId, UUID periodId, UUID reopenedBy) {
+        FiscalPeriod period = fiscalPeriodRepository.findById(periodId).filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("FiscalPeriod", periodId));
 
         period.reopen(reopenedBy);
         period = fiscalPeriodRepository.save(period);
-        log.info("Reopened fiscal period: {}", period.getPeriodName());
+        log.info("Reopened fiscal period: {} for tenant: {}", period.getPeriodName(), tenantId);
 
         return AccountingDto.FiscalPeriodResponse.fromEntity(period);
     }
 
     @Override
     @Transactional
-    public AccountingDto.FiscalPeriodResponse lockPeriod(UUID periodId) {
-        FiscalPeriod period = fiscalPeriodRepository.findById(periodId)
+    public AccountingDto.FiscalPeriodResponse lockPeriod(UUID tenantId, UUID periodId) {
+        FiscalPeriod period = fiscalPeriodRepository.findById(periodId).filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("FiscalPeriod", periodId));
 
         period.lock();
         period = fiscalPeriodRepository.save(period);
-        log.info("Locked fiscal period: {}", period.getPeriodName());
+        log.info("Locked fiscal period: {} for tenant: {}", period.getPeriodName(), tenantId);
 
         return AccountingDto.FiscalPeriodResponse.fromEntity(period);
     }
@@ -438,7 +443,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public AccountingDto.TrialBalanceReport generateTrialBalance(LocalDate asOfDate) {
+    public AccountingDto.TrialBalanceReport generateTrialBalance(UUID tenantId, LocalDate asOfDate) {
         List<Account> accounts = accountRepository.findAccountsWithBalance();
 
         List<AccountingDto.TrialBalanceEntry> entries = accounts.stream()
@@ -472,7 +477,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public AccountingDto.BalanceSheetReport generateBalanceSheet(LocalDate asOfDate) {
+    public AccountingDto.BalanceSheetReport generateBalanceSheet(UUID tenantId, LocalDate asOfDate) {
         List<Account> balanceSheetAccounts = accountRepository.findBalanceSheetAccounts();
 
         Map<Account.AccountType, List<Account>> accountsByType = balanceSheetAccounts.stream()
@@ -481,7 +486,7 @@ public class AccountingServiceImpl implements AccountingService {
         // Assets
         List<Account> assets = accountsByType.getOrDefault(Account.AccountType.ASSET, List.of());
         List<AccountingDto.AccountBalance> currentAssets = assets.stream()
-                .filter(a -> isCurrentAsset(a))
+                .filter(this::isCurrentAsset)
                 .map(a -> new AccountingDto.AccountBalance(a.getAccountCode(), a.getAccountName(), a.getCurrentBalance()))
                 .toList();
         List<AccountingDto.AccountBalance> nonCurrentAssets = assets.stream()
@@ -492,7 +497,7 @@ public class AccountingServiceImpl implements AccountingService {
         // Liabilities
         List<Account> liabilities = accountsByType.getOrDefault(Account.AccountType.LIABILITY, List.of());
         List<AccountingDto.AccountBalance> currentLiabilities = liabilities.stream()
-                .filter(a -> isCurrentLiability(a))
+                .filter(this::isCurrentLiability)
                 .map(a -> new AccountingDto.AccountBalance(a.getAccountCode(), a.getAccountName(), a.getCurrentBalance()))
                 .toList();
         List<AccountingDto.AccountBalance> nonCurrentLiabilities = liabilities.stream()
@@ -532,7 +537,7 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional(readOnly = true)
-    public AccountingDto.IncomeStatementReport generateIncomeStatement(LocalDate startDate, LocalDate endDate) {
+    public AccountingDto.IncomeStatementReport generateIncomeStatement(UUID tenantId, LocalDate startDate, LocalDate endDate) {
         List<Account> incomeStatementAccounts = accountRepository.findIncomeStatementAccounts();
 
         Map<Account.AccountType, List<Account>> accountsByType = incomeStatementAccounts.stream()
@@ -598,8 +603,8 @@ public class AccountingServiceImpl implements AccountingService {
     @Override
     @Transactional(readOnly = true)
     public AccountingDto.GeneralLedgerReport generateGeneralLedger(
-            UUID accountId, LocalDate startDate, LocalDate endDate) {
-        Account account = accountRepository.findById(accountId)
+            UUID tenantId, UUID accountId, LocalDate startDate, LocalDate endDate) {
+        Account account = accountRepository.findByIdNotDeleted(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", accountId));
 
         // This would need a more complex query to get all journal entry lines for the account
@@ -617,11 +622,11 @@ public class AccountingServiceImpl implements AccountingService {
 
     @Override
     @Transactional
-    public void performYearEndClose(int fiscalYear, UUID performedBy) {
+    public void performYearEndClose(UUID tenantId, int fiscalYear, UUID performedBy) {
         // This would implement the year-end closing process:
         // 1. Close all income/expense accounts to retained earnings
         // 2. Create opening balances for new year
-        log.info("Performing year-end close for fiscal year: {}", fiscalYear);
+        log.info("Performing year-end close for fiscal year: {} for tenant: {}", fiscalYear, tenantId);
 
         // Implementation would be more complex in production
         throw new UnsupportedOperationException("Year-end close not yet implemented");

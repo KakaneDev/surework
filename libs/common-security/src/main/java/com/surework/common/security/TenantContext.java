@@ -42,10 +42,11 @@ public final class TenantContext {
 
     /**
      * Get the current tenant ID or throw if not set.
+     * @throws TenantNotSetException if tenant context is not available
      */
     public static UUID requireTenantId() {
         return getTenantId().orElseThrow(() ->
-                new IllegalStateException("Tenant context not set. Ensure request has valid JWT with tenantId claim."));
+                new TenantNotSetException("Tenant context not set. Ensure request has valid JWT with tenantId claim."));
     }
 
     /**

@@ -12,9 +12,35 @@ import java.util.UUID;
 
 /**
  * Repository for JobTitle entity.
+ * Includes tenant-filtered methods for defense-in-depth multitenancy isolation.
  */
 @Repository
 public interface JobTitleRepository extends JpaRepository<JobTitle, UUID> {
+
+    // ========== Tenant-Filtered Methods (Defense-in-Depth) ==========
+
+    @Query("SELECT j FROM JobTitle j WHERE j.id = :id AND j.tenantId = :tenantId AND j.deleted = false")
+    Optional<JobTitle> findByIdAndTenantId(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT j FROM JobTitle j
+        WHERE j.tenantId = :tenantId AND j.deleted = false AND j.active = true
+        ORDER BY j.title
+        """)
+    List<JobTitle> findAllActiveByTenantId(@Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT j FROM JobTitle j
+        WHERE j.tenantId = :tenantId AND j.deleted = false
+        AND j.department.id = :departmentId AND j.active = true
+        ORDER BY j.title
+        """)
+    List<JobTitle> findByDepartmentIdAndTenantId(
+            @Param("departmentId") UUID departmentId,
+            @Param("tenantId") UUID tenantId
+    );
+
+    // ========== Standard Methods (Schema-Isolated) ==========
 
     Optional<JobTitle> findByCode(String code);
 

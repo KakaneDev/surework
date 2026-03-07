@@ -1,26 +1,23 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableModule } from '@angular/material/table';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   JobPosting,
   Application,
-  RecruitmentStage
+  RecruitmentStage,
+  ExternalJobPosting,
+  ExternalPostingStatus,
+  JobPortal,
+  CompensationType
 } from '../../../core/services/recruitment.service';
 import { StageChangeDialogComponent } from '../dialogs/stage-change-dialog.component';
 import { ScheduleInterviewDialogComponent } from '../dialogs/schedule-interview-dialog.component';
 import { MakeOfferDialogComponent } from '../dialogs/make-offer-dialog.component';
+import { HireCandidateDialogComponent } from '../dialogs/hire-candidate-dialog.component';
+import { PostToPortalsDialogComponent } from '../dialogs/post-to-portals-dialog/post-to-portals-dialog.component';
+import { SpinnerComponent, ButtonComponent, TabsComponent, TabPanelComponent, DropdownComponent, DropdownItemComponent, ToastService, DialogService } from '@shared/ui';
 
 @Component({
   selector: 'app-job-posting-detail',
@@ -28,727 +25,432 @@ import { MakeOfferDialogComponent } from '../dialogs/make-offer-dialog.component
   imports: [
     CommonModule,
     RouterLink,
-    MatCardModule,
-    MatTabsModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatTableModule,
-    MatMenuModule,
-    MatChipsModule,
-    MatSnackBarModule,
-    MatTooltipModule,
-    MatDialogModule,
-    DatePipe
+    DatePipe,
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent,
+    TabsComponent,
+    TabPanelComponent,
+    DropdownComponent,
+    DropdownItemComponent
   ],
   template: `
-    <div class="job-detail">
+    <div class="space-y-6">
       @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner diameter="48"></mat-spinner>
+        <div class="flex justify-center items-center py-24">
+          <sw-spinner size="lg" />
         </div>
       } @else if (error()) {
-        <mat-card class="error-card">
-          <mat-card-content>
-            <mat-icon color="warn">error</mat-icon>
-            <p>{{ error() }}</p>
-            <button mat-button color="primary" routerLink="/recruitment/jobs">Back to Jobs</button>
-          </mat-card-content>
-        </mat-card>
+        <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-12 text-center">
+          <span class="material-icons text-5xl text-error-500 mb-4">error</span>
+          <p class="text-neutral-600 dark:text-neutral-400 mb-4">{{ error() }}</p>
+          <a routerLink="/recruitment/jobs" class="px-4 py-2 text-primary-500 hover:text-primary-600 font-medium">
+            {{ 'recruitment.jobDetail.backToJobs' | translate }}
+          </a>
+        </div>
       } @else if (job()) {
         <!-- Header -->
-        <header class="detail-header">
-          <div class="header-left">
-            <a routerLink="/recruitment/jobs" class="back-link">
-              <mat-icon>arrow_back</mat-icon>
+        <div class="sw-page-header">
+          <div class="flex items-center gap-3">
+            <a routerLink="/recruitment/jobs" class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-elevated transition-colors" [attr.aria-label]="'common.back' | translate">
+              <span class="material-icons" aria-hidden="true">arrow_back</span>
             </a>
-            <div class="header-info">
-              <h1>{{ job()!.title }}</h1>
-              <div class="header-meta">
-                <span class="job-reference">{{ job()!.jobReference }}</span>
-                <span class="status-badge"
+            <div>
+              <h1 class="sw-page-title flex items-center gap-3">
+                {{ job()!.title }}
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-medium"
                       [style.background]="getJobStatusColor(job()!.status).background"
                       [style.color]="getJobStatusColor(job()!.status).color">
-                  {{ getJobStatusLabel(job()!.status) }}
+                  {{ getJobStatusLabelTranslated(job()!.status) }}
                 </span>
                 @if (job()!.remote) {
-                  <mat-chip>Remote</mat-chip>
+                  <span class="px-2 py-1 bg-success-100 text-success-700 dark:bg-success-900/20 dark:text-success-400 rounded text-xs font-medium">{{ 'recruitment.jobDetail.remote' | translate }}</span>
                 }
-              </div>
+              </h1>
+              <p class="text-sm text-neutral-500 dark:text-neutral-400 font-mono">{{ job()!.jobReference }}</p>
             </div>
           </div>
-          <div class="header-actions">
-            <a mat-stroked-button [routerLink]="['/recruitment/jobs', job()!.id, 'edit']">
-              <mat-icon>edit</mat-icon>
-              Edit
+          <div class="flex items-center gap-2">
+            <a [routerLink]="['/recruitment/jobs', job()!.id, 'edit']">
+              <sw-button variant="outline">
+                <span class="material-icons text-lg">edit</span>
+                {{ 'recruitment.jobDetail.actions.edit' | translate }}
+              </sw-button>
             </a>
             @if (job()!.status === 'DRAFT') {
-              <button mat-raised-button color="primary" (click)="publishJob()">
-                <mat-icon>publish</mat-icon>
-                Publish
-              </button>
+              <sw-button variant="primary" (clicked)="publishJob()">
+                <span class="material-icons text-lg">publish</span>
+                {{ 'recruitment.jobDetail.actions.publish' | translate }}
+              </sw-button>
             }
             @if (job()!.status === 'OPEN') {
-              <button mat-button [matMenuTriggerFor]="statusMenu">
-                <mat-icon>more_vert</mat-icon>
-                Actions
-              </button>
-              <mat-menu #statusMenu="matMenu">
-                <button mat-menu-item (click)="putOnHold()">
-                  <mat-icon>pause</mat-icon>
-                  <span>Put On Hold</span>
+              <sw-dropdown position="bottom-end">
+                <button trigger class="inline-flex items-center gap-2 px-3 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-dark-elevated rounded-lg">
+                  <span class="material-icons">more_vert</span>
+                  {{ 'recruitment.jobDetail.actions.actions' | translate }}
                 </button>
-                <button mat-menu-item (click)="closeJob()">
-                  <mat-icon>close</mat-icon>
-                  <span>Close Job</span>
-                </button>
-                <button mat-menu-item (click)="markAsFilled()">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Mark as Filled</span>
-                </button>
-              </mat-menu>
+                <sw-dropdown-item icon="pause" (click)="putOnHold()">{{ 'recruitment.jobDetail.actions.putOnHold' | translate }}</sw-dropdown-item>
+                <sw-dropdown-item icon="close" (click)="closeJob()">{{ 'recruitment.jobDetail.actions.closeJob' | translate }}</sw-dropdown-item>
+                <sw-dropdown-item icon="check_circle" (click)="markAsFilled()">{{ 'recruitment.jobDetail.actions.markAsFilled' | translate }}</sw-dropdown-item>
+              </sw-dropdown>
             }
             @if (job()!.status === 'ON_HOLD') {
-              <button mat-raised-button color="primary" (click)="reopenJob()">
-                <mat-icon>play_arrow</mat-icon>
-                Reopen
-              </button>
+              <sw-button variant="primary" (clicked)="reopenJob()">
+                <span class="material-icons text-lg">play_arrow</span>
+                {{ 'recruitment.jobDetail.actions.reopen' | translate }}
+              </sw-button>
+            }
+            @if (job()!.status === 'OPEN') {
+              <sw-button variant="outline" (clicked)="openPostToPortalsDialog()">
+                <span class="material-icons text-lg">share</span>
+                Post to Portals
+              </sw-button>
             }
           </div>
-        </header>
+        </div>
 
         <!-- Stats -->
-        <div class="stats-row">
-          <div class="stat-item">
-            <mat-icon>people</mat-icon>
-            <span class="stat-value">{{ job()!.applicationCount }}</span>
-            <span class="stat-label">Applications</span>
+        <div class="flex items-center gap-8 p-4 bg-neutral-50 dark:bg-dark-elevated rounded-xl">
+          <div class="flex items-center gap-3">
+            <span class="material-icons text-neutral-400">people</span>
+            <span class="text-xl font-semibold text-neutral-800 dark:text-neutral-200">{{ job()!.applicationCount }}</span>
+            <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.stats.applications' | translate }}</span>
           </div>
-          <div class="stat-item">
-            <mat-icon>visibility</mat-icon>
-            <span class="stat-value">{{ job()!.viewCount }}</span>
-            <span class="stat-label">Views</span>
+          <div class="flex items-center gap-3">
+            <span class="material-icons text-neutral-400">visibility</span>
+            <span class="text-xl font-semibold text-neutral-800 dark:text-neutral-200">{{ job()!.viewCount }}</span>
+            <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.stats.views' | translate }}</span>
           </div>
-          <div class="stat-item">
-            <mat-icon>work</mat-icon>
-            <span class="stat-value">{{ job()!.positionsFilled }}/{{ job()!.positionsAvailable }}</span>
-            <span class="stat-label">Positions Filled</span>
+          <div class="flex items-center gap-3">
+            <span class="material-icons text-neutral-400">work</span>
+            <span class="text-xl font-semibold text-neutral-800 dark:text-neutral-200">{{ job()!.positionsFilled }}/{{ job()!.positionsAvailable }}</span>
+            <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.stats.filled' | translate }}</span>
           </div>
           @if (job()!.closingDate) {
-            <div class="stat-item">
-              <mat-icon>event</mat-icon>
-              <span class="stat-value">{{ job()!.closingDate | date:'mediumDate' }}</span>
-              <span class="stat-label">Closing Date</span>
+            <div class="flex items-center gap-3">
+              <span class="material-icons text-neutral-400">event</span>
+              <span class="text-xl font-semibold text-neutral-800 dark:text-neutral-200">{{ job()!.closingDate | date:'mediumDate' }}</span>
+              <span class="text-sm text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.stats.closing' | translate }}</span>
             </div>
           }
         </div>
 
-        <!-- Tabs -->
-        <mat-tab-group>
-          <!-- Overview Tab -->
-          <mat-tab label="Overview">
-            <div class="tab-content">
-              <mat-card>
-                <mat-card-content>
-                  <div class="detail-grid">
-                    <div class="detail-section">
-                      <h3>Basic Information</h3>
-                      <div class="detail-row">
-                        <span class="label">Department</span>
-                        <span class="value">{{ job()!.departmentName || '-' }}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Location</span>
-                        <span class="value">{{ job()!.location || '-' }}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Employment Type</span>
-                        <span class="value">{{ getEmploymentTypeLabel(job()!.employmentType) }}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Experience Required</span>
-                        <span class="value">
-                          @if (job()!.experienceYearsMin || job()!.experienceYearsMax) {
-                            {{ job()!.experienceYearsMin || 0 }} - {{ job()!.experienceYearsMax || 'Any' }} years
-                          } @else {
-                            Not specified
-                          }
-                        </span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Salary Range</span>
-                        <span class="value">{{ job()!.salaryRange || 'Not disclosed' }}</span>
-                      </div>
-                    </div>
+        <!-- External Postings Status -->
+        @if (externalPostings().length > 0) {
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                <span class="material-icons text-primary-500">share</span>
+                External Portal Postings
+              </h3>
+              <button (click)="refreshExternalPostings()" class="p-1 rounded hover:bg-neutral-100 dark:hover:bg-dark-elevated">
+                <span class="material-icons text-neutral-400 text-lg">refresh</span>
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              @for (posting of externalPostings(); track posting.id) {
+                <a [routerLink]="['/recruitment/external-postings', posting.id]"
+                   class="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-50 dark:bg-dark-elevated hover:bg-neutral-100 dark:hover:bg-dark-border transition-colors">
+                  <span class="material-icons text-lg" [ngClass]="getPortalIconClass(posting.portal)">{{ getPortalIcon(posting.portal) }}</span>
+                  <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ getPortalLabel(posting.portal) }}</span>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                        [style.background]="getExternalPostingStatusColor(posting.status).background"
+                        [style.color]="getExternalPostingStatusColor(posting.status).color">
+                    {{ getExternalPostingStatusLabel(posting.status) }}
+                  </span>
+                </a>
+              }
+            </div>
+          </div>
+        }
 
-                    <div class="detail-section">
-                      <h3>Team</h3>
-                      <div class="detail-row">
-                        <span class="label">Hiring Manager</span>
-                        <span class="value">{{ job()!.hiringManagerName || '-' }}</span>
+        <!-- Tabs -->
+        <sw-tabs [tabs]="tabLabels()" [(activeTab)]="activeTab">
+          <!-- Overview Tab -->
+          <sw-tab-panel [active]="activeTab === 0">
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobDetail.sections.basicInformation' | translate }}</h3>
+                  <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.department' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.departmentName || '-' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.location' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.location || '-' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.employmentType' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ getEmploymentTypeLabelTranslated(job()!.employmentType) }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.experienceRequired' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">
+                        @if (job()!.experienceYearsMin || job()!.experienceYearsMax) {
+                          {{ job()!.experienceYearsMin || 0 }} - {{ job()!.experienceYearsMax || ('recruitment.jobDetail.any' | translate) }} {{ 'recruitment.jobDetail.years' | translate }}
+                        } @else {
+                          {{ 'recruitment.jobDetail.notSpecified' | translate }}
+                        }
+                      </span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.salaryRange' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.salaryRange || ('recruitment.jobDetail.notDisclosed' | translate) }}</span>
+                    </div>
+                    @if (job()!.compensationType && job()!.compensationType !== 'MONTHLY') {
+                      <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                        <span class="text-neutral-500 dark:text-neutral-400">Compensation Type</span>
+                        <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ getCompensationTypeLabel(job()!.compensationType!) }}</span>
                       </div>
-                      <div class="detail-row">
-                        <span class="label">Recruiter</span>
-                        <span class="value">{{ job()!.recruiterName || '-' }}</span>
+                    }
+                    @if (job()!.salaryCurrency && job()!.salaryCurrency !== 'ZAR') {
+                      <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                        <span class="text-neutral-500 dark:text-neutral-400">Currency</span>
+                        <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.salaryCurrency }}</span>
                       </div>
-                      <div class="detail-row">
-                        <span class="label">Posted Date</span>
-                        <span class="value">{{ job()!.postingDate | date:'mediumDate' }}</span>
+                    }
+                    @if (job()!.clientName) {
+                      <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                        <span class="text-neutral-500 dark:text-neutral-400">Client</span>
+                        <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.clientName }}</span>
                       </div>
-                      <div class="detail-row">
-                        <span class="label">Internal Only</span>
-                        <span class="value">{{ job()!.internalOnly ? 'Yes' : 'No' }}</span>
+                    }
+                    @if (job()!.projectName) {
+                      <div class="flex justify-between py-2">
+                        <span class="text-neutral-500 dark:text-neutral-400">Project</span>
+                        <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.projectName }}</span>
                       </div>
+                    }
+                  </div>
+                </div>
+
+                <div>
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobDetail.sections.team' | translate }}</h3>
+                  <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.hiringManager' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.hiringManagerName || '-' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.recruiter' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.recruiterName || '-' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-neutral-100 dark:border-dark-border">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.postedDate' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.postingDate | date:'mediumDate' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2">
+                      <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.fields.internalOnly' | translate }}</span>
+                      <span class="font-medium text-neutral-800 dark:text-neutral-200">{{ job()!.internalOnly ? ('common.yes' | translate) : ('common.no' | translate) }}</span>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  @if (job()!.description) {
-                    <div class="text-section">
-                      <h3>Description</h3>
-                      <p class="text-content">{{ job()!.description }}</p>
-                    </div>
-                  }
+              @if (job()!.description) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.description' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.description }}</p>
+                </div>
+              }
 
-                  @if (job()!.requirements) {
-                    <div class="text-section">
-                      <h3>Requirements</h3>
-                      <p class="text-content">{{ job()!.requirements }}</p>
-                    </div>
-                  }
+              @if (job()!.requirements) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.requirements' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.requirements }}</p>
+                </div>
+              }
 
-                  @if (job()!.responsibilities) {
-                    <div class="text-section">
-                      <h3>Responsibilities</h3>
-                      <p class="text-content">{{ job()!.responsibilities }}</p>
-                    </div>
-                  }
+              @if (job()!.responsibilities) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.responsibilities' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.responsibilities }}</p>
+                </div>
+              }
 
-                  @if (job()!.qualifications) {
-                    <div class="text-section">
-                      <h3>Qualifications</h3>
-                      <p class="text-content">{{ job()!.qualifications }}</p>
-                    </div>
-                  }
+              @if (job()!.qualifications) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.qualifications' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.qualifications }}</p>
+                </div>
+              }
 
-                  @if (job()!.skills) {
-                    <div class="text-section">
-                      <h3>Skills</h3>
-                      <p class="text-content">{{ job()!.skills }}</p>
-                    </div>
-                  }
+              @if (job()!.skills) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.skills' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.skills }}</p>
+                </div>
+              }
 
-                  @if (job()!.benefits) {
-                    <div class="text-section">
-                      <h3>Benefits</h3>
-                      <p class="text-content">{{ job()!.benefits }}</p>
-                    </div>
-                  }
-                </mat-card-content>
-              </mat-card>
+              @if (job()!.benefits) {
+                <div class="border-t border-neutral-200 dark:border-dark-border pt-6 mt-6">
+                  <h3 class="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">{{ 'recruitment.jobDetail.sections.benefits' | translate }}</h3>
+                  <p class="text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap leading-relaxed">{{ job()!.benefits }}</p>
+                </div>
+              }
             </div>
-          </mat-tab>
+          </sw-tab-panel>
 
           <!-- Candidates Tab -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              Candidates ({{ applications().length }})
-            </ng-template>
-            <div class="tab-content">
-              <!-- Pipeline Summary -->
-              @if (applications().length > 0) {
-                <div class="pipeline-summary">
-                  @for (stage of pipelineStages; track stage) {
-                    <div class="pipeline-item"
-                         [class.active]="selectedStage() === stage"
-                         (click)="filterByStage(stage)">
-                      <span class="pipeline-count">{{ getStageCount(stage) }}</span>
-                      <span class="pipeline-label">{{ getStageLabel(stage) }}</span>
-                    </div>
-                  }
-                </div>
-              }
+          <sw-tab-panel [active]="activeTab === 1">
+            <!-- Pipeline Summary -->
+            @if (applications().length > 0) {
+              <div class="flex flex-wrap gap-2 mb-6">
+                @for (stage of pipelineStages; track stage) {
+                  <button (click)="filterByStage(stage)"
+                          class="flex flex-col items-center px-4 py-3 rounded-lg min-w-[80px] transition-all"
+                          [class.bg-primary-100]="selectedStage() === stage"
+                          [class.border-2]="selectedStage() === stage"
+                          [class.border-primary-500]="selectedStage() === stage"
+                          [class.bg-neutral-100]="selectedStage() !== stage"
+                          [class.dark:bg-dark-elevated]="selectedStage() !== stage">
+                    <span class="text-xl font-semibold text-neutral-800 dark:text-neutral-200">{{ getStageCount(stage) }}</span>
+                    <span class="text-xs text-neutral-500 dark:text-neutral-400 text-center">{{ getStageLabelTranslated(stage) }}</span>
+                  </button>
+                }
+              </div>
+            }
 
-              @if (applicationsLoading()) {
-                <div class="loading-container small">
-                  <mat-spinner diameter="32"></mat-spinner>
-                </div>
-              } @else if (filteredApplications().length === 0) {
-                <div class="empty-state">
-                  <mat-icon>people_outline</mat-icon>
-                  <h3>No candidates yet</h3>
-                  <p>Candidates who apply to this job will appear here</p>
-                </div>
-              } @else {
-                <table mat-table [dataSource]="filteredApplications()" class="candidates-table">
-                  <ng-container matColumnDef="candidate">
-                    <th mat-header-cell *matHeaderCellDef>Candidate</th>
-                    <td mat-cell *matCellDef="let app">
-                      <div class="candidate-cell">
-                        <a [routerLink]="['/recruitment/candidates', app.candidate.id]" class="candidate-link">
-                          {{ app.candidate.fullName }}
-                        </a>
-                        <span class="candidate-title">{{ app.candidate.currentJobTitle || '-' }}</span>
-                      </div>
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="stage">
-                    <th mat-header-cell *matHeaderCellDef>Stage</th>
-                    <td mat-cell *matCellDef="let app">
-                      <span class="stage-badge"
-                            [style.background]="getStageColor(app.stage).background"
-                            [style.color]="getStageColor(app.stage).color">
-                        {{ getStageLabel(app.stage) }}
-                      </span>
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="rating">
-                    <th mat-header-cell *matHeaderCellDef>Rating</th>
-                    <td mat-cell *matCellDef="let app">
-                      @if (app.overallRating) {
-                        <div class="rating">
-                          @for (star of [1, 2, 3, 4, 5]; track star) {
-                            <mat-icon [class.filled]="star <= app.overallRating">star</mat-icon>
-                          }
-                        </div>
-                      } @else {
-                        <span class="no-rating">-</span>
+            @if (applicationsLoading()) {
+              <div class="flex justify-center items-center py-16">
+                <sw-spinner size="md" />
+              </div>
+            } @else if (filteredApplications().length === 0) {
+              <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-12 text-center">
+                <span class="material-icons text-5xl text-neutral-300 dark:text-neutral-600 mb-4">people_outline</span>
+                <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">{{ 'recruitment.jobDetail.candidates.noCandidatesTitle' | translate }}</h3>
+                <p class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.jobDetail.candidates.noCandidatesDescription' | translate }}</p>
+              </div>
+            } @else {
+              <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border overflow-hidden">
+                <div class="overflow-x-auto">
+                  <table class="sw-table">
+                    <thead>
+                      <tr>
+                        <th>{{ 'recruitment.jobDetail.candidates.table.candidate' | translate }}</th>
+                        <th>{{ 'recruitment.jobDetail.candidates.table.stage' | translate }}</th>
+                        <th>{{ 'recruitment.jobDetail.candidates.table.rating' | translate }}</th>
+                        <th>{{ 'recruitment.jobDetail.candidates.table.applied' | translate }}</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (app of filteredApplications(); track app.id) {
+                        <tr [ngClass]="{'bg-warning-50': app.starred}">
+                          <td>
+                            <div class="flex flex-col">
+                              <a [routerLink]="['/recruitment/candidates', app.candidate.id]" class="text-primary-500 hover:text-primary-600 font-medium">
+                                {{ app.candidate.fullName }}
+                              </a>
+                              <span class="text-xs text-neutral-500 dark:text-neutral-400">{{ app.candidate.currentJobTitle || '-' }}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span class="inline-block px-2 py-1 rounded-full text-xs font-medium"
+                                  [style.background]="getStageColor(app.stage).background"
+                                  [style.color]="getStageColor(app.stage).color">
+                              {{ getStageLabelTranslated(app.stage) }}
+                            </span>
+                          </td>
+                          <td>
+                            @if (app.overallRating) {
+                              <div class="flex gap-0.5">
+                                @for (star of [1, 2, 3, 4, 5]; track star) {
+                                  <span class="material-icons text-sm" [class.text-warning-400]="star <= app.overallRating" [class.text-neutral-300]="star > app.overallRating">star</span>
+                                }
+                              </div>
+                            } @else {
+                              <span class="text-neutral-400">-</span>
+                            }
+                          </td>
+                          <td class="text-neutral-600 dark:text-neutral-400">{{ app.applicationDate | date:'mediumDate' }}</td>
+                          <td (click)="$event.stopPropagation()">
+                            <sw-dropdown position="bottom-end">
+                              <button trigger class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-elevated" [attr.aria-label]="'common.moreOptions' | translate">
+                                <span class="material-icons">more_vert</span>
+                              </button>
+                              <sw-dropdown-item icon="person" [routerLink]="['/recruitment/candidates', app.candidate.id]">{{ 'recruitment.jobDetail.candidates.actions.viewCandidate' | translate }}</sw-dropdown-item>
+                              <sw-dropdown-item icon="trending_up" (click)="changeStage(app)">{{ 'recruitment.jobDetail.candidates.actions.changeStage' | translate }}</sw-dropdown-item>
+                              <sw-dropdown-item icon="event" (click)="scheduleInterview(app)">{{ 'recruitment.jobDetail.candidates.actions.scheduleInterview' | translate }}</sw-dropdown-item>
+                              @if (app.stage !== 'OFFER' && app.stage !== 'COMPLETED') {
+                                <sw-dropdown-item icon="local_offer" (click)="makeOffer(app)">{{ 'recruitment.jobDetail.candidates.actions.makeOffer' | translate }}</sw-dropdown-item>
+                              }
+                              @if (app.stage === 'ONBOARDING') {
+                                <sw-dropdown-item icon="check_circle" (click)="markAsHired(app)">
+                                  {{ 'recruitment.jobDetail.candidates.actions.markAsHired' | translate }}
+                                </sw-dropdown-item>
+                              }
+                              <sw-dropdown-item [icon]="app.starred ? 'star' : 'star_border'" (click)="toggleStarred(app)">{{ app.starred ? ('recruitment.jobDetail.candidates.actions.unstar' | translate) : ('recruitment.jobDetail.candidates.actions.star' | translate) }}</sw-dropdown-item>
+                              <sw-dropdown-item icon="block" (click)="rejectApplication(app)" class="text-error-600">{{ 'recruitment.jobDetail.candidates.actions.reject' | translate }}</sw-dropdown-item>
+                            </sw-dropdown>
+                          </td>
+                        </tr>
                       }
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="applied">
-                    <th mat-header-cell *matHeaderCellDef>Applied</th>
-                    <td mat-cell *matCellDef="let app">
-                      {{ app.applicationDate | date:'mediumDate' }}
-                    </td>
-                  </ng-container>
-
-                  <ng-container matColumnDef="actions">
-                    <th mat-header-cell *matHeaderCellDef></th>
-                    <td mat-cell *matCellDef="let app">
-                      <button mat-icon-button [matMenuTriggerFor]="appMenu">
-                        <mat-icon>more_vert</mat-icon>
-                      </button>
-                      <mat-menu #appMenu="matMenu">
-                        <a mat-menu-item [routerLink]="['/recruitment/candidates', app.candidate.id]">
-                          <mat-icon>person</mat-icon>
-                          <span>View Candidate</span>
-                        </a>
-                        <button mat-menu-item (click)="changeStage(app)">
-                          <mat-icon>trending_up</mat-icon>
-                          <span>Change Stage</span>
-                        </button>
-                        <button mat-menu-item (click)="scheduleInterview(app)">
-                          <mat-icon>event</mat-icon>
-                          <span>Schedule Interview</span>
-                        </button>
-                        @if (app.stage !== 'OFFER' && app.stage !== 'COMPLETED') {
-                          <button mat-menu-item (click)="makeOffer(app)">
-                            <mat-icon>local_offer</mat-icon>
-                            <span>Make Offer</span>
-                          </button>
-                        }
-                        <button mat-menu-item (click)="toggleStarred(app)">
-                          <mat-icon>{{ app.starred ? 'star' : 'star_border' }}</mat-icon>
-                          <span>{{ app.starred ? 'Unstar' : 'Star' }}</span>
-                        </button>
-                        <button mat-menu-item (click)="rejectApplication(app)" class="reject-action">
-                          <mat-icon>block</mat-icon>
-                          <span>Reject</span>
-                        </button>
-                      </mat-menu>
-                    </td>
-                  </ng-container>
-
-                  <tr mat-header-row *matHeaderRowDef="applicationColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: applicationColumns;"
-                      [class.starred]="row.starred"></tr>
-                </table>
-              }
-            </div>
-          </mat-tab>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </sw-tab-panel>
 
           <!-- Statistics Tab -->
-          <mat-tab label="Statistics">
-            <div class="tab-content">
-              <mat-card>
-                <mat-card-content>
-                  <div class="stats-grid">
-                    <div class="stat-card">
-                      <h4>Conversion Rate</h4>
-                      <span class="big-stat">{{ conversionRate() }}%</span>
-                      <span class="stat-desc">Applications to Hire</span>
-                    </div>
-                    <div class="stat-card">
-                      <h4>Avg. Time in Pipeline</h4>
-                      <span class="big-stat">{{ avgDaysInPipeline() }}</span>
-                      <span class="stat-desc">Days</span>
-                    </div>
-                    <div class="stat-card">
-                      <h4>Interview Rate</h4>
-                      <span class="big-stat">{{ interviewRate() }}%</span>
-                      <span class="stat-desc">Applications to Interview</span>
-                    </div>
-                  </div>
-                </mat-card-content>
-              </mat-card>
+          <sw-tab-panel [active]="activeTab === 2">
+            <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center p-6 bg-neutral-50 dark:bg-dark-elevated rounded-xl">
+                  <h4 class="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">{{ 'recruitment.jobDetail.statistics.conversionRate' | translate }}</h4>
+                  <span class="text-4xl font-bold text-primary-500">{{ conversionRate() }}%</span>
+                  <span class="block text-sm text-neutral-500 dark:text-neutral-400 mt-1">{{ 'recruitment.jobDetail.statistics.applicationsToHire' | translate }}</span>
+                </div>
+                <div class="text-center p-6 bg-neutral-50 dark:bg-dark-elevated rounded-xl">
+                  <h4 class="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">{{ 'recruitment.jobDetail.statistics.avgTimeInPipeline' | translate }}</h4>
+                  <span class="text-4xl font-bold text-primary-500">{{ avgDaysInPipeline() }}</span>
+                  <span class="block text-sm text-neutral-500 dark:text-neutral-400 mt-1">{{ 'recruitment.jobDetail.statistics.days' | translate }}</span>
+                </div>
+                <div class="text-center p-6 bg-neutral-50 dark:bg-dark-elevated rounded-xl">
+                  <h4 class="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2">{{ 'recruitment.jobDetail.statistics.interviewRate' | translate }}</h4>
+                  <span class="text-4xl font-bold text-primary-500">{{ interviewRate() }}%</span>
+                  <span class="block text-sm text-neutral-500 dark:text-neutral-400 mt-1">{{ 'recruitment.jobDetail.statistics.applicationsToInterview' | translate }}</span>
+                </div>
+              </div>
             </div>
-          </mat-tab>
-        </mat-tab-group>
+          </sw-tab-panel>
+        </sw-tabs>
       }
     </div>
   `,
-  styles: [`
-    .job-detail {
-      padding: 24px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 400px;
-    }
-
-    .loading-container.small {
-      height: 200px;
-    }
-
-    .error-card mat-card-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px;
-      text-align: center;
-    }
-
-    .error-card mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 16px;
-    }
-
-    /* Header */
-    .detail-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-    }
-
-    .header-left {
-      display: flex;
-      gap: 12px;
-    }
-
-    .back-link {
-      color: rgba(0, 0, 0, 0.6);
-      margin-top: 4px;
-    }
-
-    .header-info h1 {
-      margin: 0 0 8px 0;
-      font-size: 28px;
-      font-weight: 500;
-    }
-
-    .header-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .job-reference {
-      font-family: monospace;
-      font-size: 13px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 16px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    /* Stats Row */
-    .stats-row {
-      display: flex;
-      gap: 32px;
-      padding: 16px 24px;
-      background: #f5f5f5;
-      border-radius: 8px;
-      margin-bottom: 24px;
-    }
-
-    .stat-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stat-item mat-icon {
-      color: rgba(0, 0, 0, 0.5);
-    }
-
-    .stat-value {
-      font-weight: 600;
-      font-size: 18px;
-    }
-
-    .stat-label {
-      color: rgba(0, 0, 0, 0.6);
-      font-size: 13px;
-    }
-
-    /* Tab Content */
-    .tab-content {
-      padding: 24px 0;
-    }
-
-    /* Detail Grid */
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 768px) {
-      .detail-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .detail-section h3 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
-    }
-
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .detail-row:last-child {
-      border-bottom: none;
-    }
-
-    .detail-row .label {
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .detail-row .value {
-      font-weight: 500;
-    }
-
-    .text-section {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    .text-section h3 {
-      margin: 0 0 12px 0;
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .text-content {
-      white-space: pre-wrap;
-      line-height: 1.6;
-      color: rgba(0, 0, 0, 0.8);
-    }
-
-    /* Pipeline Summary */
-    .pipeline-summary {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-
-    .pipeline-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 16px;
-      background: #f5f5f5;
-      border-radius: 8px;
-      cursor: pointer;
-      min-width: 80px;
-      transition: all 0.2s;
-    }
-
-    .pipeline-item:hover {
-      background: #eeeeee;
-    }
-
-    .pipeline-item.active {
-      background: #e3f2fd;
-      border: 2px solid #1976d2;
-    }
-
-    .pipeline-count {
-      font-size: 24px;
-      font-weight: 600;
-    }
-
-    .pipeline-label {
-      font-size: 11px;
-      color: rgba(0, 0, 0, 0.6);
-      text-align: center;
-    }
-
-    /* Candidates Table */
-    .candidates-table {
-      width: 100%;
-    }
-
-    .candidate-cell {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .candidate-link {
-      color: #1976d2;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .candidate-link:hover {
-      text-decoration: underline;
-    }
-
-    .candidate-title {
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .stage-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .rating {
-      display: flex;
-    }
-
-    .rating mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-      color: #e0e0e0;
-    }
-
-    .rating mat-icon.filled {
-      color: #ffc107;
-    }
-
-    .no-rating {
-      color: rgba(0, 0, 0, 0.4);
-    }
-
-    tr.starred {
-      background: #fffde7;
-    }
-
-    .reject-action {
-      color: #d32f2f;
-    }
-
-    /* Empty State */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 64px 24px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      margin: 0 0 8px 0;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
-    }
-
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 24px;
-      background: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .stat-card h4 {
-      margin: 0 0 8px 0;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .big-stat {
-      font-size: 36px;
-      font-weight: 600;
-      color: #1976d2;
-    }
-
-    .stat-desc {
-      display: block;
-      font-size: 13px;
-      color: rgba(0, 0, 0, 0.6);
-      margin-top: 4px;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class JobPostingDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly recruitmentService = inject(RecruitmentService);
-  private readonly snackBar = inject(MatSnackBar);
-  private readonly dialog = inject(MatDialog);
+  private readonly toast = inject(ToastService);
+  private readonly dialog = inject(DialogService);
+  private readonly translate = inject(TranslateService);
 
   job = signal<JobPosting | null>(null);
   applications = signal<Application[]>([]);
+  externalPostings = signal<ExternalJobPosting[]>([]);
   loading = signal(true);
   applicationsLoading = signal(false);
   error = signal<string | null>(null);
   selectedStage = signal<RecruitmentStage | null>(null);
 
-  pipelineStages: RecruitmentStage[] = ['NEW', 'SCREENING', 'FIRST_INTERVIEW', 'SECOND_INTERVIEW', 'FINAL_INTERVIEW', 'OFFER', 'COMPLETED'];
+  // Tab state
+  activeTab = 0;
+
+  pipelineStages: RecruitmentStage[] = ['NEW', 'SCREENING', 'PHONE_SCREEN', 'ASSESSMENT', 'FIRST_INTERVIEW', 'SECOND_INTERVIEW', 'FINAL_INTERVIEW', 'REFERENCE_CHECK', 'BACKGROUND_CHECK', 'OFFER', 'ONBOARDING', 'COMPLETED'];
   applicationColumns = ['candidate', 'stage', 'rating', 'applied', 'actions'];
+
+  // Computed tab labels with translation and dynamic count
+  tabLabels = computed(() => [
+    this.translate.instant('recruitment.jobDetail.tabs.overview'),
+    this.translate.instant('recruitment.jobDetail.tabs.candidates', { count: this.applications().length }),
+    this.translate.instant('recruitment.jobDetail.tabs.statistics')
+  ]);
 
   filteredApplications = computed(() => {
     const stage = this.selectedStage();
@@ -787,8 +489,9 @@ export class JobPostingDetailComponent implements OnInit {
     if (jobId) {
       this.loadJob(jobId);
       this.loadApplications(jobId);
+      this.loadExternalPostings(jobId);
     } else {
-      this.error.set('Job ID not found');
+      this.error.set(this.translate.instant('recruitment.jobDetail.errors.jobIdNotFound'));
       this.loading.set(false);
     }
   }
@@ -804,7 +507,7 @@ export class JobPostingDetailComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load job', err);
-        this.error.set('Failed to load job details');
+        this.error.set(this.translate.instant('recruitment.jobDetail.errors.failedToLoadJob'));
         this.loading.set(false);
       }
     });
@@ -820,6 +523,39 @@ export class JobPostingDetailComponent implements OnInit {
       error: (err) => {
         console.error('Failed to load applications', err);
         this.applicationsLoading.set(false);
+      }
+    });
+  }
+
+  loadExternalPostings(jobId: string): void {
+    this.recruitmentService.getExternalPostingsForJob(jobId).subscribe({
+      next: (postings) => {
+        this.externalPostings.set(postings);
+      },
+      error: (err) => {
+        console.error('Failed to load external postings', err);
+      }
+    });
+  }
+
+  refreshExternalPostings(): void {
+    if (this.job()) {
+      this.loadExternalPostings(this.job()!.id);
+    }
+  }
+
+  openPostToPortalsDialog(): void {
+    if (!this.job()) return;
+
+    const dialogRef = this.dialog.open(PostToPortalsDialogComponent, {
+      width: '480px',
+      maxWidth: '480px',
+      data: { job: this.job() }
+    });
+
+    dialogRef.afterClosed().then(result => {
+      if (result) {
+        this.loadExternalPostings(this.job()!.id);
       }
     });
   }
@@ -845,9 +581,9 @@ export class JobPostingDetailComponent implements OnInit {
     this.recruitmentService.publishJob(this.job()!.id, dateStr).subscribe({
       next: (job) => {
         this.job.set(job);
-        this.snackBar.open('Job published successfully', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.jobPublished'));
       },
-      error: () => this.snackBar.open('Failed to publish job', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToPublish'))
     });
   }
 
@@ -856,9 +592,9 @@ export class JobPostingDetailComponent implements OnInit {
     this.recruitmentService.putJobOnHold(this.job()!.id).subscribe({
       next: (job) => {
         this.job.set(job);
-        this.snackBar.open('Job put on hold', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.jobOnHold'));
       },
-      error: () => this.snackBar.open('Failed to put job on hold', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToPutOnHold'))
     });
   }
 
@@ -867,9 +603,9 @@ export class JobPostingDetailComponent implements OnInit {
     this.recruitmentService.reopenJob(this.job()!.id).subscribe({
       next: (job) => {
         this.job.set(job);
-        this.snackBar.open('Job reopened', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.jobReopened'));
       },
-      error: () => this.snackBar.open('Failed to reopen job', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToReopen'))
     });
   }
 
@@ -878,9 +614,9 @@ export class JobPostingDetailComponent implements OnInit {
     this.recruitmentService.closeJob(this.job()!.id).subscribe({
       next: (job) => {
         this.job.set(job);
-        this.snackBar.open('Job closed', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.jobClosed'));
       },
-      error: () => this.snackBar.open('Failed to close job', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToClose'))
     });
   }
 
@@ -889,9 +625,9 @@ export class JobPostingDetailComponent implements OnInit {
     this.recruitmentService.markJobAsFilled(this.job()!.id).subscribe({
       next: (job) => {
         this.job.set(job);
-        this.snackBar.open('Job marked as filled', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.jobMarkedAsFilled'));
       },
-      error: () => this.snackBar.open('Failed to mark job as filled', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToMarkAsFilled'))
     });
   }
 
@@ -901,7 +637,7 @@ export class JobPostingDetailComponent implements OnInit {
       data: { application: app }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().then(result => {
       if (result) {
         this.loadApplications(this.job()!.id);
       }
@@ -914,10 +650,10 @@ export class JobPostingDetailComponent implements OnInit {
       data: { application: app }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().then(result => {
       if (result) {
         this.loadApplications(this.job()!.id);
-        this.snackBar.open('Interview scheduled', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.interviewScheduled'));
       }
     });
   }
@@ -928,10 +664,24 @@ export class JobPostingDetailComponent implements OnInit {
       data: { application: app }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().then(result => {
       if (result) {
         this.loadApplications(this.job()!.id);
-        this.snackBar.open('Offer sent', 'Dismiss', { duration: 3000 });
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.offerSent'));
+      }
+    });
+  }
+
+  markAsHired(app: Application): void {
+    const dialogRef = this.dialog.open(HireCandidateDialogComponent, {
+      width: '500px',
+      data: { application: app }
+    });
+
+    dialogRef.afterClosed().then(result => {
+      if (result) {
+        this.loadApplications(this.job()!.id);
+        this.toast.success(this.translate.instant('recruitment.jobDetail.toast.candidateHired'));
       }
     });
   }
@@ -941,25 +691,30 @@ export class JobPostingDetailComponent implements OnInit {
       next: () => {
         this.loadApplications(this.job()!.id);
       },
-      error: () => this.snackBar.open('Failed to update', 'Dismiss', { duration: 5000 })
+      error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToUpdate'))
     });
   }
 
   rejectApplication(app: Application): void {
-    const reason = prompt('Rejection reason:');
+    const reason = prompt(this.translate.instant('recruitment.jobDetail.prompts.rejectionReason'));
     if (reason) {
       this.recruitmentService.rejectApplication(app.id, reason, 'current-user').subscribe({
         next: () => {
           this.loadApplications(this.job()!.id);
-          this.snackBar.open('Application rejected', 'Dismiss', { duration: 3000 });
+          this.toast.success(this.translate.instant('recruitment.jobDetail.toast.applicationRejected'));
         },
-        error: () => this.snackBar.open('Failed to reject application', 'Dismiss', { duration: 5000 })
+        error: () => this.toast.error(this.translate.instant('recruitment.jobDetail.toast.failedToReject'))
       });
     }
   }
 
   getJobStatusLabel(status: string): string {
     return RecruitmentService.getJobStatusLabel(status as any);
+  }
+
+  getJobStatusLabelTranslated(status: string): string {
+    const statusKey = status.toLowerCase().replace(/_/g, '');
+    return this.translate.instant(`recruitment.jobDetail.status.${statusKey}`);
   }
 
   getJobStatusColor(status: string): { background: string; color: string } {
@@ -970,11 +725,58 @@ export class JobPostingDetailComponent implements OnInit {
     return RecruitmentService.getEmploymentTypeLabel(type as any);
   }
 
+  getEmploymentTypeLabelTranslated(type: string): string {
+    const typeKey = type.toLowerCase().replace(/_/g, '');
+    return this.translate.instant(`recruitment.jobDetail.employmentType.${typeKey}`);
+  }
+
   getStageLabel(stage: RecruitmentStage): string {
     return RecruitmentService.getRecruitmentStageLabel(stage);
   }
 
+  getStageLabelTranslated(stage: RecruitmentStage): string {
+    const stageKey = stage.toLowerCase().replace(/_/g, '');
+    return this.translate.instant(`recruitment.jobDetail.stages.${stageKey}`);
+  }
+
   getStageColor(stage: RecruitmentStage): { background: string; color: string } {
     return RecruitmentService.getStageColor(stage);
+  }
+
+  // External posting helper methods
+  getPortalLabel(portal: JobPortal): string {
+    return RecruitmentService.getJobPortalLabel(portal);
+  }
+
+  getPortalIcon(portal: JobPortal): string {
+    const icons: Record<JobPortal, string> = {
+      LINKEDIN: 'work',
+      PNET: 'public',
+      CAREERS24: 'language',
+      INDEED: 'search'
+    };
+    return icons[portal] || 'public';
+  }
+
+  getPortalIconClass(portal: JobPortal): string {
+    const classes: Record<JobPortal, string> = {
+      LINKEDIN: 'text-blue-600',
+      PNET: 'text-orange-500',
+      CAREERS24: 'text-green-600',
+      INDEED: 'text-purple-600'
+    };
+    return classes[portal] || 'text-neutral-500';
+  }
+
+  getExternalPostingStatusLabel(status: ExternalPostingStatus): string {
+    return RecruitmentService.getExternalPostingStatusLabel(status);
+  }
+
+  getExternalPostingStatusColor(status: ExternalPostingStatus): { background: string; color: string } {
+    return RecruitmentService.getExternalPostingStatusColor(status);
+  }
+
+  getCompensationTypeLabel(type: CompensationType): string {
+    return RecruitmentService.getCompensationTypeLabel(type);
   }
 }

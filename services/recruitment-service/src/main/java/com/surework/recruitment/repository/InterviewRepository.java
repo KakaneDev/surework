@@ -43,6 +43,13 @@ public interface InterviewRepository extends JpaRepository<Interview, UUID> {
             @Param("now") LocalDateTime now);
 
     /**
+     * Find all upcoming interviews (today and future).
+     */
+    @Query("SELECT i FROM Interview i WHERE i.status IN ('SCHEDULED', 'CONFIRMED') " +
+            "AND i.scheduledAt >= :now AND i.deleted = false ORDER BY i.scheduledAt")
+    List<Interview> findAllUpcoming(@Param("now") LocalDateTime now);
+
+    /**
      * Find interviews in date range.
      */
     @Query("SELECT i FROM Interview i WHERE i.scheduledAt BETWEEN :start AND :end " +
@@ -83,10 +90,10 @@ public interface InterviewRepository extends JpaRepository<Interview, UUID> {
      */
     @Query("SELECT i FROM Interview i WHERE i.deleted = false " +
             "AND (:interviewerId IS NULL OR i.interviewerId = :interviewerId) " +
-            "AND (:status IS NULL OR i.status = :status) " +
-            "AND (:type IS NULL OR i.interviewType = :type) " +
-            "AND (:startDate IS NULL OR i.scheduledAt >= :startDate) " +
-            "AND (:endDate IS NULL OR i.scheduledAt <= :endDate) " +
+            "AND (CAST(:status AS string) IS NULL OR i.status = :status) " +
+            "AND (CAST(:type AS string) IS NULL OR i.interviewType = :type) " +
+            "AND (CAST(:startDate AS timestamp) IS NULL OR i.scheduledAt >= :startDate) " +
+            "AND (CAST(:endDate AS timestamp) IS NULL OR i.scheduledAt <= :endDate) " +
             "ORDER BY i.scheduledAt DESC")
     Page<Interview> search(
             @Param("interviewerId") UUID interviewerId,

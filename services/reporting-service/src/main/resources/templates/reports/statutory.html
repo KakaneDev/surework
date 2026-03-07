@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${report.name}">Statutory Report</title>
+    <style>
+        @page { size: A4; margin: 2cm; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 10pt; line-height: 1.5; color: #333; margin: 0; padding: 20px; }
+        .header { border-bottom: 3px solid #dc2626; padding-bottom: 20px; margin-bottom: 30px; text-align: center; }
+        .sars-logo { font-size: 12pt; font-weight: bold; color: #dc2626; letter-spacing: 2px; }
+        .company-name { font-size: 18pt; font-weight: bold; color: #1f2937; margin-top: 15px; }
+        .report-title { font-size: 16pt; margin-top: 10px; color: #dc2626; font-weight: bold; }
+        .report-meta { font-size: 9pt; color: #6b7280; margin-top: 10px; }
+        .form-section { border: 2px solid #d1d5db; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 12pt; font-weight: bold; color: #dc2626; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .field-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted #e5e7eb; }
+        .field-label { font-weight: 500; color: #374151; }
+        .field-value { font-weight: bold; color: #1f2937; font-family: 'Courier New', monospace; }
+        .total-row { background-color: #fef2f2; padding: 12px; margin-top: 10px; border-radius: 4px; }
+        .total-label { font-size: 11pt; font-weight: bold; color: #dc2626; }
+        .total-value { font-size: 14pt; font-weight: bold; color: #dc2626; font-family: 'Courier New', monospace; }
+        .due-date-box { background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 15px; text-align: center; margin-top: 20px; }
+        .due-date-label { font-size: 10pt; color: #92400e; }
+        .due-date-value { font-size: 14pt; font-weight: bold; color: #92400e; }
+        .footer { margin-top: 30px; text-align: center; font-size: 8pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 15px; }
+        .warning { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="sars-logo">SOUTH AFRICAN REVENUE SERVICE</div>
+        <div class="company-name" th:text="${companyName}">SureWork ERP</div>
+        <div class="report-title" th:text="${report.name}">EMP201 Monthly Employer Declaration</div>
+        <div class="report-meta">
+            Tax Period: <strong th:if="${!#lists.isEmpty(data)}" th:text="${data[0].get('taxPeriod')}">2024/01</strong> |
+            Generated: <strong th:text="${#temporals.format(generatedAt, 'dd MMM yyyy HH:mm')}">01 Jan 2024</strong>
+        </div>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(data)}" th:with="emp201=${data[0]}">
+        <div class="form-section">
+            <div class="section-title">EMPLOYER INFORMATION</div>
+            <div class="field-row">
+                <span class="field-label">Tax Period:</span>
+                <span class="field-value" th:text="${emp201.get('taxPeriod')}">2024/01</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">Number of Employees:</span>
+                <span class="field-value" th:text="${emp201.get('numberOfEmployees')}">0</span>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">REMUNERATION &amp; STATUTORY DEDUCTIONS</div>
+            <div class="field-row">
+                <span class="field-label">Total Gross Remuneration:</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('grossRemuneration') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">PAYE (Employees' Tax):</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('paye') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">UIF - Employee Contribution (1%):</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('uifEmployee') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">UIF - Employer Contribution (1%):</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('uifEmployer') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">Total UIF:</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('totalUif') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">SDL (Skills Development Levy 1%):</span>
+                <span class="field-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('sdl') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+            </div>
+
+            <div class="total-row">
+                <div class="field-row" style="border: none;">
+                    <span class="total-label">TOTAL AMOUNT PAYABLE TO SARS:</span>
+                    <span class="total-value" th:text="'R ' + ${#numbers.formatDecimal(emp201.get('totalLiability') ?: 0, 1, 'COMMA', 2, 'POINT')}">R 0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="due-date-box">
+            <div class="due-date-label">PAYMENT DUE DATE</div>
+            <div class="due-date-value" th:text="${#temporals.format(emp201.get('dueDate'), 'dd MMMM yyyy')}">07 February 2024</div>
+            <p style="margin-top: 10px; font-size: 9pt;">Late payment may result in penalties and interest charges</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p class="warning">This is a system-generated report for reference only.</p>
+        <p>Please verify all amounts before submission to SARS via eFiling.</p>
+        <p>Generated by SureWork ERP | EMP201 Statutory Report</p>
+    </div>
+</body>
+</html>

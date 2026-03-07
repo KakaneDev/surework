@@ -1,11 +1,14 @@
 package com.surework.employee.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -13,9 +16,28 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Security configuration for Employee Service.
+ *
+ * Security Architecture:
+ * 1. API Gateway validates JWT tokens and forwards user claims as headers
+ * 2. JwtHeaderAuthenticationFilter reads headers and creates SecurityContext
+ * 3. @PreAuthorize annotations on controllers enforce role-based access
+ *
+ * Role Hierarchy:
+ * - SUPER_ADMIN: Full employee access across all tenants
+ * - TENANT_ADMIN: Full access within tenant
+ * - HR_MANAGER: Full employee management
+ * - DEPARTMENT_MANAGER: View employees in department
+ * - EMPLOYEE: View own profile only
+ */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtHeaderAuthenticationFilter jwtHeaderAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -25,12 +47,19 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health").permitAll()
-                        .requestMatchers("/actuator/info").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .anyRequest().permitAll()
+                        // Allow actuator endpoints (health checks, metrics)
+                        .requestMatchers("/actuator/**").permitAll()
+                        // Allow OPTIONS requests for CORS preflight
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        // OpenAPI documentation
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // All API requests require authentication via JWT header filter
+                        .requestMatchers("/api/**").authenticated()
+                        // All other requests require authentication
+                        .anyRequest().authenticated()
                 )
+                // Add JWT header filter for authentication
+                .addFilterBefore(jwtHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 

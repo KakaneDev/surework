@@ -1,13 +1,11 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatIconModule } from '@angular/material/icon';
+import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Application
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ButtonComponent, DialogRef } from '@shared/ui';
 
 interface DialogData {
   application: Application;
@@ -18,141 +16,80 @@ interface DialogData {
   standalone: true,
   imports: [
     CommonModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatIconModule,
-    DatePipe
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent,
+    DatePipe,
+    DecimalPipe
   ],
   template: `
-    <h2 mat-dialog-title>
-      <mat-icon class="success-icon">check_circle</mat-icon>
-      Hire Candidate
-    </h2>
-    <mat-dialog-content>
-      <p class="dialog-info">
-        You are about to mark <strong>{{ data.application.candidate.fullName }}</strong> as hired
-        for the position of <strong>{{ data.application.job.title }}</strong>.
+    <div class="p-6 min-w-[450px]">
+      <h2 class="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2 flex items-center gap-2">
+        <span class="material-icons text-success-500" aria-hidden="true">check_circle</span>
+        {{ 'recruitment.hireDialog.title' | translate }}
+      </h2>
+      <p class="text-neutral-500 dark:text-neutral-400 mb-6">
+        {{ 'recruitment.hireDialog.subtitle' | translate: { candidateName: data.application.candidate.fullName, positionTitle: data.application.job.title } }}
       </p>
 
-      <div class="hire-summary">
-        <h4>Hiring Details</h4>
-        <div class="summary-row">
-          <span>Candidate:</span>
-          <span>{{ data.application.candidate.fullName }}</span>
-        </div>
-        <div class="summary-row">
-          <span>Position:</span>
-          <span>{{ data.application.job.title }}</span>
-        </div>
-        @if (data.application.offerSalary) {
-          <div class="summary-row">
-            <span>Agreed Salary:</span>
-            <span>R{{ data.application.offerSalary | number:'1.0-0' }} p/a</span>
+      <!-- Hiring Summary -->
+      <div class="p-4 bg-success-50 dark:bg-success-900/20 rounded-lg mb-4">
+        <h4 class="text-sm font-semibold text-success-700 dark:text-success-400 mb-3 flex items-center gap-2">
+          <span class="material-icons text-lg" aria-hidden="true">assignment_turned_in</span>
+          {{ 'recruitment.hireDialog.detailsHeader' | translate }}
+        </h4>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.hireDialog.candidateLabel' | translate }}:</span>
+            <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ data.application.candidate.fullName }}</span>
           </div>
-        }
-        @if (data.application.expectedStartDate) {
-          <div class="summary-row">
-            <span>Start Date:</span>
-            <span>{{ data.application.expectedStartDate | date:'mediumDate' }}</span>
+          <div class="flex justify-between">
+            <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.hireDialog.positionLabel' | translate }}:</span>
+            <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ data.application.job.title }}</span>
           </div>
-        }
+          @if (data.application.offerSalary) {
+            <div class="flex justify-between">
+              <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.hireDialog.salaryLabel' | translate }}:</span>
+              <span class="font-medium text-neutral-700 dark:text-neutral-300">R{{ data.application.offerSalary | number:'1.0-0' }} {{ 'recruitment.hireDialog.perAnnum' | translate }}</span>
+            </div>
+          }
+          @if (data.application.expectedStartDate) {
+            <div class="flex justify-between">
+              <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.hireDialog.startDateLabel' | translate }}:</span>
+              <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ data.application.expectedStartDate | date:'mediumDate' }}</span>
+            </div>
+          }
+        </div>
       </div>
 
-      <div class="notice">
-        <mat-icon>info</mat-icon>
-        <span>This will update the candidate's status and notify the HR team to begin onboarding.</span>
+      <!-- Notice -->
+      <div class="flex items-start gap-3 p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg text-sm">
+        <span class="material-icons text-warning-500 text-lg" aria-hidden="true">info</span>
+        <span class="text-neutral-700 dark:text-neutral-300">{{ 'recruitment.hireDialog.notice' | translate }}</span>
       </div>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onConfirm()"
-              [disabled]="saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Confirm Hire
-        }
-      </button>
-    </mat-dialog-actions>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-dark-border">
+        <sw-button variant="ghost" size="md" [disabled]="saving()" (clicked)="cancel()">
+          {{ 'recruitment.hireDialog.cancelButton' | translate }}
+        </sw-button>
+        <sw-button variant="primary" size="md" [disabled]="saving()" [loading]="saving()" (clicked)="onConfirm()">
+          <span class="material-icons text-lg" aria-hidden="true">check</span>
+          {{ 'recruitment.hireDialog.confirmButton' | translate }}
+        </sw-button>
+      </div>
+    </div>
   `,
-  styles: [`
-    h2[mat-dialog-title] {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .success-icon {
-      color: #43a047;
-    }
-
-    .dialog-info {
-      margin-bottom: 16px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    mat-dialog-content {
-      min-width: 400px;
-    }
-
-    .hire-summary {
-      padding: 16px;
-      background: #e8f5e9;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-
-    .hire-summary h4 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      font-weight: 500;
-      color: #2e7d32;
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 14px;
-    }
-
-    .summary-row span:first-child {
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .summary-row span:last-child {
-      font-weight: 500;
-    }
-
-    .notice {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px;
-      background: #fff3e0;
-      border-radius: 8px;
-      font-size: 13px;
-      color: rgba(0, 0, 0, 0.7);
-    }
-
-    .notice mat-icon {
-      color: #f57c00;
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
-
-    mat-dialog-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HireCandidateDialogComponent {
-  readonly dialogRef = inject(MatDialogRef<HireCandidateDialogComponent>);
-  readonly data: DialogData = inject(MAT_DIALOG_DATA);
+  private readonly dialogRef: DialogRef = inject('DIALOG_REF' as any);
+  readonly data: DialogData = inject('DIALOG_DATA' as any);
   private readonly recruitmentService = inject(RecruitmentService);
+  private readonly translate = inject(TranslateService);
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
 
   saving = signal(false);
 
@@ -165,7 +102,7 @@ export class HireCandidateDialogComponent {
         this.dialogRef.close(true);
       },
       error: (err) => {
-        console.error('Failed to mark as hired', err);
+        console.error(this.translate.instant('recruitment.hireDialog.errorMessage'), err);
         this.saving.set(false);
       }
     });

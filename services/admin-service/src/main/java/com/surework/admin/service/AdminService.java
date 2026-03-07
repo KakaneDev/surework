@@ -63,6 +63,29 @@ public interface AdminService {
 
     UserResponse assignRoles(UUID userId, AssignRolesRequest request, UUID assignedBy);
 
+    /**
+     * Update user roles with tenant validation and privilege escalation prevention.
+     *
+     * <p>Validates that the user belongs to the specified tenant before updating.
+     * Prevents non-SUPER_ADMIN users from assigning SUPER_ADMIN role to others.
+     *
+     * @param tenantId the tenant the user belongs to
+     * @param userId the user whose roles are being updated
+     * @param request the role IDs to assign
+     * @param assignedBy the user performing the update (for audit)
+     * @param isSuperAdmin whether the assigning user has SUPER_ADMIN privileges
+     * @return the updated user response
+     * @throws IllegalArgumentException if user not found or doesn't belong to tenant
+     * @throws org.springframework.security.access.AccessDeniedException if attempting privilege escalation
+     */
+    UserResponse updateUserRoles(UUID tenantId, UUID userId, AssignRolesRequest request, UUID assignedBy, boolean isSuperAdmin);
+
+    // ==================== Avatar Management ====================
+
+    AvatarResponse uploadAvatar(UUID userId, byte[] fileData, String fileName, String contentType);
+
+    void deleteAvatar(UUID userId);
+
     // ==================== Role Management ====================
 
     RoleResponse createRole(UUID tenantId, CreateRoleRequest request, UUID createdBy);
@@ -93,11 +116,48 @@ public interface AdminService {
 
     void logoutAllSessions(UUID userId);
 
+    Optional<UserResponse> getCurrentUserFromToken(String authHeader);
+
     MfaSetupResponse setupMfa(UUID userId);
 
     void verifyAndEnableMfa(UUID userId, MfaVerifyRequest request);
 
     void disableMfa(UUID userId);
+
+    // ==================== Password Reset ====================
+
+    /**
+     * Initiates password reset flow by sending a reset email.
+     * Always returns success message to prevent user enumeration.
+     */
+    PasswordResetResponse forgotPassword(ForgotPasswordRequest request);
+
+    /**
+     * Validates a password reset token.
+     */
+    ValidateTokenResponse validateResetToken(String token);
+
+    /**
+     * Resets password using a valid token.
+     */
+    PasswordResetResponse resetPasswordWithToken(PasswordResetRequest request);
+
+    // ==================== Session Management ====================
+
+    /**
+     * Gets all active sessions for a user.
+     */
+    List<ActiveSessionResponse> getActiveSessions(UUID userId, String currentTokenHash);
+
+    /**
+     * Revokes a specific session.
+     */
+    void revokeSession(UUID userId, UUID sessionId);
+
+    /**
+     * Revokes all sessions except the current one.
+     */
+    void revokeAllOtherSessions(UUID userId, String currentTokenHash);
 
     // ==================== API Key Management ====================
 

@@ -1,0 +1,51 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  flyway:
+    clean-disabled: false
+
+# Development database defaults
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_notifications
+    username: surework
+    password: surework
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+# Development Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Development mail (MailHog)
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+# Development JWT secret (NOT for production use)
+surework:
+  admin:
+    jwt:
+      secret: surework-dev-jwt-secret-key-for-development-only
+
+app:
+  mail:
+    from: noreply@surework.co.za
+  careers-url: http://localhost:4200/careers
+
+logging:
+  level:
+    com.surework: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG

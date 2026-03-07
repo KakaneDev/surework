@@ -19,9 +19,42 @@ import java.util.UUID;
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     /**
+     * Find by ID (non-deleted).
+     */
+    @Query("SELECT a FROM Account a WHERE a.id = :id AND a.deleted = false")
+    Optional<Account> findByIdNotDeleted(@Param("id") UUID id);
+
+    /**
+     * Find by ID and tenant ID (tenant ignored since Account doesn't have tenantId).
+     * Provided for backward compatibility with tenant-aware services.
+     */
+    @Query("SELECT a FROM Account a WHERE a.id = :id AND a.deleted = false")
+    Optional<Account> findByIdAndTenantId(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+
+    /**
+     * Find by tenant ID and account type (tenant ignored).
+     * Provided for backward compatibility with tenant-aware services.
+     */
+    @Query("SELECT a FROM Account a WHERE a.accountType = :type AND a.deleted = false ORDER BY a.accountCode")
+    List<Account> findByTenantIdAndAccountType(@Param("tenantId") UUID tenantId, @Param("type") Account.AccountType type);
+
+    /**
+     * Find by tenant ID and account code (tenant ignored since Account doesn't have tenantId).
+     * Provided for backward compatibility with tenant-aware services.
+     */
+    @Query("SELECT a FROM Account a WHERE a.accountCode = :code AND a.deleted = false")
+    Optional<Account> findByTenantIdAndAccountCode(@Param("tenantId") UUID tenantId, @Param("code") String code);
+
+    /**
      * Find by account code.
      */
     Optional<Account> findByAccountCode(String accountCode);
+
+    /**
+     * Find by account code (non-deleted).
+     */
+    @Query("SELECT a FROM Account a WHERE a.accountCode = :accountCode AND a.deleted = false")
+    Optional<Account> findByAccountCodeNotDeleted(@Param("accountCode") String accountCode);
 
     /**
      * Find by account type.

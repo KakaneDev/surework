@@ -4,7 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+        "com.surework.employee",
+        "com.surework.common"
+})
 @EnableDiscoveryClient
 public class EmployeeServiceApplication {
     public static void main(String[] args) {

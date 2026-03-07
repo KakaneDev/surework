@@ -4,7 +4,7 @@ spring:
   config:
     import: "optional:configserver:http://localhost:8888"
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:surework_accounting}
@@ -19,7 +19,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # Use 'validate' in production, 'update' only for development
+      ddl-auto: ${DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -78,6 +79,8 @@ surework:
     default-currency: ZAR
     # Decimal precision for amounts
     amount-precision: 2
+    # Default company VAT number (should be overridden per-tenant in production)
+    default-vat-number: ${COMPANY_VAT_NUMBER:}
 
 logging:
   level:

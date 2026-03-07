@@ -15,6 +15,7 @@ import java.util.UUID;
 /**
  * Represents an employee's payslip for a specific payroll period.
  * Contains all earnings, deductions, and statutory contributions.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "payslips", indexes = {
@@ -26,6 +27,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class Payslip extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payroll_run_id", nullable = false)

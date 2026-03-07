@@ -5,6 +5,7 @@ import com.surework.identity.domain.User;
 import com.surework.identity.dto.UserDto;
 import com.surework.identity.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,64 @@ public class UserController {
     }
 
     /**
+     * Request for signup user creation (includes password).
+     * Validates all required fields for tenant admin user creation.
+     */
+    public record SignupUserRequest(
+            @NotBlank(message = "Email is required")
+            @Email(message = "Invalid email format")
+            @Size(max = 255, message = "Email must not exceed 255 characters")
+            String email,
+
+            @NotBlank(message = "First name is required")
+            @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
+            String firstName,
+
+            @NotBlank(message = "Last name is required")
+            @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
+            String lastName,
+
+            @NotBlank(message = "Phone number is required")
+            @Pattern(regexp = "^\\+27[0-9]{9}$", message = "Phone must be a valid SA number (+27XXXXXXXXX)")
+            String phone,
+
+            Set<String> roles,
+
+            UUID employeeId,
+
+            @NotBlank(message = "Password is required")
+            @Size(min = 12, message = "Password must be at least 12 characters")
+            @Pattern(
+                    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
+                    message = "Password must contain at least one uppercase, one lowercase, one digit, and one special character"
+            )
+            String password,
+
+            @NotNull(message = "Tenant ID is required")
+            UUID tenantId
+    ) {}
+
+    /**
+     * Create a new user during tenant signup.
+     * This endpoint accepts password and tenantId for the initial admin user.
+     */
+    @PostMapping("/signup")
+    public ResponseEntity<UserDto.Response> createSignupUser(
+            @Valid @RequestBody SignupUserRequest request) {
+        UserDto.Response response = userService.createUserWithPassword(
+                request.email(),
+                request.firstName(),
+                request.lastName(),
+                request.phone(),
+                request.roles(),
+                request.employeeId(),
+                request.password(),
+                request.tenantId()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
      * Get user by ID.
      */
     @GetMapping("/{userId}")
@@ -52,7 +111,22 @@ public class UserController {
     public ResponseEntity<UserDto.Response> getUserByEmail(@PathVariable String email) {
         return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
+    }
+
+    /**
+     * Response for email availability check.
+     */
+    public record EmailAvailabilityResponse(boolean available) {}
+
+    /**
+     * Check if email is available (not already registered).
+     * Public endpoint for signup validation.
+     */
+    @GetMapping("/email-available")
+    public ResponseEntity<EmailAvailabilityResponse> isEmailAvailable(@RequestParam String email) {
+        boolean available = userService.getUserByEmail(email).isEmpty();
+        return ResponseEntity.ok(new EmailAvailabilityResponse(available));
     }
 
     /**

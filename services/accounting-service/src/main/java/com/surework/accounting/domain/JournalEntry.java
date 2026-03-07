@@ -21,12 +21,16 @@ import java.util.UUID;
         @Index(name = "idx_journal_entries_number", columnList = "entry_number"),
         @Index(name = "idx_journal_entries_date", columnList = "transaction_date"),
         @Index(name = "idx_journal_entries_status", columnList = "status"),
-        @Index(name = "idx_journal_entries_type", columnList = "entry_type")
+        @Index(name = "idx_journal_entries_type", columnList = "entry_type"),
+        @Index(name = "idx_journal_entries_tenant", columnList = "tenant_id")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 public class JournalEntry extends BaseEntity {
+
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(name = "entry_number", nullable = false, unique = true)
     private String entryNumber;

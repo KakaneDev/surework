@@ -52,10 +52,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeDto.Response createEmployee(EmployeeDto.CreateRequest request) {
         // Validate uniqueness
         if (employeeRepository.existsByEmail(request.email())) {
-            throw new ConflictException("Employee", "email", request.email());
+            throw ConflictException.duplicate("Employee", request.email());
         }
         if (employeeRepository.existsByIdNumber(request.idNumber())) {
-            throw new ConflictException("Employee", "idNumber", "ID number already registered");
+            throw ConflictException.duplicate("Employee", request.idNumber());
         }
 
         // Create employee
@@ -98,7 +98,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
 
         if (request.managerId() != null) {
-            Employee manager = employeeRepository.findById(request.managerId())
+            Employee manager = employeeRepository.findByIdAndTenantId(request.managerId(), TenantContext.requireTenantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Employee (Manager)", request.managerId()));
             employee.setManager(manager);
         }
@@ -121,6 +121,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setEmergencyContactName(request.emergencyContactName());
         employee.setEmergencyContactPhone(request.emergencyContactPhone());
         employee.setEmergencyContactRelationship(request.emergencyContactRelationship());
+
+        // Tenant isolation: always set tenantId from context before saving
+        employee.setTenantId(TenantContext.requireTenantId());
 
         employee = employeeRepository.save(employee);
 
@@ -147,7 +150,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeDto.Response updateEmployee(UUID employeeId, EmployeeDto.UpdateRequest request) {
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeId));
 
         // Update fields if provided
@@ -162,7 +165,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         if (request.email() != null && !request.email().equals(employee.getEmail())) {
             if (employeeRepository.existsByEmail(request.email())) {
-                throw new ConflictException("Employee", "email", request.email());
+                throw ConflictException.duplicate("Employee", request.email());
             }
             employee.setEmail(request.email());
         }
@@ -205,7 +208,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             if (request.managerId().equals(employeeId)) {
                 throw new BusinessRuleException("Employee cannot be their own manager");
             }
-            Employee manager = employeeRepository.findById(request.managerId())
+            Employee manager = employeeRepository.findByIdAndTenantId(request.managerId(), TenantContext.requireTenantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Employee (Manager)", request.managerId()));
             employee.setManager(manager);
         }
@@ -261,8 +264,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional(readOnly = true)
     public Optional<EmployeeDto.Response> getEmployee(UUID employeeId) {
-        return employeeRepository.findById(employeeId)
-                .filter(e -> !e.isDeleted())
+        return employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
                 .map(EmployeeDto.Response::fromEntity);
     }
 
@@ -281,14 +283,14 @@ public class EmployeeServiceImpl implements EmployeeService {
             UUID departmentId,
             String search,
             Pageable pageable) {
-        return employeeRepository.search(status, departmentId, search, pageable)
+        return employeeRepository.searchByTenantId(TenantContext.requireTenantId(), status, departmentId, search, pageable)
                 .map(EmployeeDto.ListItem::fromEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<EmployeeDto.ListItem> getActiveEmployees() {
-        return employeeRepository.findAllActive().stream()
+        return employeeRepository.findAllActiveByTenantId(TenantContext.requireTenantId()).stream()
                 .map(EmployeeDto.ListItem::fromEntity)
                 .toList();
     }
@@ -312,7 +314,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeDto.Response terminateEmployee(UUID employeeId, LocalDate terminationDate, String reason) {
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeId));
 
         if (employee.getStatus() == Employee.EmploymentStatus.TERMINATED) {
@@ -343,7 +345,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeDto.Response reactivateEmployee(UUID employeeId) {
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeId));
 
         if (employee.getStatus() != Employee.EmploymentStatus.TERMINATED) {
@@ -362,7 +364,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeDto.Response linkUserAccount(UUID employeeId, UUID userId) {
-        Employee employee = employeeRepository.findById(employeeId)
+        Employee employee = employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeId));
 
         employee.setUserId(userId);
@@ -376,7 +378,41 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional(readOnly = true)
     public long getActiveEmployeeCount() {
-        return employeeRepository.countActiveEmployees();
+        return employeeRepository.countActiveEmployeesByTenantId(TenantContext.requireTenantId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EmployeeDto.HierarchyItem> getHierarchyData() {
+        return employeeRepository.findAllActiveByTenantId(TenantContext.requireTenantId()).stream()
+                .map(EmployeeDto.HierarchyItem::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EmployeeDto.ReportItem> getAllEmployeesForReporting() {
+        return employeeRepository.findAllByTenantId(TenantContext.requireTenantId()).stream()
+                .map(EmployeeDto.ReportItem::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> getEmployeeUserId(UUID employeeId) {
+        return employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
+                .map(Employee::getUserId)
+                .filter(java.util.Objects::nonNull);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> getManagerUserId(UUID employeeId) {
+        return employeeRepository.findByIdAndTenantId(employeeId, TenantContext.requireTenantId())
+                .map(Employee::getManager)
+                .filter(java.util.Objects::nonNull)
+                .map(Employee::getUserId)
+                .filter(java.util.Objects::nonNull);
     }
 
     /**

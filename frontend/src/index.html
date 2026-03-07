@@ -1,19 +1,45 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
   <meta charset="utf-8">
   <title>SureWork - SME ERP Platform</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="SureWork - South African SME ERP Platform for HR, Payroll, Accounting, and Recruitment">
-  <meta name="theme-color" content="#1a73e8">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Material Icons (kept during migration, will be replaced by Lucide) -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <!-- Polyfill for Node.js globals (required by SockJS/WebSocket libraries) -->
+  <script>
+    var global = global || window;
+    var process = process || { env: {} };
+    var Buffer = Buffer || { isBuffer: function() { return false; } };
+  </script>
+
+  <!-- Prevent FOUC for dark mode -->
+  <script>
+    (function() {
+      const theme = localStorage.getItem('sw-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = theme === 'dark' || (theme === 'system' && prefersDark) || (!theme && prefersDark);
+      if (shouldBeDark) {
+        document.documentElement.classList.remove('light');
+        document.documentElement.classList.add('dark');
+        document.querySelector('meta[name="theme-color"]').content = '#1a1a1a';
+      }
+    })();
+  </script>
 </head>
-<body class="mat-typography">
+<body class="antialiased">
   <app-root></app-root>
   <noscript>Please enable JavaScript to use SureWork.</noscript>
 </body>

@@ -72,11 +72,12 @@ public interface CandidateRepository extends JpaRepository<Candidate, UUID> {
     List<Candidate> findInternalCandidates();
 
     /**
-     * Search candidates.
+     * Search candidates with safe parameterized JPQL query.
+     * Uses CONCAT to safely build LIKE patterns without SQL injection risk.
      */
     @Query("SELECT c FROM Candidate c WHERE c.deleted = false " +
             "AND (:status IS NULL OR c.status = :status) " +
-            "AND (:searchTerm IS NULL OR " +
+            "AND (:searchTerm IS NULL OR :searchTerm = '' OR " +
             "    LOWER(c.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
             "    LOWER(c.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
             "    LOWER(c.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +

@@ -1,16 +1,14 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Store } from '@ngrx/store';
-import * as AuthActions from '@core/store/auth/auth.actions';
-import * as AuthSelectors from '@core/store/auth/auth.selectors';
+import { TranslateModule } from '@ngx-translate/core';
+import { login } from '@core/store/auth/auth.actions';
+import { selectAuthLoading, selectAuthError, selectRateLimitInfo } from '@core/store/auth/auth.selectors';
+import { ButtonComponent, SpinnerComponent, FormFieldComponent, InputComponent } from '@shared/ui';
+
+const REMEMBER_EMAIL_KEY = 'sw-remember-email';
 
 @Component({
   selector: 'app-login',
@@ -19,143 +17,274 @@ import * as AuthSelectors from '@core/store/auth/auth.selectors';
     CommonModule,
     ReactiveFormsModule,
     RouterLink,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
+    TranslateModule,
+    ButtonComponent,
+    SpinnerComponent,
+    FormFieldComponent,
+    InputComponent
   ],
   template: `
-    <div class="login-container">
-      <mat-card class="login-card">
-        <mat-card-header>
-          <mat-card-title>
-            <h1>Welcome to SureWork</h1>
-          </mat-card-title>
-          <mat-card-subtitle>Sign in to continue</mat-card-subtitle>
-        </mat-card-header>
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-800 p-4">
+      <div class="w-full max-w-md">
+        <!-- Logo/Brand -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
+            <span class="text-3xl font-bold text-primary-500">S</span>
+          </div>
+          <h1 class="text-2xl font-bold text-white">{{ 'auth.welcome' | translate }}</h1>
+          <p class="text-primary-100 mt-1">{{ 'auth.signInToContinue' | translate }}</p>
+        </div>
 
-        <mat-card-content>
-          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Email</mat-label>
-              <input matInput type="email" formControlName="email" placeholder="you@company.com">
-              <mat-icon matSuffix>email</mat-icon>
+        <!-- Login Card -->
+        <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-xl p-8">
+          <!-- Rate Limit Warning -->
+          @if (rateLimitInfo$ | async; as rateLimit) {
+            @if (rateLimit.isLocked) {
+              <div class="mb-6 p-4 bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-800 rounded-lg" role="alert">
+                <div class="flex items-start gap-3">
+                  <span class="material-icons text-error-500 text-xl mt-0.5" aria-hidden="true">lock</span>
+                  <div>
+                    <h3 class="font-semibold text-error-700 dark:text-error-300">
+                      {{ 'auth.rateLimit.accountLocked' | translate }}
+                    </h3>
+                    <p class="text-sm text-error-600 dark:text-error-400 mt-1">
+                      {{ 'auth.rateLimit.tooManyAttempts' | translate }}
+                    </p>
+                    @if (lockoutCountdown() > 0) {
+                      <p class="text-sm font-medium text-error-700 dark:text-error-300 mt-2">
+                        {{ 'auth.rateLimit.tryAgainIn' | translate: { time: formatCountdown(lockoutCountdown()) } }}
+                      </p>
+                    }
+                  </div>
+                </div>
+              </div>
+            } @else if (rateLimit.remainingAttempts !== undefined && rateLimit.remainingAttempts <= 3) {
+              <div class="mb-6 p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-lg" role="alert">
+                <div class="flex items-center gap-2">
+                  <span class="material-icons text-warning-500 text-lg" aria-hidden="true">warning</span>
+                  <p class="text-sm text-warning-700 dark:text-warning-300">
+                    {{ 'auth.rateLimit.remainingAttempts' | translate: { count: rateLimit.remainingAttempts } }}
+                  </p>
+                </div>
+              </div>
+            }
+          }
+
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-5">
+            <!-- Email Field -->
+            <div>
+              <label for="email" class="sw-label">{{ 'auth.email' | translate }}</label>
+              <div class="relative">
+                <input
+                  id="email"
+                  type="email"
+                  formControlName="email"
+                  [placeholder]="'auth.emailPlaceholder' | translate"
+                  class="sw-input pr-10"
+                  [class.sw-input-error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+                  [attr.aria-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+                  [attr.aria-describedby]="(loginForm.get('email')?.invalid && loginForm.get('email')?.touched) ? 'email-error' : null"
+                  autocomplete="email"
+                />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-neutral-400 text-xl" aria-hidden="true">
+                  email
+                </span>
+              </div>
               @if (loginForm.get('email')?.hasError('required') && loginForm.get('email')?.touched) {
-                <mat-error>Email is required</mat-error>
+                <p id="email-error" class="sw-error-text" role="alert">{{ 'errors.requiredField' | translate }}</p>
               }
               @if (loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched) {
-                <mat-error>Please enter a valid email</mat-error>
+                <p id="email-error" class="sw-error-text" role="alert">{{ 'errors.invalidEmail' | translate }}</p>
               }
-            </mat-form-field>
+            </div>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Password</mat-label>
-              <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password">
-              <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-                <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-              </button>
+            <!-- Password Field -->
+            <div>
+              <label for="password" class="sw-label">{{ 'auth.password' | translate }}</label>
+              <div class="relative">
+                <input
+                  id="password"
+                  [type]="hidePassword() ? 'password' : 'text'"
+                  formControlName="password"
+                  [placeholder]="'auth.enterPassword' | translate"
+                  class="sw-input pr-10"
+                  [class.sw-input-error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+                  [attr.aria-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+                  [attr.aria-describedby]="(loginForm.get('password')?.invalid && loginForm.get('password')?.touched) ? 'password-error' : null"
+                  autocomplete="current-password"
+                />
+                <button
+                  type="button"
+                  (click)="togglePasswordVisibility()"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors p-1"
+                  [attr.aria-label]="hidePassword() ? ('auth.showPassword' | translate) : ('auth.hidePassword' | translate)"
+                  [attr.title]="hidePassword() ? ('auth.showPassword' | translate) + ' (Alt+V)' : ('auth.hidePassword' | translate) + ' (Alt+V)'"
+                >
+                  <span class="material-icons text-xl" aria-hidden="true">
+                    {{ hidePassword() ? 'visibility_off' : 'visibility' }}
+                  </span>
+                </button>
+              </div>
               @if (loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched) {
-                <mat-error>Password is required</mat-error>
+                <p id="password-error" class="sw-error-text" role="alert">{{ 'errors.requiredField' | translate }}</p>
               }
-            </mat-form-field>
+            </div>
 
+            <!-- Remember Me -->
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  formControlName="rememberMe"
+                  class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 focus:ring-offset-0"
+                />
+                <span class="text-sm text-neutral-600 dark:text-neutral-400 group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
+                  {{ 'auth.rememberMe' | translate }}
+                </span>
+              </label>
+              <a
+                routerLink="/auth/forgot-password"
+                class="text-sm text-primary-500 hover:text-primary-600 transition-colors"
+              >
+                {{ 'auth.forgotPassword' | translate }}
+              </a>
+            </div>
+
+            <!-- Error Message -->
             @if (error$ | async; as error) {
-              <div class="error-message">{{ error }}</div>
+              <div class="bg-error-50 dark:bg-error-900/20 text-error-600 dark:text-error-400 px-4 py-3 rounded-lg text-sm text-center" role="alert">
+                {{ error }}
+              </div>
             }
 
-            <button mat-raised-button color="primary" type="submit" class="full-width login-button"
-                    [disabled]="loginForm.invalid || (loading$ | async)">
-              @if (loading$ | async) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                Sign In
-              }
-            </button>
+            <!-- Submit Button -->
+            <sw-button
+              type="submit"
+              variant="primary"
+              size="lg"
+              [block]="true"
+              [disabled]="loginForm.invalid || isLocked()"
+              [loading]="(loading$ | async) ?? false"
+            >
+              {{ (loading$ | async) ? ('auth.signingIn' | translate) : ('auth.signIn' | translate) }}
+            </sw-button>
           </form>
-        </mat-card-content>
+        </div>
 
-        <mat-card-actions>
-          <a mat-button routerLink="/auth/forgot-password">Forgot password?</a>
-        </mat-card-actions>
-      </mat-card>
+        <!-- Footer -->
+        <p class="text-center text-primary-200 text-sm mt-8">
+          {{ 'auth.platformTagline' | translate }}
+        </p>
+      </div>
     </div>
   `,
-  styles: [`
-    .login-container {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
-      padding: 16px;
-    }
-
-    .login-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 24px;
-    }
-
-    mat-card-header {
-      display: block;
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 24px;
-      color: #1a73e8;
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    .login-button {
-      margin-top: 16px;
-      height: 48px;
-      font-size: 16px;
-    }
-
-    .error-message {
-      background: #ffebee;
-      color: #c62828;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-
-    mat-card-actions {
-      display: flex;
-      justify-content: center;
-      padding-top: 16px;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LoginComponent {
+export class LoginComponent implements OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
 
-  hidePassword = true;
-  loading$ = this.store.select(AuthSelectors.selectAuthLoading);
-  error$ = this.store.select(AuthSelectors.selectAuthError);
+  hidePassword = signal(true);
+  lockoutCountdown = signal(0);
+
+  loading$ = this.store.select(selectAuthLoading);
+  error$ = this.store.select(selectAuthError);
+  rateLimitInfo$ = this.store.select(selectRateLimitInfo);
+
+  private countdownInterval: ReturnType<typeof setInterval> | null = null;
 
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
+    rememberMe: [false]
   });
 
+  constructor() {
+    // Load remembered email
+    const rememberedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (rememberedEmail) {
+      this.loginForm.patchValue({
+        email: rememberedEmail,
+        rememberMe: true
+      });
+    }
+
+    // Subscribe to rate limit info for countdown
+    this.rateLimitInfo$.subscribe(info => {
+      if (info?.isLocked && info?.lockoutEndTime) {
+        this.startLockoutCountdown(info.lockoutEndTime);
+      }
+    });
+  }
+
+  /**
+   * Handle Alt+V keyboard shortcut for password visibility toggle
+   */
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardShortcut(event: KeyboardEvent): void {
+    if (event.altKey && event.key.toLowerCase() === 'v') {
+      event.preventDefault();
+      this.togglePasswordVisibility();
+    }
+  }
+
+  togglePasswordVisibility(): void {
+    this.hidePassword.set(!this.hidePassword());
+  }
+
+  isLocked(): boolean {
+    return this.lockoutCountdown() > 0;
+  }
+
   onSubmit(): void {
-    if (this.loginForm.valid) {
-      const { email, password } = this.loginForm.value;
-      this.store.dispatch(AuthActions.login({
+    if (this.loginForm.valid && !this.isLocked()) {
+      const { email, password, rememberMe } = this.loginForm.value;
+
+      // Handle Remember Me
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, email!);
+      } else {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      }
+
+      this.store.dispatch(login({
         request: { email: email!, password: password! }
       }));
+    }
+  }
+
+  private startLockoutCountdown(endTime: number): void {
+    // Clear existing interval
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      this.lockoutCountdown.set(remaining);
+
+      if (remaining <= 0 && this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+        this.countdownInterval = null;
+      }
+    };
+
+    updateCountdown();
+    this.countdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  formatCountdown(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  }
+
+  ngOnDestroy(): void {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
     }
   }
 }

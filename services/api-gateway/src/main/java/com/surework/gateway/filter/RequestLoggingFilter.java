@@ -48,21 +48,22 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
 
         final String finalRequestId = requestId;
 
+        // Add request ID to response headers before the response is committed
+        exchange.getResponse().beforeCommit(() -> {
+            exchange.getResponse().getHeaders().add(REQUEST_ID_HEADER, finalRequestId);
+            return Mono.empty();
+        });
+
         return chain.filter(exchange.mutate().request(modifiedRequest).build())
-                .then(Mono.fromRunnable(() -> {
-                    ServerHttpResponse response = exchange.getResponse();
+                .doOnTerminate(() -> {
                     long duration = System.currentTimeMillis() - startTime;
-
-                    // Add request ID to response
-                    response.getHeaders().add(REQUEST_ID_HEADER, finalRequestId);
-
                     log.info("Response: {} {} - Status: {} - Duration: {}ms - RequestId: {}",
                             request.getMethod(),
                             request.getPath(),
-                            response.getStatusCode(),
+                            exchange.getResponse().getStatusCode(),
                             duration,
                             finalRequestId);
-                }));
+                });
     }
 
     private String getClientIp(ServerHttpRequest request) {

@@ -89,6 +89,7 @@ public interface PayrollService {
      */
     Page<PayrollDto.PayslipSummary> searchPayslips(
             UUID employeeId,
+            UUID runId,
             Integer year,
             Integer month,
             Payslip.PayslipStatus status,

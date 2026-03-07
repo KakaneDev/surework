@@ -14,9 +14,58 @@ import java.util.UUID;
 
 /**
  * Repository for Employee entity.
+ * Includes tenant-filtered methods for defense-in-depth multitenancy isolation.
  */
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
+
+    // ========== Tenant-Filtered Methods (Defense-in-Depth) ==========
+
+    @Query("SELECT e FROM Employee e WHERE e.id = :id AND e.tenantId = :tenantId AND e.deleted = false")
+    Optional<Employee> findByIdAndTenantId(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT e FROM Employee e
+        WHERE e.tenantId = :tenantId AND e.deleted = false
+        ORDER BY e.lastName, e.firstName
+        """)
+    List<Employee> findAllByTenantId(@Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT e FROM Employee e
+        WHERE e.tenantId = :tenantId AND e.deleted = false AND e.status = 'ACTIVE'
+        ORDER BY e.lastName, e.firstName
+        """)
+    List<Employee> findAllActiveByTenantId(@Param("tenantId") UUID tenantId);
+
+    @Query("""
+        SELECT e FROM Employee e
+        WHERE e.tenantId = :tenantId
+        AND e.deleted = false
+        AND (:status IS NULL OR e.status = :status)
+        AND (:departmentId IS NULL OR e.department.id = :departmentId)
+        AND (:search IS NULL OR :search = ''
+             OR LOWER(CAST(e.firstName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.lastName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.email AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.employeeNumber AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+        ORDER BY e.lastName, e.firstName
+        """)
+    Page<Employee> searchByTenantId(
+            @Param("tenantId") UUID tenantId,
+            @Param("status") Employee.EmploymentStatus status,
+            @Param("departmentId") UUID departmentId,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT COUNT(e) FROM Employee e
+        WHERE e.tenantId = :tenantId AND e.deleted = false AND e.status = 'ACTIVE'
+        """)
+    long countActiveEmployeesByTenantId(@Param("tenantId") UUID tenantId);
+
+    // ========== Standard Methods (Schema-Isolated) ==========
 
     Optional<Employee> findByEmployeeNumber(String employeeNumber);
 
@@ -37,10 +86,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
         WHERE e.deleted = false
         AND (:status IS NULL OR e.status = :status)
         AND (:departmentId IS NULL OR e.department.id = :departmentId)
-        AND (:search IS NULL OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-             OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
-             OR LOWER(e.email) LIKE LOWER(CONCAT('%', :search, '%'))
-             OR LOWER(e.employeeNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+        AND (:search IS NULL OR :search = ''
+             OR LOWER(CAST(e.firstName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.lastName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.email AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+             OR LOWER(CAST(e.employeeNumber AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
         ORDER BY e.lastName, e.firstName
         """)
     Page<Employee> search(

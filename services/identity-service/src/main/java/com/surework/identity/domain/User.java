@@ -22,8 +22,14 @@ import java.util.UUID;
 @NoArgsConstructor
 public class User extends BaseEntity {
 
+    @Column(name = "tenant_id", nullable = false)
+    private UUID tenantId;
+
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(nullable = false, unique = true)
+    private String username;
 
     @Column(nullable = false)
     private String passwordHash;
@@ -34,6 +40,7 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String lastName;
 
+    @Column(name = "phone_number")
     private String phone;
 
     @Enumerated(EnumType.STRING)
@@ -50,14 +57,17 @@ public class User extends BaseEntity {
 
     private Instant lockedUntil;
 
+    @Column(name = "last_login_at")
     private Instant lastLogin;
 
+    @Column(name = "password_changed_at")
     private Instant passwordChangedAt;
 
     // Link to employee record (if applicable)
     private UUID employeeId;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    // LAZY fetch to prevent N+1 queries - use JOIN FETCH when roles are needed
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),

@@ -2,23 +2,23 @@ import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@ang
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDividerModule } from '@angular/material/divider';
+import { TranslateModule } from '@ngx-translate/core';
 import {
   RecruitmentService,
   JobPosting,
   CreateJobRequest,
   UpdateJobRequest,
-  EmploymentType
+  EmploymentType,
+  Province,
+  Industry,
+  EducationLevel,
+  JobPortal,
+  CompanyMentionPreference,
+  CompensationType,
+  ClientVisibility,
+  ClientSummary
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ToastService } from '@shared/ui';
 
 @Component({
   selector: 'app-job-posting-form',
@@ -27,204 +27,403 @@ import {
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatCheckboxModule,
-    MatSnackBarModule,
-    MatDividerModule
+    TranslateModule,
+    SpinnerComponent
   ],
   template: `
-    <div class="job-form-container">
-      <header class="form-header">
-        <div class="header-left">
-          <a [routerLink]="isEditMode() ? ['/recruitment/jobs', jobId()] : '/recruitment/jobs'" class="back-link">
-            <mat-icon>arrow_back</mat-icon>
+    <div class="max-w-4xl mx-auto space-y-6">
+      <!-- Header -->
+      <div class="sw-page-header">
+        <div class="flex items-center gap-3">
+          <a [routerLink]="isEditMode() ? ['/recruitment/jobs', jobId()] : '/recruitment/jobs'" class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-dark-elevated transition-colors" [attr.aria-label]="'common.back' | translate">
+            <span class="material-icons" aria-hidden="true">arrow_back</span>
           </a>
-          <h1>{{ isEditMode() ? 'Edit Job Posting' : 'Create Job Posting' }}</h1>
+          <span class="material-icons text-3xl text-primary-500">work</span>
+          <h1 class="sw-page-title">{{ (isEditMode() ? 'recruitment.jobForm.editTitle' : 'recruitment.jobForm.createTitle') | translate }}</h1>
         </div>
-      </header>
+      </div>
 
       @if (loading()) {
-        <div class="loading-container">
-          <mat-spinner diameter="48"></mat-spinner>
+        <div class="flex justify-center items-center py-24">
+          <sw-spinner size="lg" />
         </div>
       } @else {
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <mat-card>
-            <mat-card-content>
-              <!-- Basic Information -->
-              <section class="form-section">
-                <h3>Basic Information</h3>
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Job Title</mat-label>
-                    <input matInput formControlName="title" placeholder="e.g. Senior Software Engineer">
-                    @if (form.get('title')?.hasError('required')) {
-                      <mat-error>Title is required</mat-error>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+          <!-- Basic Information -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobForm.basicInfo' | translate }}</h3>
+
+            <div class="space-y-4">
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.jobTitle' | translate }} <span class="text-error-500">*</span></label>
+                <input type="text" formControlName="title" [placeholder]="'recruitment.jobForm.jobTitlePlaceholder' | translate" class="sw-input" />
+                @if (form.get('title')?.hasError('required') && form.get('title')?.touched) {
+                  <span class="text-xs text-error-500">{{ 'recruitment.jobForm.titleRequired' | translate }}</span>
+                }
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.department' | translate }}</label>
+                  <input type="text" formControlName="departmentName" [placeholder]="'recruitment.jobForm.departmentPlaceholder' | translate" class="sw-input" />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.location' | translate }}</label>
+                  <input type="text" formControlName="location" [placeholder]="'recruitment.jobForm.locationPlaceholder' | translate" class="sw-input" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.employmentType' | translate }} <span class="text-error-500">*</span></label>
+                  <select formControlName="employmentType" class="sw-input">
+                    @for (type of employmentTypes; track type.value) {
+                      <option [value]="type.value">{{ type.label | translate }}</option>
                     }
-                  </mat-form-field>
+                  </select>
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Department</mat-label>
-                    <input matInput formControlName="departmentName" placeholder="e.g. Engineering">
-                  </mat-form-field>
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.positionsAvailable' | translate }}</label>
+                  <input type="number" formControlName="positionsAvailable" min="1" class="sw-input" />
+                  @if (form.get('positionsAvailable')?.hasError('min')) {
+                    <span class="text-xs text-error-500">{{ 'recruitment.jobForm.minPositionsRequired' | translate }}</span>
+                  }
+                </div>
+              </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Location</mat-label>
-                    <input matInput formControlName="location" placeholder="e.g. Johannesburg, South Africa">
-                  </mat-form-field>
+              <div class="flex gap-6">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" formControlName="remote" class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                  <span class="text-neutral-700 dark:text-neutral-300">{{ 'recruitment.jobForm.remotePosition' | translate }}</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" formControlName="internalOnly" class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                  <span class="text-neutral-700 dark:text-neutral-300">{{ 'recruitment.jobForm.internalCandidatesOnly' | translate }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client & Engagement -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="material-icons text-primary-500">business</span>
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Client & Engagement</h3>
+            </div>
+
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">Client</label>
+                  <select formControlName="clientId" class="sw-input">
+                    <option value="">No client (direct hire)</option>
+                    @for (client of activeClients(); track client.id) {
+                      <option [value]="client.id">{{ client.name }}</option>
+                    }
+                  </select>
+                  <span class="text-xs text-neutral-500">Select the client company this position is for</span>
                 </div>
 
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Employment Type</mat-label>
-                    <mat-select formControlName="employmentType">
-                      @for (type of employmentTypes; track type.value) {
-                        <mat-option [value]="type.value">{{ type.label }}</mat-option>
+                @if (form.get('clientId')?.value) {
+                  <div class="flex flex-col gap-1">
+                    <label class="sw-label">Project / Engagement Name</label>
+                    <input type="text" formControlName="projectName" placeholder="e.g., Digital Transformation Project" class="sw-input" />
+                  </div>
+                }
+              </div>
+
+              @if (form.get('clientId')?.value) {
+                <div>
+                  <label class="sw-label mb-2 block">Client Visibility on Public Listings</label>
+                  <div class="space-y-2">
+                    @for (vis of clientVisibilityOptions; track vis.value) {
+                      <label class="flex items-start gap-2 cursor-pointer">
+                        <input type="radio" formControlName="clientVisibility" [value]="vis.value"
+                               class="w-4 h-4 mt-0.5 border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                        <span class="text-neutral-700 dark:text-neutral-300">
+                          <span class="font-medium">{{ vis.label }}</span>
+                          <span class="text-sm text-neutral-500 dark:text-neutral-400 block">{{ vis.description }}</span>
+                        </span>
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Job Description -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobForm.jobDescription' | translate }}</h3>
+
+            <div class="space-y-4">
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.description' | translate }}</label>
+                <textarea formControlName="description" rows="5" [placeholder]="'recruitment.jobForm.descriptionPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.requirements' | translate }}</label>
+                <textarea formControlName="requirements" rows="4" [placeholder]="'recruitment.jobForm.requirementsPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.responsibilities' | translate }}</label>
+                <textarea formControlName="responsibilities" rows="4" [placeholder]="'recruitment.jobForm.responsibilitiesPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.qualifications' | translate }}</label>
+                <textarea formControlName="qualifications" rows="3" [placeholder]="'recruitment.jobForm.qualificationsPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.skills' | translate }}</label>
+                <textarea formControlName="skills" rows="2" [placeholder]="'recruitment.jobForm.skillsPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experience & Compensation -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobForm.experienceCompensation' | translate }}</h3>
+
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.minExperience' | translate }}</label>
+                  <input type="number" formControlName="experienceYearsMin" min="0" class="sw-input" />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">{{ 'recruitment.jobForm.maxExperience' | translate }}</label>
+                  <input type="number" formControlName="experienceYearsMax" min="0" class="sw-input" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">Compensation Type</label>
+                  <select formControlName="compensationType" class="sw-input">
+                    @for (ct of compensationTypes; track ct.value) {
+                      <option [value]="ct.value">{{ ct.label }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">Currency</label>
+                  <select formControlName="salaryCurrency" class="sw-input">
+                    @for (c of currencies; track c.value) {
+                      <option [value]="c.value">{{ c.label }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">Min {{ getCompensationLabel() }} Rate</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{{ getCurrencyPrefix() }}</span>
+                    <input type="number" formControlName="salaryMin" min="0" class="sw-input pl-8" />
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="sw-label">Max {{ getCompensationLabel() }} Rate</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">{{ getCurrencyPrefix() }}</span>
+                    <input type="number" formControlName="salaryMax" min="0" class="sw-input pl-8" />
+                  </div>
+                </div>
+              </div>
+
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" formControlName="showSalary" class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                <span class="text-neutral-700 dark:text-neutral-300">{{ 'recruitment.jobForm.showSalary' | translate }}</span>
+              </label>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.benefits' | translate }}</label>
+                <textarea formControlName="benefits" rows="3" [placeholder]="'recruitment.jobForm.benefitsPlaceholder' | translate" class="sw-input"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hiring Team -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">{{ 'recruitment.jobForm.hiringTeam' | translate }}</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.hiringManager' | translate }}</label>
+                <input type="text" formControlName="hiringManagerName" [placeholder]="'recruitment.jobForm.hiringManagerPlaceholder' | translate" class="sw-input" />
+              </div>
+
+              <div class="flex flex-col gap-1">
+                <label class="sw-label">{{ 'recruitment.jobForm.recruiter' | translate }}</label>
+                <input type="text" formControlName="recruiterName" [placeholder]="'recruitment.jobForm.recruiterPlaceholder' | translate" class="sw-input" />
+              </div>
+            </div>
+          </div>
+
+          <!-- External Portal Publishing -->
+          <div class="bg-white dark:bg-dark-surface rounded-xl shadow-card border border-neutral-200 dark:border-dark-border p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <span class="material-icons text-primary-500">public</span>
+              <h3 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200">External Portal Publishing</h3>
+            </div>
+
+            <div class="space-y-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" formControlName="publishToExternal" class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                <span class="text-neutral-700 dark:text-neutral-300">Publish to external job portals</span>
+              </label>
+
+              <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                Job will be posted under SureWork's accounts on selected portals. Candidates will apply via SureWork's careers page.
+              </p>
+
+              @if (form.get('publishToExternal')?.value) {
+                <!-- Portal Selection -->
+                <div class="p-4 bg-neutral-50 dark:bg-dark-elevated rounded-lg space-y-4">
+                  <div>
+                    <label class="sw-label mb-2 block">Select Portals</label>
+                    <div class="flex flex-wrap gap-4">
+                      @for (portal of jobPortals; track portal.value) {
+                        <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" [checked]="isPortalSelected(portal.value)" (change)="togglePortal(portal.value)"
+                                 class="w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                          <span class="text-neutral-700 dark:text-neutral-300">{{ portal.label }}</span>
+                        </label>
                       }
-                    </mat-select>
-                    @if (form.get('employmentType')?.hasError('required')) {
-                      <mat-error>Employment type is required</mat-error>
-                    }
-                  </mat-form-field>
+                    </div>
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Positions Available</mat-label>
-                    <input matInput type="number" formControlName="positionsAvailable" min="1">
-                    @if (form.get('positionsAvailable')?.hasError('min')) {
-                      <mat-error>At least 1 position required</mat-error>
-                    }
-                  </mat-form-field>
+                  <!-- Location Details -->
+                  <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                    <label class="sw-label mb-2 block">Location Details (required for external portals)</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label text-sm">City</label>
+                        <input type="text" formControlName="city" placeholder="e.g., Johannesburg" class="sw-input" />
+                      </div>
+
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label text-sm">Province</label>
+                        <select formControlName="province" class="sw-input">
+                          <option value="">Select province</option>
+                          @for (province of provinces; track province.value) {
+                            <option [value]="province.value">{{ province.label }}</option>
+                          }
+                        </select>
+                      </div>
+
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label text-sm">Postal Code</label>
+                        <input type="text" formControlName="postalCode" placeholder="e.g., 2000" class="sw-input" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Industry & Education -->
+                  <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label">Industry</label>
+                        <select formControlName="industry" class="sw-input">
+                          <option value="">Select industry</option>
+                          @for (ind of industries; track ind.value) {
+                            <option [value]="ind.value">{{ ind.label }}</option>
+                          }
+                        </select>
+                      </div>
+
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label">Education Level</label>
+                        <select formControlName="educationLevel" class="sw-input">
+                          <option value="">Select education level</option>
+                          @for (level of educationLevels; track level.value) {
+                            <option [value]="level.value">{{ level.label }}</option>
+                          }
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Company Mention Preference -->
+                  <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                    <label class="sw-label mb-2 block">How to reference your company in the job ad</label>
+                    <div class="space-y-2">
+                      @for (pref of companyMentionPreferences; track pref.value) {
+                        <label class="flex items-start gap-2 cursor-pointer">
+                          <input type="radio" formControlName="companyMentionPreference" [value]="pref.value"
+                                 class="w-4 h-4 mt-0.5 border-neutral-300 text-primary-500 focus:ring-primary-500" />
+                          <span class="text-neutral-700 dark:text-neutral-300">
+                            <span class="font-medium">{{ pref.label }}</span>
+                            <span class="text-sm text-neutral-500 dark:text-neutral-400 block">{{ pref.description }}</span>
+                          </span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Keywords -->
+                  <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                    <div class="flex flex-col gap-1">
+                      <label class="sw-label">Keywords (for search optimization)</label>
+                      <input type="text" formControlName="keywords" placeholder="e.g., Java, Spring Boot, Microservices" class="sw-input" />
+                      <span class="text-xs text-neutral-500">Comma-separated keywords to help candidates find this job</span>
+                    </div>
+                  </div>
+
+                  <!-- Contract Duration (for CONTRACT/TEMPORARY) -->
+                  @if (form.get('employmentType')?.value === 'CONTRACT' || form.get('employmentType')?.value === 'TEMPORARY') {
+                    <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                      <div class="flex flex-col gap-1">
+                        <label class="sw-label">Contract Duration</label>
+                        <input type="text" formControlName="contractDuration" placeholder="e.g., 6 months, 1 year" class="sw-input" />
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Application URL Info -->
+                  <div class="pt-4 border-t border-neutral-200 dark:border-dark-border">
+                    <div class="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                      <span class="material-icons text-primary-500 text-lg">info</span>
+                      <div>
+                        <p class="font-medium">Applications will be received at:</p>
+                        <p class="text-primary-600 dark:text-primary-400">careers.surework.co.za/apply/{{ form.get('title')?.value ? 'JOB-XXXX' : '{jobRef}' }}</p>
+                        <p class="mt-1">Candidates will appear in your Applicants dashboard after applying.</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                <div class="form-row checkboxes">
-                  <mat-checkbox formControlName="remote">Remote position</mat-checkbox>
-                  <mat-checkbox formControlName="internalOnly">Internal candidates only</mat-checkbox>
-                </div>
-              </section>
-
-              <mat-divider></mat-divider>
-
-              <!-- Job Description -->
-              <section class="form-section">
-                <h3>Job Description</h3>
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Description</mat-label>
-                  <textarea matInput formControlName="description" rows="5"
-                            placeholder="Describe the role and its key responsibilities..."></textarea>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Requirements</mat-label>
-                  <textarea matInput formControlName="requirements" rows="4"
-                            placeholder="List the required qualifications and experience..."></textarea>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Responsibilities</mat-label>
-                  <textarea matInput formControlName="responsibilities" rows="4"
-                            placeholder="Detail the day-to-day responsibilities..."></textarea>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Qualifications</mat-label>
-                  <textarea matInput formControlName="qualifications" rows="3"
-                            placeholder="Required educational qualifications..."></textarea>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Skills</mat-label>
-                  <textarea matInput formControlName="skills" rows="2"
-                            placeholder="Required skills (e.g. Java, Python, AWS)..."></textarea>
-                </mat-form-field>
-              </section>
-
-              <mat-divider></mat-divider>
-
-              <!-- Experience & Compensation -->
-              <section class="form-section">
-                <h3>Experience & Compensation</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Min. Experience (Years)</mat-label>
-                    <input matInput type="number" formControlName="experienceYearsMin" min="0">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Max. Experience (Years)</mat-label>
-                    <input matInput type="number" formControlName="experienceYearsMax" min="0">
-                  </mat-form-field>
-                </div>
-
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Minimum Salary (ZAR)</mat-label>
-                    <input matInput type="number" formControlName="salaryMin" min="0">
-                    <span matTextPrefix>R&nbsp;</span>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Maximum Salary (ZAR)</mat-label>
-                    <input matInput type="number" formControlName="salaryMax" min="0">
-                    <span matTextPrefix>R&nbsp;</span>
-                  </mat-form-field>
-                </div>
-
-                <div class="form-row">
-                  <mat-checkbox formControlName="showSalary">Show salary in job posting</mat-checkbox>
-                </div>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Benefits</mat-label>
-                  <textarea matInput formControlName="benefits" rows="3"
-                            placeholder="List the benefits offered (e.g. Medical aid, Retirement fund, Flexible hours)..."></textarea>
-                </mat-form-field>
-              </section>
-
-              <mat-divider></mat-divider>
-
-              <!-- Team -->
-              <section class="form-section">
-                <h3>Hiring Team</h3>
-                <div class="form-row two-cols">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Hiring Manager</mat-label>
-                    <input matInput formControlName="hiringManagerName" placeholder="Name of hiring manager">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Recruiter</mat-label>
-                    <input matInput formControlName="recruiterName" placeholder="Name of recruiter">
-                  </mat-form-field>
-                </div>
-              </section>
-            </mat-card-content>
-          </mat-card>
+              }
+            </div>
+          </div>
 
           <!-- Actions -->
-          <div class="form-actions">
-            <button mat-button type="button" (click)="cancel()">Cancel</button>
-            <div class="right-actions">
+          <div class="flex justify-between items-center py-4">
+            <button type="button" (click)="cancel()" class="px-4 py-2 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-dark-elevated rounded-lg transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+            <div class="flex gap-3">
               @if (!isEditMode()) {
-                <button mat-stroked-button type="button" [disabled]="saving()"
-                        (click)="saveAsDraft()">
-                  Save as Draft
+                <button type="button" [disabled]="saving()" (click)="saveAsDraft()"
+                        class="px-4 py-2 border border-neutral-300 dark:border-dark-border text-neutral-700 dark:text-neutral-300 font-medium rounded-lg hover:bg-neutral-50 dark:hover:bg-dark-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {{ 'recruitment.jobForm.saveAsDraft' | translate }}
                 </button>
               }
-              <button mat-raised-button color="primary" type="submit"
-                      [disabled]="form.invalid || saving()">
+              <button type="submit" [disabled]="form.invalid || saving()"
+                      class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white font-medium rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 @if (saving()) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                } @else {
-                  {{ isEditMode() ? 'Update Job' : 'Create Job' }}
+                  <sw-spinner size="sm" />
                 }
+                {{ (isEditMode() ? 'recruitment.jobForm.updateJob' : 'recruitment.jobForm.createJob') | translate }}
               </button>
             </div>
           </div>
@@ -232,110 +431,6 @@ import {
       }
     </div>
   `,
-  styles: [`
-    .job-form-container {
-      padding: 24px;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .form-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .back-link {
-      color: rgba(0, 0, 0, 0.6);
-      display: flex;
-    }
-
-    .form-header h1 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 500;
-    }
-
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 300px;
-    }
-
-    .form-section {
-      padding: 24px 0;
-    }
-
-    .form-section:first-child {
-      padding-top: 0;
-    }
-
-    .form-section h3 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
-      font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
-    }
-
-    .form-row {
-      margin-bottom: 16px;
-    }
-
-    .form-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .form-row.two-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    @media (max-width: 600px) {
-      .form-row.two-cols {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .form-row.checkboxes {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    mat-divider {
-      margin: 0;
-    }
-
-    .form-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 24px;
-      padding: 16px 0;
-    }
-
-    .right-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    .right-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class JobPostingFormComponent implements OnInit {
@@ -343,7 +438,7 @@ export class JobPostingFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly toast = inject(ToastService);
 
   form: FormGroup;
   loading = signal(false);
@@ -352,12 +447,96 @@ export class JobPostingFormComponent implements OnInit {
   isEditMode = signal(false);
 
   employmentTypes = [
-    { value: 'FULL_TIME', label: 'Full Time' },
-    { value: 'PART_TIME', label: 'Part Time' },
-    { value: 'CONTRACT', label: 'Contract' },
-    { value: 'TEMPORARY', label: 'Temporary' },
-    { value: 'INTERNSHIP', label: 'Internship' },
-    { value: 'FREELANCE', label: 'Freelance' }
+    { value: 'FULL_TIME', label: 'recruitment.employmentTypes.fullTime' },
+    { value: 'PART_TIME', label: 'recruitment.employmentTypes.partTime' },
+    { value: 'CONTRACT', label: 'recruitment.employmentTypes.contract' },
+    { value: 'TEMPORARY', label: 'recruitment.employmentTypes.temporary' },
+    { value: 'INTERNSHIP', label: 'recruitment.employmentTypes.internship' },
+    { value: 'FREELANCE', label: 'recruitment.employmentTypes.freelance' }
+  ];
+
+  jobPortals = [
+    { value: 'PNET' as JobPortal, label: 'Pnet' },
+    { value: 'LINKEDIN' as JobPortal, label: 'LinkedIn' },
+    { value: 'INDEED' as JobPortal, label: 'Indeed' },
+    { value: 'CAREERS24' as JobPortal, label: 'Careers24' }
+  ];
+
+  provinces = [
+    { value: 'GAUTENG' as Province, label: 'Gauteng' },
+    { value: 'WESTERN_CAPE' as Province, label: 'Western Cape' },
+    { value: 'KWAZULU_NATAL' as Province, label: 'KwaZulu-Natal' },
+    { value: 'EASTERN_CAPE' as Province, label: 'Eastern Cape' },
+    { value: 'FREE_STATE' as Province, label: 'Free State' },
+    { value: 'LIMPOPO' as Province, label: 'Limpopo' },
+    { value: 'MPUMALANGA' as Province, label: 'Mpumalanga' },
+    { value: 'NORTH_WEST' as Province, label: 'North West' },
+    { value: 'NORTHERN_CAPE' as Province, label: 'Northern Cape' }
+  ];
+
+  industries = [
+    { value: 'IT_SOFTWARE' as Industry, label: 'IT & Software' },
+    { value: 'FINANCE_BANKING' as Industry, label: 'Finance & Banking' },
+    { value: 'HEALTHCARE' as Industry, label: 'Healthcare' },
+    { value: 'RETAIL' as Industry, label: 'Retail' },
+    { value: 'MANUFACTURING' as Industry, label: 'Manufacturing' },
+    { value: 'CONSTRUCTION' as Industry, label: 'Construction' },
+    { value: 'EDUCATION' as Industry, label: 'Education' },
+    { value: 'HOSPITALITY_TOURISM' as Industry, label: 'Hospitality & Tourism' },
+    { value: 'LOGISTICS_TRANSPORT' as Industry, label: 'Logistics & Transport' },
+    { value: 'LEGAL' as Industry, label: 'Legal' },
+    { value: 'MARKETING_ADVERTISING' as Industry, label: 'Marketing & Advertising' },
+    { value: 'HUMAN_RESOURCES' as Industry, label: 'Human Resources' },
+    { value: 'ENGINEERING' as Industry, label: 'Engineering' },
+    { value: 'MINING' as Industry, label: 'Mining' },
+    { value: 'AGRICULTURE' as Industry, label: 'Agriculture' },
+    { value: 'TELECOMMUNICATIONS' as Industry, label: 'Telecommunications' },
+    { value: 'REAL_ESTATE' as Industry, label: 'Real Estate' },
+    { value: 'MEDIA_ENTERTAINMENT' as Industry, label: 'Media & Entertainment' },
+    { value: 'GOVERNMENT_PUBLIC_SECTOR' as Industry, label: 'Government & Public Sector' },
+    { value: 'NON_PROFIT' as Industry, label: 'Non-Profit' },
+    { value: 'OTHER' as Industry, label: 'Other' }
+  ];
+
+  educationLevels = [
+    { value: 'NO_REQUIREMENT' as EducationLevel, label: 'No Requirement' },
+    { value: 'MATRIC' as EducationLevel, label: 'Matric / Grade 12' },
+    { value: 'CERTIFICATE' as EducationLevel, label: 'Certificate' },
+    { value: 'DIPLOMA' as EducationLevel, label: 'Diploma' },
+    { value: 'DEGREE' as EducationLevel, label: 'Bachelor\'s Degree' },
+    { value: 'HONOURS' as EducationLevel, label: 'Honours Degree' },
+    { value: 'MASTERS' as EducationLevel, label: 'Master\'s Degree' },
+    { value: 'DOCTORATE' as EducationLevel, label: 'Doctorate / PhD' }
+  ];
+
+  companyMentionPreferences = [
+    { value: 'ANONYMOUS' as CompanyMentionPreference, label: 'Anonymous', description: '"A leading company in [industry]..."' },
+    { value: 'NAMED_BY_SUREWORK' as CompanyMentionPreference, label: 'Named by SureWork', description: '"SureWork on behalf of [Your Company Name]..."' },
+    { value: 'DIRECT_MENTION' as CompanyMentionPreference, label: 'Direct mention', description: 'Include company name directly in the job description' }
+  ];
+
+  selectedPortals = signal<JobPortal[]>([]);
+  activeClients = signal<ClientSummary[]>([]);
+
+  compensationTypes = [
+    { value: 'HOURLY' as CompensationType, label: 'Hourly' },
+    { value: 'DAILY' as CompensationType, label: 'Daily' },
+    { value: 'WEEKLY' as CompensationType, label: 'Weekly' },
+    { value: 'MONTHLY' as CompensationType, label: 'Monthly' },
+    { value: 'ANNUAL' as CompensationType, label: 'Annual' }
+  ];
+
+  currencies = [
+    { value: 'ZAR', label: 'ZAR (R)' },
+    { value: 'USD', label: 'USD ($)' },
+    { value: 'EUR', label: 'EUR (\u20AC)' },
+    { value: 'GBP', label: 'GBP (\u00A3)' }
+  ];
+
+  clientVisibilityOptions = [
+    { value: 'SHOW_NAME' as ClientVisibility, label: 'Show Client Name', description: 'Client name visible on public job listing' },
+    { value: 'CONFIDENTIAL' as ClientVisibility, label: 'Confidential', description: 'Shows "Confidential Client" on listing' },
+    { value: 'HIDDEN' as ClientVisibility, label: 'Hidden', description: 'No client information shown publicly' }
   ];
 
   constructor() {
@@ -369,6 +548,10 @@ export class JobPostingFormComponent implements OnInit {
       positionsAvailable: [1, [Validators.required, Validators.min(1)]],
       remote: [false],
       internalOnly: [false],
+      // Client & Engagement fields
+      clientId: [''],
+      clientVisibility: ['HIDDEN'],
+      projectName: [''],
       description: [''],
       requirements: [''],
       responsibilities: [''],
@@ -376,22 +559,65 @@ export class JobPostingFormComponent implements OnInit {
       skills: [''],
       experienceYearsMin: [null],
       experienceYearsMax: [null],
+      compensationType: ['MONTHLY'],
+      salaryCurrency: ['ZAR'],
       salaryMin: [null],
       salaryMax: [null],
       showSalary: [false],
       benefits: [''],
       hiringManagerName: [''],
-      recruiterName: ['']
+      recruiterName: [''],
+      // External portal publishing fields
+      publishToExternal: [false],
+      city: [''],
+      province: [''],
+      postalCode: [''],
+      industry: [''],
+      educationLevel: [''],
+      keywords: [''],
+      contractDuration: [''],
+      companyMentionPreference: ['ANONYMOUS']
     });
   }
 
+  isPortalSelected(portal: JobPortal): boolean {
+    return this.selectedPortals().includes(portal);
+  }
+
+  togglePortal(portal: JobPortal): void {
+    const current = this.selectedPortals();
+    if (current.includes(portal)) {
+      this.selectedPortals.set(current.filter(p => p !== portal));
+    } else {
+      this.selectedPortals.set([...current, portal]);
+    }
+  }
+
   ngOnInit(): void {
+    this.loadActiveClients();
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.jobId.set(id);
       this.isEditMode.set(true);
       this.loadJob(id);
     }
+  }
+
+  private loadActiveClients(): void {
+    this.recruitmentService.getActiveClients().subscribe({
+      next: (clients) => this.activeClients.set(clients),
+      error: () => {} // Silently fail — dropdown just empty
+    });
+  }
+
+  getCompensationLabel(): string {
+    const type = this.form.get('compensationType')?.value as CompensationType;
+    return RecruitmentService.getCompensationTypeLabel(type || 'MONTHLY');
+  }
+
+  getCurrencyPrefix(): string {
+    const currency = this.form.get('salaryCurrency')?.value || 'ZAR';
+    return RecruitmentService.getCurrencySymbol(currency);
   }
 
   loadJob(id: string): void {
@@ -418,13 +644,33 @@ export class JobPostingFormComponent implements OnInit {
           showSalary: job.showSalary,
           benefits: job.benefits,
           hiringManagerName: job.hiringManagerName,
-          recruiterName: job.recruiterName
+          recruiterName: job.recruiterName,
+          // Client & Compensation fields
+          clientId: job.clientId || '',
+          clientVisibility: job.clientVisibility || 'HIDDEN',
+          projectName: job.projectName || '',
+          compensationType: job.compensationType || 'MONTHLY',
+          salaryCurrency: job.salaryCurrency || 'ZAR',
+          // External portal fields
+          publishToExternal: job.publishToExternal || false,
+          city: job.city || '',
+          province: job.province || '',
+          postalCode: job.postalCode || '',
+          industry: job.industry || '',
+          educationLevel: job.educationLevel || '',
+          keywords: job.keywords || '',
+          contractDuration: job.contractDuration || '',
+          companyMentionPreference: job.companyMentionPreference || 'ANONYMOUS'
         });
+        // Set selected portals
+        if (job.externalPortals) {
+          this.selectedPortals.set(job.externalPortals);
+        }
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Failed to load job', err);
-        this.snackBar.open('Failed to load job details', 'Dismiss', { duration: 5000 });
+        this.toast.error('recruitment.jobForm.loadError');
         this.loading.set(false);
         this.router.navigate(['/recruitment/jobs']);
       }
@@ -454,19 +700,36 @@ export class JobPostingFormComponent implements OnInit {
         benefits: formValue.benefits,
         positionsAvailable: formValue.positionsAvailable,
         internalOnly: formValue.internalOnly,
-        remote: formValue.remote
+        remote: formValue.remote,
+        // Client & Compensation fields
+        clientId: formValue.clientId || undefined,
+        clientVisibility: formValue.clientId ? formValue.clientVisibility : undefined,
+        compensationType: formValue.compensationType || undefined,
+        salaryCurrency: formValue.salaryCurrency || undefined,
+        projectName: formValue.projectName || undefined,
+        // External portal fields
+        publishToExternal: formValue.publishToExternal,
+        city: formValue.city,
+        province: formValue.province || undefined,
+        postalCode: formValue.postalCode,
+        industry: formValue.industry || undefined,
+        educationLevel: formValue.educationLevel || undefined,
+        keywords: formValue.keywords,
+        contractDuration: formValue.contractDuration,
+        externalPortals: this.selectedPortals().length > 0 ? this.selectedPortals() : undefined,
+        companyMentionPreference: formValue.companyMentionPreference || undefined
       };
 
       this.recruitmentService.updateJob(this.jobId()!, request).subscribe({
         next: (job) => {
           this.saving.set(false);
-          this.snackBar.open('Job updated successfully', 'Dismiss', { duration: 3000 });
+          this.toast.success('recruitment.jobForm.updateSuccess');
           this.router.navigate(['/recruitment/jobs', job.id]);
         },
         error: (err) => {
           console.error('Failed to update job', err);
           this.saving.set(false);
-          this.snackBar.open('Failed to update job', 'Dismiss', { duration: 5000 });
+          this.toast.error('recruitment.jobForm.updateError');
         }
       });
     } else {
@@ -490,19 +753,36 @@ export class JobPostingFormComponent implements OnInit {
         hiringManagerName: formValue.hiringManagerName,
         recruiterName: formValue.recruiterName,
         internalOnly: formValue.internalOnly,
-        remote: formValue.remote
+        remote: formValue.remote,
+        // Client & Compensation fields
+        clientId: formValue.clientId || undefined,
+        clientVisibility: formValue.clientId ? formValue.clientVisibility : undefined,
+        compensationType: formValue.compensationType || undefined,
+        salaryCurrency: formValue.salaryCurrency || undefined,
+        projectName: formValue.projectName || undefined,
+        // External portal fields
+        publishToExternal: formValue.publishToExternal,
+        city: formValue.city,
+        province: formValue.province || undefined,
+        postalCode: formValue.postalCode,
+        industry: formValue.industry || undefined,
+        educationLevel: formValue.educationLevel || undefined,
+        keywords: formValue.keywords,
+        contractDuration: formValue.contractDuration,
+        externalPortals: this.selectedPortals().length > 0 ? this.selectedPortals() : undefined,
+        companyMentionPreference: formValue.companyMentionPreference || undefined
       };
 
       this.recruitmentService.createJob(request).subscribe({
         next: (job) => {
           this.saving.set(false);
-          this.snackBar.open('Job created successfully', 'Dismiss', { duration: 3000 });
+          this.toast.success('recruitment.jobForm.createSuccess');
           this.router.navigate(['/recruitment/jobs', job.id]);
         },
         error: (err) => {
           console.error('Failed to create job', err);
           this.saving.set(false);
-          this.snackBar.open('Failed to create job', 'Dismiss', { duration: 5000 });
+          this.toast.error('recruitment.jobForm.createError');
         }
       });
     }
@@ -510,7 +790,7 @@ export class JobPostingFormComponent implements OnInit {
 
   saveAsDraft(): void {
     if (!this.form.get('title')?.value) {
-      this.snackBar.open('Please enter a job title', 'Dismiss', { duration: 3000 });
+      this.toast.error('recruitment.jobForm.titleRequired');
       return;
     }
 
@@ -537,19 +817,36 @@ export class JobPostingFormComponent implements OnInit {
       hiringManagerName: formValue.hiringManagerName,
       recruiterName: formValue.recruiterName,
       internalOnly: formValue.internalOnly || false,
-      remote: formValue.remote || false
+      remote: formValue.remote || false,
+      // Client & Compensation fields
+      clientId: formValue.clientId || undefined,
+      clientVisibility: formValue.clientId ? formValue.clientVisibility : undefined,
+      compensationType: formValue.compensationType || undefined,
+      salaryCurrency: formValue.salaryCurrency || undefined,
+      projectName: formValue.projectName || undefined,
+      // External portal fields (saved with draft)
+      publishToExternal: formValue.publishToExternal || false,
+      city: formValue.city,
+      province: formValue.province || undefined,
+      postalCode: formValue.postalCode,
+      industry: formValue.industry || undefined,
+      educationLevel: formValue.educationLevel || undefined,
+      keywords: formValue.keywords,
+      contractDuration: formValue.contractDuration,
+      externalPortals: this.selectedPortals().length > 0 ? this.selectedPortals() : undefined,
+      companyMentionPreference: formValue.companyMentionPreference || undefined
     };
 
     this.recruitmentService.createJob(request).subscribe({
       next: (job) => {
         this.saving.set(false);
-        this.snackBar.open('Draft saved', 'Dismiss', { duration: 3000 });
+        this.toast.success('recruitment.jobForm.draftSaveSuccess');
         this.router.navigate(['/recruitment/jobs', job.id]);
       },
       error: (err) => {
         console.error('Failed to save draft', err);
         this.saving.set(false);
-        this.snackBar.open('Failed to save draft', 'Dismiss', { duration: 5000 });
+        this.toast.error('recruitment.jobForm.draftSaveError');
       }
     });
   }

@@ -57,7 +57,7 @@ public class EmployeeController {
     public ResponseEntity<EmployeeDto.Response> getEmployeeByNumber(@PathVariable String employeeNumber) {
         return employeeService.getEmployeeByNumber(employeeNumber)
                 .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee", "number", employeeNumber));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee", employeeNumber));
     }
 
     /**
@@ -70,15 +70,25 @@ public class EmployeeController {
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<EmployeeDto.ListItem> page = employeeService.searchEmployees(status, departmentId, search, pageable);
-        return ResponseEntity.ok(PageResponse.of(page));
+        return ResponseEntity.ok(PageResponse.from(page));
     }
 
     /**
-     * Get all active employees.
+     * Get all active employees (list view).
      */
     @GetMapping("/active")
     public ResponseEntity<List<EmployeeDto.ListItem>> getActiveEmployees() {
         List<EmployeeDto.ListItem> employees = employeeService.getActiveEmployees();
+        return ResponseEntity.ok(employees);
+    }
+
+    /**
+     * Get all employees for reporting (includes full details).
+     * This endpoint is optimized for internal service-to-service calls.
+     */
+    @GetMapping("/all")
+    public ResponseEntity<List<EmployeeDto.ReportItem>> getAllEmployeesForReporting() {
+        List<EmployeeDto.ReportItem> employees = employeeService.getAllEmployeesForReporting();
         return ResponseEntity.ok(employees);
     }
 
@@ -152,5 +162,37 @@ public class EmployeeController {
         return ResponseEntity.ok(new CountResponse(count));
     }
 
+    /**
+     * Get hierarchy data for organizational chart.
+     */
+    @GetMapping("/hierarchy")
+    public ResponseEntity<List<EmployeeDto.HierarchyItem>> getHierarchyData() {
+        List<EmployeeDto.HierarchyItem> hierarchy = employeeService.getHierarchyData();
+        return ResponseEntity.ok(hierarchy);
+    }
+
+    /**
+     * Get the user ID linked to an employee.
+     * Used by notification service to route notifications.
+     */
+    @GetMapping("/{employeeId}/user-id")
+    public ResponseEntity<UserIdResponse> getEmployeeUserId(@PathVariable UUID employeeId) {
+        return employeeService.getEmployeeUserId(employeeId)
+                .map(userId -> ResponseEntity.ok(new UserIdResponse(userId)))
+                .orElseThrow(() -> new ResourceNotFoundException("Employee or linked user", employeeId));
+    }
+
+    /**
+     * Get the user ID of the employee's manager.
+     * Used by notification service to route approval notifications.
+     */
+    @GetMapping("/{employeeId}/manager-user-id")
+    public ResponseEntity<UserIdResponse> getManagerUserId(@PathVariable UUID employeeId) {
+        return employeeService.getManagerUserId(employeeId)
+                .map(userId -> ResponseEntity.ok(new UserIdResponse(userId)))
+                .orElseThrow(() -> new ResourceNotFoundException("Manager for employee", employeeId));
+    }
+
     record CountResponse(long count) {}
+    record UserIdResponse(UUID userId) {}
 }

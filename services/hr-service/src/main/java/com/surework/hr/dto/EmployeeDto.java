@@ -286,6 +286,84 @@ public sealed interface EmployeeDto {
         }
     }
 
+    /**
+     * Employee hierarchy item for org chart (includes manager reference).
+     */
+    record HierarchyItem(
+            UUID id,
+            String employeeNumber,
+            String fullName,
+            String jobTitle,
+            String department,
+            Employee.EmploymentStatus status,
+            UUID managerId
+    ) implements EmployeeDto {
+
+        public static HierarchyItem fromEntity(Employee employee) {
+            return new HierarchyItem(
+                    employee.getId(),
+                    employee.getEmployeeNumber(),
+                    employee.getFullName(),
+                    employee.getJobTitle() != null ? employee.getJobTitle().getTitle() : null,
+                    employee.getDepartment() != null ? employee.getDepartment().getName() : null,
+                    employee.getStatus(),
+                    employee.getManager() != null ? employee.getManager().getId() : null
+            );
+        }
+    }
+
+    /**
+     * Employee report item (full details for reporting service).
+     */
+    record ReportItem(
+            UUID id,
+            String employeeNumber,
+            String firstName,
+            String lastName,
+            String middleName,
+            String fullName,
+            String email,
+            String phone,
+            LocalDate dateOfBirth,
+            Employee.Gender gender,
+            LocalDate hireDate,
+            LocalDate terminationDate,
+            Employee.EmploymentStatus status,
+            Employee.EmploymentType employmentType,
+            UUID departmentId,
+            String departmentName,
+            String jobTitle,
+            UUID managerId,
+            String managerName,
+            BigDecimal basicSalary
+    ) implements EmployeeDto {
+
+        public static ReportItem fromEntity(Employee employee) {
+            return new ReportItem(
+                    employee.getId(),
+                    employee.getEmployeeNumber(),
+                    employee.getFirstName(),
+                    employee.getLastName(),
+                    employee.getMiddleName(),
+                    employee.getFullName(),
+                    employee.getEmail(),
+                    employee.getPhone(),
+                    employee.getDateOfBirth(),
+                    employee.getGender(),
+                    employee.getHireDate(),
+                    employee.getTerminationDate(),
+                    employee.getStatus(),
+                    employee.getEmploymentType(),
+                    employee.getDepartment() != null ? employee.getDepartment().getId() : null,
+                    employee.getDepartment() != null ? employee.getDepartment().getName() : null,
+                    employee.getJobTitle() != null ? employee.getJobTitle().getTitle() : null,
+                    employee.getManager() != null ? employee.getManager().getId() : null,
+                    employee.getManager() != null ? employee.getManager().getFullName() : null,
+                    employee.getBasicSalary()
+            );
+        }
+    }
+
     // Nested DTOs
     record AddressDto(
             String streetAddress,

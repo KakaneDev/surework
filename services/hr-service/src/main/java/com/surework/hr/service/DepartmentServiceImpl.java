@@ -32,7 +32,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Transactional
     public DepartmentDto.Response createDepartment(DepartmentDto.CreateRequest request) {
         if (departmentRepository.existsByCode(request.code())) {
-            throw new ConflictException("Department", "code", request.code());
+            throw ConflictException.duplicate("Department", request.code());
         }
 
         Department department = new Department();

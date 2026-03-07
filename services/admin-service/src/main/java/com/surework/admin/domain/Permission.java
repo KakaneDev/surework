@@ -63,7 +63,8 @@ public class Permission {
         DOCUMENT,       // Document management
         REPORT,         // Reporting
         FINANCE,        // Financial operations
-        ACCOUNTING      // Accounting
+        ACCOUNTING,     // Accounting
+        SUPPORT         // Support ticket management
     }
 
     public enum ActionType {

@@ -1,17 +1,12 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import {
   RecruitmentService,
   Application
 } from '../../../core/services/recruitment.service';
+import { SpinnerComponent, ButtonComponent, DialogRef } from '@shared/ui';
 
 interface DialogData {
   application: Application;
@@ -23,147 +18,114 @@ interface DialogData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatProgressSpinnerModule
+    TranslateModule,
+    SpinnerComponent,
+    ButtonComponent,
+    DecimalPipe
   ],
   template: `
-    <h2 mat-dialog-title>Make Offer</h2>
-    <mat-dialog-content>
-      <p class="dialog-info">
-        Create a job offer for <strong>{{ data.application.candidate.fullName }}</strong>
-        for the position of <strong>{{ data.application.job.title }}</strong>
+    <div class="p-6 min-w-[450px]">
+      <h2 class="text-xl font-semibold text-neutral-800 dark:text-neutral-200 mb-2 flex items-center gap-2">
+        <span class="material-icons text-success-500">local_offer</span>
+        {{ 'recruitment.makeOffer.title' | translate }}
+      </h2>
+      <p class="text-neutral-500 dark:text-neutral-400 mb-6">
+        {{ 'recruitment.makeOffer.subtitle' | translate: { candidateName: data.application.candidate.fullName, positionName: data.application.job.title } }}
       </p>
-      <form [formGroup]="form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Salary (Annual, ZAR)</mat-label>
-          <input matInput type="number" formControlName="salary" min="0">
-          <span matTextPrefix>R&nbsp;</span>
-          @if (form.get('salary')?.hasError('required')) {
-            <mat-error>Salary is required</mat-error>
-          }
-          @if (form.get('salary')?.hasError('min')) {
-            <mat-error>Salary must be positive</mat-error>
-          }
-        </mat-form-field>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Start Date</mat-label>
-            <input matInput [matDatepicker]="startPicker" formControlName="startDate">
-            <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
-            <mat-datepicker #startPicker></mat-datepicker>
-            @if (form.get('startDate')?.hasError('required')) {
-              <mat-error>Start date is required</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Offer Expiry Date</mat-label>
-            <input matInput [matDatepicker]="expiryPicker" formControlName="expiryDate">
-            <mat-datepicker-toggle matIconSuffix [for]="expiryPicker"></mat-datepicker-toggle>
-            <mat-datepicker #expiryPicker></mat-datepicker>
-            @if (form.get('expiryDate')?.hasError('required')) {
-              <mat-error>Expiry date is required</mat-error>
-            }
-          </mat-form-field>
+      <form [formGroup]="form" class="space-y-4">
+        <div>
+          <label for="salary" class="sw-label">{{ 'recruitment.makeOffer.salaryLabel' | translate }}</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" aria-hidden="true">R</span>
+            <input id="salary" type="number" formControlName="salary" class="sw-input w-full pl-8" min="0"
+                   aria-required="true"
+                   [attr.aria-invalid]="form.get('salary')?.touched && form.get('salary')?.invalid"
+                   [attr.aria-describedby]="(form.get('salary')?.touched && form.get('salary')?.invalid) ? 'salary-error' : null"
+                   [class.border-error-500]="form.get('salary')?.touched && form.get('salary')?.invalid">
+          </div>
+          @if (form.get('salary')?.touched && form.get('salary')?.hasError('required')) {
+            <p id="salary-error" class="text-sm text-error-500 mt-1" role="alert">{{ 'recruitment.makeOffer.salaryRequired' | translate }}</p>
+          }
+          @if (form.get('salary')?.touched && form.get('salary')?.hasError('min')) {
+            <p id="salary-error" class="text-sm text-error-500 mt-1" role="alert">{{ 'recruitment.makeOffer.salaryPositive' | translate }}</p>
+          }
         </div>
 
-        <div class="offer-summary">
-          <h4>Offer Summary</h4>
-          <div class="summary-row">
-            <span>Position:</span>
-            <span>{{ data.application.job.title }}</span>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="startDate" class="sw-label">{{ 'recruitment.makeOffer.startDateLabel' | translate }}</label>
+            <input id="startDate" type="date" formControlName="startDate" class="sw-input w-full"
+                   aria-required="true"
+                   [attr.aria-invalid]="form.get('startDate')?.touched && form.get('startDate')?.hasError('required')"
+                   [attr.aria-describedby]="(form.get('startDate')?.touched && form.get('startDate')?.hasError('required')) ? 'startDate-error' : null"
+                   [class.border-error-500]="form.get('startDate')?.touched && form.get('startDate')?.hasError('required')">
+            @if (form.get('startDate')?.touched && form.get('startDate')?.hasError('required')) {
+              <p id="startDate-error" class="text-sm text-error-500 mt-1" role="alert">{{ 'recruitment.makeOffer.startDateRequired' | translate }}</p>
+            }
           </div>
-          <div class="summary-row">
-            <span>Candidate:</span>
-            <span>{{ data.application.candidate.fullName }}</span>
+
+          <div>
+            <label for="expiryDate" class="sw-label">{{ 'recruitment.makeOffer.expiryDateLabel' | translate }}</label>
+            <input id="expiryDate" type="date" formControlName="expiryDate" class="sw-input w-full"
+                   aria-required="true"
+                   [attr.aria-invalid]="form.get('expiryDate')?.touched && form.get('expiryDate')?.hasError('required')"
+                   [attr.aria-describedby]="(form.get('expiryDate')?.touched && form.get('expiryDate')?.hasError('required')) ? 'expiryDate-error' : null"
+                   [class.border-error-500]="form.get('expiryDate')?.touched && form.get('expiryDate')?.hasError('required')">
+            @if (form.get('expiryDate')?.touched && form.get('expiryDate')?.hasError('required')) {
+              <p id="expiryDate-error" class="text-sm text-error-500 mt-1" role="alert">{{ 'recruitment.makeOffer.expiryDateRequired' | translate }}</p>
+            }
           </div>
-          @if (form.get('salary')?.value) {
-            <div class="summary-row">
-              <span>Monthly Salary:</span>
-              <span>R{{ (form.get('salary')?.value / 12) | number:'1.0-0' }}</span>
+        </div>
+
+        <!-- Offer Summary -->
+        <div class="p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+          <h4 class="text-sm font-semibold text-primary-700 dark:text-primary-400 mb-3 flex items-center gap-2">
+            <span class="material-icons text-lg">summarize</span>
+            {{ 'recruitment.makeOffer.offerSummary' | translate }}
+          </h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.makeOffer.positionLabel' | translate }}</span>
+              <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ data.application.job.title }}</span>
             </div>
-          }
+            <div class="flex justify-between">
+              <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.makeOffer.candidateLabel' | translate }}</span>
+              <span class="font-medium text-neutral-700 dark:text-neutral-300">{{ data.application.candidate.fullName }}</span>
+            </div>
+            @if (form.get('salary')?.value) {
+              <div class="flex justify-between pt-2 border-t border-primary-200 dark:border-primary-800">
+                <span class="text-neutral-500 dark:text-neutral-400">{{ 'recruitment.makeOffer.monthlySalaryLabel' | translate }}</span>
+                <span class="font-semibold text-primary-600 dark:text-primary-400">R{{ (form.get('salary')?.value / 12) | number:'1.0-0' }}</span>
+              </div>
+            }
+          </div>
         </div>
       </form>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-              [disabled]="form.invalid || saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          Send Offer
-        }
-      </button>
-    </mat-dialog-actions>
+
+      <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-dark-border">
+        <sw-button variant="ghost" size="md" [disabled]="saving()" (clicked)="cancel()">
+          {{ 'common.cancel' | translate }}
+        </sw-button>
+        <sw-button variant="primary" size="md" [disabled]="form.invalid" [loading]="saving()" (clicked)="onSubmit()">
+          <span class="material-icons text-lg" aria-hidden="true">send</span>
+          {{ 'recruitment.makeOffer.sendButton' | translate }}
+        </sw-button>
+      </div>
+    </div>
   `,
-  styles: [`
-    .dialog-info {
-      margin-bottom: 16px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    mat-dialog-content {
-      min-width: 400px;
-    }
-
-    .offer-summary {
-      margin-top: 16px;
-      padding: 16px;
-      background: #e3f2fd;
-      border-radius: 8px;
-    }
-
-    .offer-summary h4 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      font-weight: 500;
-      color: #1565c0;
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 14px;
-    }
-
-    .summary-row span:first-child {
-      color: rgba(0, 0, 0, 0.6);
-    }
-
-    .summary-row span:last-child {
-      font-weight: 500;
-    }
-
-    mat-dialog-actions button mat-spinner {
-      display: inline-block;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MakeOfferDialogComponent {
-  readonly dialogRef = inject(MatDialogRef<MakeOfferDialogComponent>);
-  readonly data: DialogData = inject(MAT_DIALOG_DATA);
+  private readonly dialogRef: DialogRef = inject('DIALOG_REF' as any);
+  readonly data: DialogData = inject('DIALOG_DATA' as any);
   private readonly fb = inject(FormBuilder);
   private readonly recruitmentService = inject(RecruitmentService);
+  private readonly translate = inject(TranslateService);
+
+  cancel(): void {
+    this.dialogRef.close();
+  }
 
   form: FormGroup;
   saving = signal(false);
@@ -178,9 +140,13 @@ export class MakeOfferDialogComponent {
 
     this.form = this.fb.group({
       salary: [null, [Validators.required, Validators.min(1)]],
-      startDate: [startDate, Validators.required],
-      expiryDate: [expiryDate, Validators.required]
+      startDate: [this.formatDate(startDate), Validators.required],
+      expiryDate: [this.formatDate(expiryDate), Validators.required]
     });
+  }
+
+  private formatDate(date: Date): string {
+    return date.toISOString().split('T')[0];
   }
 
   onSubmit(): void {
@@ -189,15 +155,11 @@ export class MakeOfferDialogComponent {
     this.saving.set(true);
     const formValue = this.form.value;
 
-    const salary = formValue.salary;
-    const startDate = this.formatDate(formValue.startDate);
-    const expiryDate = this.formatDate(formValue.expiryDate);
-
     this.recruitmentService.makeOffer(
       this.data.application.id,
-      salary,
-      expiryDate,
-      startDate
+      formValue.salary,
+      formValue.expiryDate,
+      formValue.startDate
     ).subscribe({
       next: () => {
         this.saving.set(false);
@@ -208,9 +170,5 @@ export class MakeOfferDialogComponent {
         this.saving.set(false);
       }
     });
-  }
-
-  private formatDate(date: Date): string {
-    return date.toISOString().split('T')[0];
   }
 }

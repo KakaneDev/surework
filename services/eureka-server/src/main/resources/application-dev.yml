@@ -1,0 +1,20 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  security:
+    user:
+      name: admin
+      password: surework
+
+eureka:
+  server:
+    # Disable self-preservation for development (faster deregistration)
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 5000
+    response-cache-update-interval-ms: 1000
+
+logging:
+  level:
+    com.netflix.eureka: DEBUG
+    com.netflix.discovery: DEBUG

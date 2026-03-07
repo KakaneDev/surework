@@ -37,6 +37,14 @@ GRANT ALL PRIVILEGES ON DATABASE surework_document TO surework;
 CREATE DATABASE surework_reporting;
 GRANT ALL PRIVILEGES ON DATABASE surework_reporting TO surework;
 
+-- Analytics Service Database (Admin Dashboard)
+CREATE DATABASE surework_analytics;
+GRANT ALL PRIVILEGES ON DATABASE surework_analytics TO surework;
+
+-- Billing Service Database (Admin Dashboard)
+CREATE DATABASE surework_billing;
+GRANT ALL PRIVILEGES ON DATABASE surework_billing TO surework;
+
 -- Connect to each database and create extensions
 \c surework_admin
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -67,6 +75,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 \c surework_reporting
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+\c surework_analytics
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+\c surework_billing
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Log completion
 \echo 'SureWork databases initialized successfully'

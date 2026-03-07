@@ -102,3 +102,27 @@ docker-compose.override.yml
 
 # Spec files (keep specs but ignore generated artifacts)
 specs/**/output/
+
+# Build outputs
+**/target/
+**/build/
+**/node_modules/
+**/dist/
+document-storage/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment secrets
+.env.production
+.env.local
+
+# Logs
+*.log
+logs/

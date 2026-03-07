@@ -7,9 +7,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * JobTitle entity representing job positions.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "job_titles")
@@ -17,6 +19,13 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 public class JobTitle extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(nullable = false, unique = true)
     private String code;

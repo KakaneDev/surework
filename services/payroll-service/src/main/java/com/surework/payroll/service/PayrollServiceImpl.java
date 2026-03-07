@@ -65,6 +65,10 @@ public class PayrollServiceImpl implements PayrollService {
 
         PayrollRun run = PayrollRun.create(period, request.paymentDate());
         run.setNotes(request.notes());
+
+        // Tenant isolation: always set tenantId from context before saving
+        run.setTenantId(TenantContext.requireTenantId());
+
         run = payrollRunRepository.save(run);
 
         log.info("Created payroll run {} for period {}", run.getRunNumber(), period);
@@ -118,17 +122,15 @@ public class PayrollServiceImpl implements PayrollService {
 
         run.startProcessing();
 
-        // Publish event for start
-        UUID tenantId = TenantContext.getTenantId().orElse(null);
-        if (tenantId != null) {
-            eventPublisher.publish(new PayrollEvent.PayrollRunStarted(
-                    UUID.randomUUID(),
-                    tenantId,
-                    Instant.now(),
-                    run.getId(),
-                    run.getPeriod().toString()
-            ));
-        }
+        // Publish event for start - tenant context is required for multi-tenant security
+        UUID tenantId = TenantContext.requireTenantId();
+        eventPublisher.publish(new PayrollEvent.PayrollRunStarted(
+                UUID.randomUUID(),
+                tenantId,
+                Instant.now(),
+                run.getId(),
+                run.getPeriod().toString()
+        ));
 
         // Get all active employees for payroll
         List<PayrollDto.EmployeePayrollData> employees = employeePayrollDataService.getActiveEmployeesForPayroll();
@@ -151,17 +153,15 @@ public class PayrollServiceImpl implements PayrollService {
         run = payrollRunRepository.save(run);
 
         // Publish completion event
-        if (tenantId != null) {
-            eventPublisher.publish(new PayrollEvent.PayrollRunCompleted(
-                    UUID.randomUUID(),
-                    tenantId,
-                    Instant.now(),
-                    run.getId(),
-                    run.getEmployeeCount(),
-                    run.getTotalGross(),
-                    run.getTotalNet()
-            ));
-        }
+        eventPublisher.publish(new PayrollEvent.PayrollRunCompleted(
+                UUID.randomUUID(),
+                tenantId,
+                Instant.now(),
+                run.getId(),
+                run.getEmployeeCount(),
+                run.getTotalGross(),
+                run.getTotalNet()
+        ));
 
         log.info("Completed processing payroll run {} with {} payslips",
                 run.getRunNumber(), run.getEmployeeCount());
@@ -178,6 +178,9 @@ public class PayrollServiceImpl implements PayrollService {
                 run.getPeriodMonth(),
                 run.getPaymentDate()
         );
+
+        // Tenant isolation: always set tenantId from context before saving
+        payslip.setTenantId(TenantContext.requireTenantId());
 
         payslip.setIdNumber(employee.idNumber());
         payslip.setTaxNumber(employee.taxNumber());
@@ -329,24 +332,22 @@ public class PayrollServiceImpl implements PayrollService {
 
         run.markAsPaid();
 
-        // Mark all payslips as paid and publish events
-        UUID tenantId = TenantContext.getTenantId().orElse(null);
+        // Mark all payslips as paid and publish events - tenant context is required for multi-tenant security
+        UUID tenantId = TenantContext.requireTenantId();
         for (Payslip payslip : run.getPayslips()) {
             if (payslip.getStatus() == Payslip.PayslipStatus.APPROVED) {
                 payslip.markAsPaid();
 
-                if (tenantId != null) {
-                    eventPublisher.publish(new PayrollEvent.PayslipGenerated(
-                            UUID.randomUUID(),
-                            tenantId,
-                            Instant.now(),
-                            payslip.getId(),
-                            payslip.getEmployeeId(),
-                            payslip.getPeriodYear(),
-                            payslip.getPeriodMonth(),
-                            payslip.getNetPay()
-                    ));
-                }
+                eventPublisher.publish(new PayrollEvent.PayslipGenerated(
+                        UUID.randomUUID(),
+                        tenantId,
+                        Instant.now(),
+                        payslip.getId(),
+                        payslip.getEmployeeId(),
+                        payslip.getPeriodYear(),
+                        payslip.getPeriodMonth(),
+                        payslip.getNetPay()
+                ));
             }
         }
 
@@ -405,11 +406,12 @@ public class PayrollServiceImpl implements PayrollService {
     @Transactional(readOnly = true)
     public Page<PayrollDto.PayslipSummary> searchPayslips(
             UUID employeeId,
+            UUID runId,
             Integer year,
             Integer month,
             Payslip.PayslipStatus status,
             Pageable pageable) {
-        return payslipRepository.search(employeeId, year, month, status, pageable)
+        return payslipRepository.search(employeeId, runId, year, month, status, pageable)
                 .map(PayrollDto.PayslipSummary::fromEntity);
     }
 

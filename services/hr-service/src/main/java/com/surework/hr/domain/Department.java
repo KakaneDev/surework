@@ -8,9 +8,11 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Department entity representing organizational departments.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "departments")
@@ -18,6 +20,13 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class Department extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(nullable = false, unique = true)
     private String code;

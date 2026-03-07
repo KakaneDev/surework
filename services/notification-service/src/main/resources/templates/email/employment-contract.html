@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .content p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .highlight {
+            background-color: #f8f9fa;
+            border-left: 4px solid #27ae60;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .details-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .details-table td:first-child {
+            font-weight: 600;
+            color: #555;
+            width: 150px;
+        }
+        .next-steps {
+            background-color: #eef6ff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .next-steps h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .next-steps ol {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Your Signed Employment Contract</h1>
+    </div>
+    <div class="content">
+        <p>Dear <strong th:text="${candidateName}">Candidate</strong>,</p>
+
+        <p>Congratulations on accepting the <strong th:text="${jobTitle}">position</strong> role!
+           We are delighted to welcome you to the team.</p>
+
+        <div class="highlight">
+            Your <strong>signed</strong> employment contract is attached to this email.
+            This contract has been electronically signed by both parties via SureWork ERP.
+        </div>
+
+        <table class="details-table">
+            <tr>
+                <td>Position:</td>
+                <td th:text="${jobTitle}">Job Title</td>
+            </tr>
+            <tr th:if="${department != null}">
+                <td>Department:</td>
+                <td th:text="${department}">Department</td>
+            </tr>
+            <tr>
+                <td>Start Date:</td>
+                <td th:text="${startDate}">1 March 2026</td>
+            </tr>
+            <tr>
+                <td>Salary:</td>
+                <td th:text="${formattedSalary}">R 25,000.00</td>
+            </tr>
+        </table>
+
+        <div class="next-steps">
+            <h3>Next Steps</h3>
+            <ol>
+                <li>Keep this contract for your records.</li>
+                <li>Our onboarding team will contact you with first-day details.</li>
+            </ol>
+        </div>
+
+        <p>If you have any questions about your contract or the onboarding process, please do not hesitate to reach out to your hiring manager or HR department.</p>
+
+        <p>We look forward to having you on board!</p>
+
+        <p>Kind regards,<br/>
+        <strong>The HR Team</strong></p>
+    </div>
+    <div class="footer">
+        <p>This is an automated email from SureWork ERP. Please do not reply directly to this email.</p>
+        <p>This is your electronically signed employment contract. Both parties have accepted the terms via SureWork ERP.</p>
+    </div>
+</div>
+</body>
+</html>

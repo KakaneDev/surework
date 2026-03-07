@@ -107,7 +107,7 @@ CREATE TABLE permissions (
 
     CONSTRAINT chk_permission_category CHECK (category IN (
         'SYSTEM', 'TENANT', 'USER', 'EMPLOYEE', 'LEAVE', 'PAYROLL',
-        'TIME', 'RECRUITMENT', 'DOCUMENT', 'REPORT', 'FINANCE', 'ACCOUNTING'
+        'TIME', 'RECRUITMENT', 'DOCUMENT', 'REPORT', 'FINANCE', 'ACCOUNTING', 'SUPPORT'
     )),
     CONSTRAINT chk_permission_action CHECK (action IN (
         'CREATE', 'READ', 'UPDATE', 'DELETE', 'APPROVE', 'PROCESS',

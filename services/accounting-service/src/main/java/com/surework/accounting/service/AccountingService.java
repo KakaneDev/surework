@@ -14,44 +14,47 @@ import java.util.UUID;
 
 /**
  * Service interface for accounting operations.
+ * All methods require tenant ID for multi-tenant data isolation.
  */
 public interface AccountingService {
 
     // === Account Operations ===
 
-    AccountingDto.AccountResponse createAccount(AccountingDto.CreateAccountRequest request);
+    AccountingDto.AccountResponse createAccount(UUID tenantId, AccountingDto.CreateAccountRequest request);
 
-    AccountingDto.AccountResponse updateAccount(UUID accountId, AccountingDto.UpdateAccountRequest request);
+    AccountingDto.AccountResponse updateAccount(UUID tenantId, UUID accountId, AccountingDto.UpdateAccountRequest request);
 
-    Optional<AccountingDto.AccountResponse> getAccount(UUID accountId);
+    Optional<AccountingDto.AccountResponse> getAccount(UUID tenantId, UUID accountId);
 
-    Optional<AccountingDto.AccountResponse> getAccountByCode(String accountCode);
+    Optional<AccountingDto.AccountResponse> getAccountByCode(UUID tenantId, String accountCode);
 
-    List<AccountingDto.AccountResponse> getAllAccounts();
+    List<AccountingDto.AccountResponse> getAllAccounts(UUID tenantId);
 
-    List<AccountingDto.AccountResponse> getAccountsByType(Account.AccountType type);
+    List<AccountingDto.AccountResponse> getAccountsByType(UUID tenantId, Account.AccountType type);
 
-    List<AccountingDto.AccountResponse> getPostableAccounts();
+    List<AccountingDto.AccountResponse> getPostableAccounts(UUID tenantId);
 
     Page<AccountingDto.AccountResponse> searchAccounts(
+            UUID tenantId,
             String searchTerm,
             Account.AccountType type,
             boolean activeOnly,
             Pageable pageable);
 
-    void deactivateAccount(UUID accountId);
+    void deactivateAccount(UUID tenantId, UUID accountId);
 
-    void activateAccount(UUID accountId);
+    void activateAccount(UUID tenantId, UUID accountId);
 
     // === Journal Entry Operations ===
 
-    AccountingDto.JournalEntryResponse createJournalEntry(AccountingDto.CreateJournalEntryRequest request);
+    AccountingDto.JournalEntryResponse createJournalEntry(UUID tenantId, AccountingDto.CreateJournalEntryRequest request);
 
-    Optional<AccountingDto.JournalEntryResponse> getJournalEntry(UUID entryId);
+    Optional<AccountingDto.JournalEntryResponse> getJournalEntry(UUID tenantId, UUID entryId);
 
-    Optional<AccountingDto.JournalEntryResponse> getJournalEntryByNumber(String entryNumber);
+    Optional<AccountingDto.JournalEntryResponse> getJournalEntryByNumber(UUID tenantId, String entryNumber);
 
     Page<AccountingDto.JournalEntryResponse> searchJournalEntries(
+            UUID tenantId,
             LocalDate startDate,
             LocalDate endDate,
             JournalEntry.EntryStatus status,
@@ -59,44 +62,44 @@ public interface AccountingService {
             String searchTerm,
             Pageable pageable);
 
-    AccountingDto.JournalEntryResponse postJournalEntry(UUID entryId, UUID postedBy);
+    AccountingDto.JournalEntryResponse postJournalEntry(UUID tenantId, UUID entryId, UUID postedBy);
 
-    AccountingDto.JournalEntryResponse reverseJournalEntry(UUID entryId, LocalDate reversalDate, String reason, UUID reversedBy);
+    AccountingDto.JournalEntryResponse reverseJournalEntry(UUID tenantId, UUID entryId, LocalDate reversalDate, String reason, UUID reversedBy);
 
-    void deleteJournalEntry(UUID entryId);
+    void deleteJournalEntry(UUID tenantId, UUID entryId);
 
-    List<AccountingDto.JournalEntryResponse> getDraftEntries();
+    List<AccountingDto.JournalEntryResponse> getDraftEntries(UUID tenantId);
 
     // === Fiscal Period Operations ===
 
-    List<AccountingDto.FiscalPeriodResponse> generateFiscalYear(int fiscalYear);
+    List<AccountingDto.FiscalPeriodResponse> generateFiscalYear(UUID tenantId, int fiscalYear);
 
-    List<AccountingDto.FiscalPeriodResponse> getFiscalPeriodsForYear(int fiscalYear);
+    List<AccountingDto.FiscalPeriodResponse> getFiscalPeriodsForYear(UUID tenantId, int fiscalYear);
 
-    Optional<AccountingDto.FiscalPeriodResponse> getCurrentPeriod();
+    Optional<AccountingDto.FiscalPeriodResponse> getCurrentPeriod(UUID tenantId);
 
-    Optional<AccountingDto.FiscalPeriodResponse> getPeriodForDate(LocalDate date);
+    Optional<AccountingDto.FiscalPeriodResponse> getPeriodForDate(UUID tenantId, LocalDate date);
 
-    AccountingDto.FiscalPeriodResponse openPeriod(UUID periodId);
+    AccountingDto.FiscalPeriodResponse openPeriod(UUID tenantId, UUID periodId);
 
-    AccountingDto.FiscalPeriodResponse closePeriod(UUID periodId, UUID closedBy);
+    AccountingDto.FiscalPeriodResponse closePeriod(UUID tenantId, UUID periodId, UUID closedBy);
 
-    AccountingDto.FiscalPeriodResponse reopenPeriod(UUID periodId, UUID reopenedBy);
+    AccountingDto.FiscalPeriodResponse reopenPeriod(UUID tenantId, UUID periodId, UUID reopenedBy);
 
-    AccountingDto.FiscalPeriodResponse lockPeriod(UUID periodId);
+    AccountingDto.FiscalPeriodResponse lockPeriod(UUID tenantId, UUID periodId);
 
     // === Financial Reports ===
 
-    AccountingDto.TrialBalanceReport generateTrialBalance(LocalDate asOfDate);
+    AccountingDto.TrialBalanceReport generateTrialBalance(UUID tenantId, LocalDate asOfDate);
 
-    AccountingDto.BalanceSheetReport generateBalanceSheet(LocalDate asOfDate);
+    AccountingDto.BalanceSheetReport generateBalanceSheet(UUID tenantId, LocalDate asOfDate);
 
-    AccountingDto.IncomeStatementReport generateIncomeStatement(LocalDate startDate, LocalDate endDate);
+    AccountingDto.IncomeStatementReport generateIncomeStatement(UUID tenantId, LocalDate startDate, LocalDate endDate);
 
     AccountingDto.GeneralLedgerReport generateGeneralLedger(
-            UUID accountId, LocalDate startDate, LocalDate endDate);
+            UUID tenantId, UUID accountId, LocalDate startDate, LocalDate endDate);
 
     // === Year-End Processing ===
 
-    void performYearEndClose(int fiscalYear, UUID performedBy);
+    void performYearEndClose(UUID tenantId, int fiscalYear, UUID performedBy);
 }

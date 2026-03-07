@@ -16,7 +16,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * - Audit Logging
  * - License Management
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+        "com.surework.admin",
+        "com.surework.common"
+})
 @EnableAsync
 @EnableScheduling
 public class AdminServiceApplication {

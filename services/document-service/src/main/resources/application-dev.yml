@@ -1,0 +1,43 @@
+# Development Profile Configuration
+# Use: SPRING_PROFILES_ACTIVE=dev or --spring.profiles.active=dev
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  flyway:
+    clean-disabled: false
+
+# Development database defaults
+  datasource:
+    url: jdbc:postgresql://localhost:5432/surework_documents
+    username: surework
+    password: surework
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
+
+# Development Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Development storage - local filesystem
+surework:
+  admin:
+    jwt:
+      secret: surework-dev-jwt-secret-key-for-development-only
+  document:
+    storage:
+      type: local
+      local:
+        base-path: ./document-storage
+
+logging:
+  level:
+    com.surework: DEBUG
+    software.amazon.awssdk: DEBUG
+    org.hibernate.SQL: DEBUG

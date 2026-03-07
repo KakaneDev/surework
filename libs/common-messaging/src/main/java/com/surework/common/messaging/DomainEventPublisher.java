@@ -78,6 +78,7 @@ public class DomainEventPublisher {
             case "AccountingEvent" -> TOPIC_PREFIX + "accounting" + TOPIC_SUFFIX_EVENTS;
             case "RecruitmentEvent" -> TOPIC_PREFIX + "recruitment" + TOPIC_SUFFIX_EVENTS;
             case "IdentityEvent" -> TOPIC_PREFIX + "identity" + TOPIC_SUFFIX_EVENTS;
+            case "SupportEvent" -> TOPIC_PREFIX + "support" + TOPIC_SUFFIX_EVENTS;
             case "NotificationCommand" -> TOPIC_PREFIX + "notifications" + TOPIC_SUFFIX_COMMANDS;
             default -> TOPIC_PREFIX + "unknown" + TOPIC_SUFFIX_EVENTS;
         };

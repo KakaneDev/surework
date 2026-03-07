@@ -1,0 +1,620 @@
+###############################################################################
+# SureWork ERP - Production Docker Compose
+# Deploys all microservices, PostgreSQL, Kafka, and supporting infrastructure
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+###############################################################################
+
+services:
+
+  # ===========================================================================
+  # INFRASTRUCTURE SERVICES
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: surework-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: surework
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/01-create-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - surework-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: surework-zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - surework-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: surework-kafka
+    restart: always
+    depends_on:
+      zookeeper:
+        condition: service_started
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_HEAP_OPTS: "-Xmx512M -Xms256M"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+      - surework-net
+
+  # ===========================================================================
+  # SPRING CLOUD INFRASTRUCTURE
+  # ===========================================================================
+
+  eureka-server:
+    build:
+      context: ../../services/eureka-server
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/eureka-server
+    container_name: surework-eureka
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8761
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - surework-net
+
+  # ===========================================================================
+  # API GATEWAY
+  # ===========================================================================
+
+  api-gateway:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/api-gateway
+    container_name: surework-api-gateway
+    restart: always
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - surework-net
+
+  # ===========================================================================
+  # CORE BUSINESS SERVICES
+  # ===========================================================================
+
+  identity-service:
+    build:
+      context: ../../services/identity-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/identity-service
+    container_name: surework-identity
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_identity
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - surework-net
+
+  tenant-service:
+    build:
+      context: ../../services/tenant-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/tenant-service
+    container_name: surework-tenant
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_tenant
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  employee-service:
+    build:
+      context: ../../services/employee-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/employee-service
+    container_name: surework-employee
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_employee
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  hr-service:
+    build:
+      context: ../../services/hr-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/hr-service
+    container_name: surework-hr
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_hr
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  leave-service:
+    build:
+      context: ../../services/leave-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/leave-service
+    container_name: surework-leave
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_leave
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  time-attendance-service:
+    build:
+      context: ../../services/time-attendance-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/time-attendance-service
+    container_name: surework-time-attendance
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_time_attendance
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  payroll-service:
+    build:
+      context: ../../services/payroll-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/payroll-service
+    container_name: surework-payroll
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8087
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_payroll
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  accounting-service:
+    build:
+      context: ../../services/accounting-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/accounting-service
+    container_name: surework-accounting
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8088
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_accounting
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  billing-service:
+    build:
+      context: ../../services/billing-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/billing-service
+    container_name: surework-billing
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8089
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_billing
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  recruitment-service:
+    build:
+      context: ../../services/recruitment-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/recruitment-service
+    container_name: surework-recruitment
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8090
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_recruitment
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  document-service:
+    build:
+      context: ../../services/document-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/document-service
+    container_name: surework-document
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8091
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_document
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    volumes:
+      - document-storage:/app/documents
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  notification-service:
+    build:
+      context: ../../services/notification-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/notification-service
+    container_name: surework-notification
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_notification
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  admin-service:
+    build:
+      context: ../../services/admin-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/admin-service
+    container_name: surework-admin
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8093
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_admin
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  support-service:
+    build:
+      context: ../../services/support-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/support-service
+    container_name: surework-support
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8094
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_support
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  analytics-service:
+    build:
+      context: ../../services/analytics-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/analytics-service
+    container_name: surework-analytics
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8095
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_analytics
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+  reporting-service:
+    build:
+      context: ../../services/reporting-service
+      dockerfile: ../../infrastructure/gcp-deploy/Dockerfile.service
+    image: surework/reporting-service
+    container_name: surework-reporting
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8096
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_reporting
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    networks:
+      - surework-net
+
+# ===========================================================================
+# VOLUMES
+# ===========================================================================
+volumes:
+  postgres-data:
+    driver: local
+  kafka-data:
+    driver: local
+  zookeeper-data:
+    driver: local
+  document-storage:
+    driver: local
+
+# ===========================================================================
+# NETWORKS
+# ===========================================================================
+networks:
+  surework-net:
+    driver: bridge

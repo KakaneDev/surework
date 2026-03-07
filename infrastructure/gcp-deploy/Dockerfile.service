@@ -1,0 +1,32 @@
+# =============================================================================
+# Generic Dockerfile for SureWork Spring Boot Microservices
+# Usage: docker build -t surework/<service-name> --build-arg SERVICE_NAME=<name> .
+# =============================================================================
+FROM eclipse-temurin:17-jre-jammy
+
+ARG SERVICE_NAME
+ARG JAR_FILE=target/*.jar
+
+LABEL maintainer="SureWork Team"
+LABEL service="${SERVICE_NAME}"
+
+RUN groupadd -r surework && useradd -r -g surework surework
+
+WORKDIR /app
+
+COPY ${JAR_FILE} app.jar
+
+RUN chown surework:surework app.jar
+
+USER surework
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+ENTRYPOINT ["java", \
+    "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-jar", "app.jar"]

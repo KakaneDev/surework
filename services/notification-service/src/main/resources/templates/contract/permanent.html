@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #666;
+        }
+        h2 {
+            font-size: 13pt;
+            color: #2c3e50;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        .section {
+            margin-bottom: 15px;
+        }
+        .clause {
+            margin-bottom: 10px;
+            text-align: justify;
+        }
+        .clause-number {
+            font-weight: bold;
+        }
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        table.details td {
+            padding: 5px 10px;
+            vertical-align: top;
+        }
+        table.details td:first-child {
+            font-weight: bold;
+            width: 200px;
+            color: #555;
+        }
+        .signature-block {
+            margin-top: 50px;
+            page-break-inside: avoid;
+        }
+        .signature-row {
+            display: inline-block;
+            width: 45%;
+            vertical-align: top;
+            margin-right: 4%;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+        .part-time-note {
+            font-style: italic;
+            color: #555;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>EMPLOYMENT CONTRACT</h1>
+    <div class="subtitle">
+        In accordance with the Basic Conditions of Employment Act 75 of 1997, Section 29
+    </div>
+    <div class="subtitle" th:text="'Date of Issue: ' + ${issueDate}">Date of Issue: 12 February 2026</div>
+</div>
+
+<div class="section">
+    <h2>1. PARTIES</h2>
+    <div class="clause">
+        This contract of employment is entered into between:
+    </div>
+    <table class="details">
+        <tr>
+            <td>Employer:</td>
+            <td th:text="${companyName ?: 'The Company'}">The Company</td>
+        </tr>
+        <tr>
+            <td>Employee:</td>
+            <td th:text="${candidateName}">Employee Name</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>2. COMMENCEMENT AND PLACE OF WORK</h2>
+    <table class="details">
+        <tr>
+            <td>Start Date:</td>
+            <td th:text="${startDate}">1 March 2026</td>
+        </tr>
+        <tr>
+            <td>Place of Work:</td>
+            <td th:text="${location ?: 'As designated by the employer'}">Johannesburg</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2>3. JOB TITLE AND DESCRIPTION</h2>
+    <table class="details">
+        <tr>
+            <td>Job Title:</td>
+            <td th:text="${jobTitle}">Position Title</td>
+        </tr>
+        <tr>
+            <td>Department:</td>
+            <td th:text="${department ?: 'As assigned'}">Department</td>
+        </tr>
+        <tr>
+            <td>Reporting To:</td>
+            <td>As designated by the employer or their representative</td>
+        </tr>
+    </table>
+    <div class="clause">
+        The Employee's duties will include those reasonably associated with the position and as may be assigned by the Employer from time to time.
+    </div>
+</div>
+
+<div class="section">
+    <h2>4. REMUNERATION</h2>
+    <table class="details">
+        <tr>
+            <td>Monthly Salary:</td>
+            <td th:text="${formattedSalary}">R 25,000.00</td>
+        </tr>
+        <tr>
+            <td>Currency:</td>
+            <td th:text="${salaryCurrency ?: 'ZAR'}">ZAR</td>
+        </tr>
+        <tr>
+            <td>Payment Frequency:</td>
+            <td>Monthly, on or before the last business day of each month</td>
+        </tr>
+        <tr>
+            <td>Payment Method:</td>
+            <td>Electronic transfer to the Employee's nominated bank account</td>
+        </tr>
+    </table>
+    <div class="clause">
+        The Employer shall provide the Employee with a payslip on each pay day showing the particulars of remuneration, in accordance with Section 33 of the BCEA.
+    </div>
+</div>
+
+<div class="section">
+    <h2>5. WORKING HOURS</h2>
+    <div class="clause">
+        <span th:if="${employmentType == 'PART_TIME'}">
+            <p>The Employee is employed on a part-time basis. The Employee's normal working hours shall be as agreed between the parties and shall not exceed 45 hours per week in accordance with Section 9 of the BCEA.</p>
+            <p class="part-time-note">Part-time employees are entitled to the same rights and benefits as full-time employees on a pro-rata basis, in accordance with Section 198C of the LRA.</p>
+        </span>
+        <span th:if="${employmentType != 'PART_TIME'}">
+            <p>The Employee's normal working hours shall be <strong th:text="${workingHours ?: '08:00 - 17:00, Monday to Friday'}">08:00 - 17:00, Monday to Friday</strong>, not exceeding 45 hours per week in accordance with Section 9 of the BCEA.</p>
+        </span>
+    </div>
+    <div class="clause">
+        Overtime may be required from time to time, subject to the provisions of Section 10 of the BCEA. Overtime shall not exceed 10 hours per week and shall be compensated at 1.5 times the Employee's normal hourly rate (2 times for Sundays and public holidays).
+    </div>
+</div>
+
+<div class="section">
+    <h2>6. LEAVE ENTITLEMENT</h2>
+    <div class="clause">
+        <p><strong>6.1 Annual Leave:</strong> The Employee shall be entitled to 15 working days (or 21 consecutive days) of paid annual leave per annual leave cycle, in accordance with Section 20 of the BCEA.</p>
+        <p><strong>6.2 Sick Leave:</strong> The Employee shall be entitled to 30 days' paid sick leave during every 36-month cycle, in accordance with Section 22 of the BCEA. During the first 6 months, the Employee is entitled to 1 day's paid sick leave for every 26 days worked.</p>
+        <p><strong>6.3 Family Responsibility Leave:</strong> The Employee shall be entitled to 3 days' paid family responsibility leave per annual leave cycle, in accordance with Section 27 of the BCEA.</p>
+        <p><strong>6.4 Maternity Leave:</strong> A pregnant Employee is entitled to at least 4 consecutive months' maternity leave, in accordance with Section 25 of the BCEA.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>7. PROBATION</h2>
+    <div class="clause">
+        <p>The Employee shall serve a probationary period of 3 (three) months from the date of commencement. During this period, the Employee's performance and suitability will be assessed. The Employer may extend the probation period by a further 3 months if required, subject to the provisions of Section 8 of the LRA.</p>
+        <p>During or at the end of the probation period, the Employer may terminate this contract with 1 (one) week's notice, provided the Employee has been given reasonable evaluation, instruction, training, guidance, and counselling.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>8. NOTICE PERIOD</h2>
+    <div class="clause">
+        Either party may terminate this contract by giving the following written notice, in accordance with Section 37 of the BCEA:
+    </div>
+    <div class="clause">
+        <p>- 1 (one) week, during the first 6 months of employment;</p>
+        <p>- 2 (two) weeks, if employed for more than 6 months but less than 1 year;</p>
+        <p>- 4 (four) weeks, if employed for 1 year or more.</p>
+    </div>
+    <div class="clause">
+        Notice must be given in writing, except when given by an illiterate Employee. The Employer may not give notice during any period of leave to which the Employee is entitled.
+    </div>
+</div>
+
+<div class="section">
+    <h2>9. DEDUCTIONS</h2>
+    <div class="clause">
+        The Employer shall not make any deductions from the Employee's remuneration except in accordance with Section 34 of the BCEA, including statutory deductions (PAYE, UIF, SDL) and any deductions agreed to in writing by the Employee.
+    </div>
+</div>
+
+<div class="section">
+    <h2>10. CONFIDENTIALITY</h2>
+    <div class="clause">
+        The Employee agrees not to disclose any confidential information relating to the Employer's business, clients, or affairs during or after the term of employment, except as required by law.
+    </div>
+</div>
+
+<div class="section">
+    <h2>11. DISPUTE RESOLUTION</h2>
+    <div class="clause">
+        Any dispute arising from this contract shall first be addressed through the Employer's internal grievance procedure. Should the dispute remain unresolved, either party may refer the matter to the Commission for Conciliation, Mediation and Arbitration (CCMA) in accordance with the Labour Relations Act 66 of 1995.
+    </div>
+</div>
+
+<div class="section">
+    <h2>12. GENERAL</h2>
+    <div class="clause">
+        <p><strong>12.1</strong> This contract constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, or agreements relating to the employment.</p>
+        <p><strong>12.2</strong> Any amendments to this contract must be in writing and signed by both parties.</p>
+        <p><strong>12.3</strong> Should any provision of this contract be found to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.</p>
+        <p><strong>12.4</strong> This contract is governed by the laws of the Republic of South Africa.</p>
+    </div>
+</div>
+
+<div class="signature-block">
+    <h2>SIGNATURES</h2>
+    <div class="clause">
+        By signing below, both parties acknowledge that they have read, understood, and agree to the terms and conditions of this employment contract.
+    </div>
+
+    <table style="width: 100%; margin-top: 30px;">
+        <tr>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Employer / Authorised Representative</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${companyName ?: 'The Company'}">The Company</span><br/>
+                        Title: Authorised Representative<br/>
+                        Date: <span th:text="${signatureDate}">Date</span>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: ___________________________<br/>
+                        Title: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+            <td style="width: 10%;"></td>
+            <td style="width: 45%; vertical-align: top;">
+                <div class="signature-line">
+                    <strong>Employee</strong><br/>
+                    <span th:if="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        Date: <span th:text="${acceptanceDate}">Date</span><br/>
+                        <em>Electronic acceptance (SureWork ERP)</em>
+                    </span>
+                    <span th:unless="${signed}">
+                        Name: <span th:text="${candidateName}">Employee Name</span><br/>
+                        ID No: ___________________________<br/>
+                        Date: ___________________________
+                    </span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="footer" th:if="${signed}">
+    This contract was electronically signed via SureWork ERP on <span th:text="${acceptanceDate}">date</span>.
+    Both parties have indicated their acceptance of the terms set forth in this agreement.
+</div>
+<div class="footer" th:unless="${signed}">
+    This contract is provided for your review. Please review the terms carefully before responding to the offer.
+</div>
+
+</body>
+</html>

@@ -1,6 +1,29 @@
 import { createReducer, on } from '@ngrx/store';
 import { CurrentUser } from '@core/services/auth.service';
-import * as AuthActions from './auth.actions';
+import {
+  login,
+  loginSuccess,
+  loginFailure,
+  mfaRequired,
+  verifyMfa,
+  verifyMfaSuccess,
+  verifyMfaFailure,
+  loadCurrentUser,
+  loadCurrentUserSuccess,
+  loadCurrentUserFailure,
+  logout,
+  logoutSuccess,
+  sessionExpired,
+  loginRateLimited,
+  accountLocked,
+  clearRateLimit
+} from './auth.actions';
+
+export interface RateLimitInfo {
+  remainingAttempts?: number;
+  isLocked: boolean;
+  lockoutEndTime?: number;
+}
 
 export interface AuthState {
   user: CurrentUser | null;
@@ -8,6 +31,7 @@ export interface AuthState {
   error: string | null;
   mfaRequired: boolean;
   mfaChallengeToken: string | null;
+  rateLimit: RateLimitInfo;
 }
 
 export const initialState: AuthState = {
@@ -16,13 +40,16 @@ export const initialState: AuthState = {
   error: null,
   mfaRequired: false,
   mfaChallengeToken: null,
+  rateLimit: {
+    isLocked: false
+  }
 };
 
 export const authReducer = createReducer(
   initialState,
 
   // Login
-  on(AuthActions.login, (state) => ({
+  on(login, (state) => ({
     ...state,
     loading: true,
     error: null,
@@ -30,72 +57,99 @@ export const authReducer = createReducer(
     mfaChallengeToken: null,
   })),
 
-  on(AuthActions.loginSuccess, (state) => ({
+  on(loginSuccess, (state) => ({
     ...state,
     loading: false,
     error: null,
   })),
 
-  on(AuthActions.loginFailure, (state, { error }) => ({
+  on(loginFailure, (state, { error }) => ({
     ...state,
     loading: false,
     error,
   })),
 
   // MFA
-  on(AuthActions.mfaRequired, (state, { challengeToken }) => ({
+  on(mfaRequired, (state, { challengeToken }) => ({
     ...state,
     loading: false,
     mfaRequired: true,
     mfaChallengeToken: challengeToken,
   })),
 
-  on(AuthActions.verifyMfa, (state) => ({
+  on(verifyMfa, (state) => ({
     ...state,
     loading: true,
     error: null,
   })),
 
-  on(AuthActions.verifyMfaSuccess, (state) => ({
+  on(verifyMfaSuccess, (state) => ({
     ...state,
     loading: false,
     mfaRequired: false,
     mfaChallengeToken: null,
   })),
 
-  on(AuthActions.verifyMfaFailure, (state, { error }) => ({
+  on(verifyMfaFailure, (state, { error }) => ({
     ...state,
     loading: false,
     error,
   })),
 
   // Load User
-  on(AuthActions.loadCurrentUser, (state) => ({
+  on(loadCurrentUser, (state) => ({
     ...state,
     loading: true,
   })),
 
-  on(AuthActions.loadCurrentUserSuccess, (state, { user }) => ({
+  on(loadCurrentUserSuccess, (state, { user }) => ({
     ...state,
     user,
     loading: false,
     error: null,
   })),
 
-  on(AuthActions.loadCurrentUserFailure, (state, { error }) => ({
+  on(loadCurrentUserFailure, (state, { error }) => ({
     ...state,
     loading: false,
     error,
   })),
 
   // Logout
-  on(AuthActions.logout, (state) => ({
+  on(logout, (state) => ({
     ...state,
     loading: true,
   })),
 
-  on(AuthActions.logoutSuccess, () => initialState),
+  on(logoutSuccess, () => initialState),
 
   // Session
-  on(AuthActions.sessionExpired, () => initialState)
+  on(sessionExpired, () => initialState),
+
+  // Rate Limiting
+  on(loginRateLimited, (state, { remainingAttempts }) => ({
+    ...state,
+    rateLimit: {
+      ...state.rateLimit,
+      remainingAttempts,
+      isLocked: false
+    }
+  })),
+
+  on(accountLocked, (state, { lockoutEndTime }) => ({
+    ...state,
+    loading: false,
+    rateLimit: {
+      ...state.rateLimit,
+      isLocked: true,
+      lockoutEndTime
+    }
+  })),
+
+  on(clearRateLimit, (state) => ({
+    ...state,
+    rateLimit: {
+      isLocked: false
+    }
+  }))
 );

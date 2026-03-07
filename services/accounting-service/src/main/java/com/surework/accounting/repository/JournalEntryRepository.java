@@ -25,6 +25,18 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID
     Optional<JournalEntry> findByEntryNumber(String entryNumber);
 
     /**
+     * Find by ID and tenant ID for secure tenant-scoped access.
+     */
+    @Query("SELECT je FROM JournalEntry je WHERE je.id = :id AND je.tenantId = :tenantId AND je.deleted = false")
+    Optional<JournalEntry> findByIdAndTenantId(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+
+    /**
+     * Find by tenant ID and entry number.
+     */
+    @Query("SELECT je FROM JournalEntry je WHERE je.tenantId = :tenantId AND je.entryNumber = :entryNumber AND je.deleted = false")
+    Optional<JournalEntry> findByTenantIdAndEntryNumber(@Param("tenantId") UUID tenantId, @Param("entryNumber") String entryNumber);
+
+    /**
      * Find by status.
      */
     @Query("SELECT je FROM JournalEntry je WHERE je.status = :status AND je.deleted = false " +
@@ -49,6 +61,18 @@ public interface JournalEntryRepository extends JpaRepository<JournalEntry, UUID
     List<JournalEntry> findPostedByDateRange(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    /**
+     * Find posted entries by date range and tenant.
+     */
+    @Query("SELECT je FROM JournalEntry je WHERE je.status = 'POSTED' " +
+            "AND je.transactionDate BETWEEN :startDate AND :endDate " +
+            "AND je.tenantId = :tenantId AND je.deleted = false " +
+            "ORDER BY je.transactionDate, je.entryNumber")
+    List<JournalEntry> findPostedByDateRangeAndTenant(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("tenantId") UUID tenantId);
 
     /**
      * Find by fiscal period.

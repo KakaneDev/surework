@@ -16,6 +16,7 @@ import java.util.UUID;
 /**
  * Represents a payroll processing run for a specific period.
  * Contains all payslips generated during the run.
+ * The tenantId field provides defense-in-depth for tenant isolation.
  */
 @Entity
 @Table(name = "payroll_runs", indexes = {
@@ -26,6 +27,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 public class PayrollRun extends BaseEntity {
+
+    /**
+     * Tenant ID for defense-in-depth isolation.
+     * Primary isolation is via schema-per-tenant; this is a secondary safeguard.
+     */
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(name = "run_number", nullable = false, unique = true)
     private String runNumber;

@@ -29,6 +29,8 @@ public class JwtTokenProvider {
 
     private static final String CLAIM_TENANT_ID = "tenantId";
     private static final String CLAIM_USER_ID = "userId";
+    private static final String CLAIM_EMPLOYEE_ID = "employeeId";
+    private static final String CLAIM_USERNAME = "username";
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_PERMISSIONS = "permissions";
     private static final String CLAIM_TOKEN_TYPE = "tokenType";
@@ -57,20 +59,39 @@ public class JwtTokenProvider {
             Set<String> roles,
             Set<String> permissions
     ) {
+        return generateAccessToken(userId, tenantId, email, null, roles, permissions);
+    }
+
+    /**
+     * Generate an access token with employee ID.
+     */
+    public String generateAccessToken(
+            UUID userId,
+            UUID tenantId,
+            String email,
+            UUID employeeId,
+            Set<String> roles,
+            Set<String> permissions
+    ) {
         Instant now = Instant.now();
         Instant expiry = now.plusMillis(accessTokenExpirationMs);
 
-        return Jwts.builder()
-                .subject(email)
+        var builder = Jwts.builder()
+                .subject(userId.toString())
                 .claim(CLAIM_USER_ID, userId.toString())
                 .claim(CLAIM_TENANT_ID, tenantId.toString())
+                .claim(CLAIM_USERNAME, email)
                 .claim(CLAIM_ROLES, roles)
                 .claim(CLAIM_PERMISSIONS, permissions)
                 .claim(CLAIM_TOKEN_TYPE, "ACCESS")
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(expiry))
-                .signWith(secretKey, Jwts.SIG.HS512)
-                .compact();
+                .expiration(Date.from(expiry));
+
+        if (employeeId != null) {
+            builder.claim(CLAIM_EMPLOYEE_ID, employeeId.toString());
+        }
+
+        return builder.signWith(secretKey, Jwts.SIG.HS512).compact();
     }
 
     /**
@@ -133,6 +154,21 @@ public class JwtTokenProvider {
     }
 
     /**
+     * Extract employee ID from token (if present).
+     */
+    public Optional<UUID> getEmployeeId(Claims claims) {
+        String employeeId = claims.get(CLAIM_EMPLOYEE_ID, String.class);
+        return employeeId != null ? Optional.of(UUID.fromString(employeeId)) : Optional.empty();
+    }
+
+    /**
+     * Extract username from token.
+     */
+    public Optional<String> getUsername(Claims claims) {
+        return Optional.ofNullable(claims.get(CLAIM_USERNAME, String.class));
+    }
+
+    /**
      * Extract roles from token.
      */
     @SuppressWarnings("unchecked")
@@ -158,9 +194,16 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Get token expiration time in seconds (for response).
+     * Get access token expiration time in seconds (for response).
      */
     public long getAccessTokenExpirationSeconds() {
         return accessTokenExpirationMs / 1000;
+    }
+
+    /**
+     * Get refresh token expiration time in seconds (for response).
+     */
+    public long getRefreshTokenExpirationSeconds() {
+        return refreshTokenExpirationMs / 1000;
     }
 }

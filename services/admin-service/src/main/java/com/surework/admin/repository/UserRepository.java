@@ -23,6 +23,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByUsernameOrEmail(String username, String email);
 
+    /**
+     * Find user by username or email with roles eagerly fetched.
+     * Use this method for login to ensure roles are available for JWT generation.
+     */
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.username = :username OR u.email = :email")
+    Optional<User> findByUsernameOrEmailWithRoles(@Param("username") String username, @Param("email") String email);
+
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);

@@ -2,7 +2,6 @@ package com.surework.notification.consumer;
 
 import com.surework.common.messaging.KafkaTopics;
 import com.surework.common.messaging.event.NotificationCommand;
-import com.surework.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,8 +16,6 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 public class NotificationCommandConsumer {
-
-    private final EmailService emailService;
 
     @KafkaListener(
             topics = KafkaTopics.NOTIFICATION_COMMANDS,
@@ -49,13 +46,8 @@ public class NotificationCommandConsumer {
     private void handleSendEmail(NotificationCommand.SendEmail command) {
         log.info("Processing email notification to {} with template {}",
                 command.recipientEmail(), command.templateId());
-
-        emailService.sendTemplatedEmail(
-                command.recipientEmail(),
-                command.subject(),
-                command.templateId(),
-                command.templateVariables()
-        );
+        // TODO: Implement email service when needed
+        log.warn("Email service not yet implemented - would send to: {}", command.recipientEmail());
     }
 
     private void handleSendSms(NotificationCommand.SendSms command) {

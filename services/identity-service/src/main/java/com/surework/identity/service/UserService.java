@@ -18,6 +18,20 @@ public interface UserService {
     UserDto.Response createUser(UserDto.CreateRequest request);
 
     /**
+     * Create a new user with password (for signup flow).
+     */
+    UserDto.Response createUserWithPassword(
+            String email,
+            String firstName,
+            String lastName,
+            String phone,
+            java.util.Set<String> roles,
+            UUID employeeId,
+            String password,
+            UUID tenantId
+    );
+
+    /**
      * Update user details.
      */
     UserDto.Response updateUser(UUID userId, UserDto.UpdateRequest request);
