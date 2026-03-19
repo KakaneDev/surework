@@ -177,6 +177,17 @@ public class Tenant {
     @Column(name = "features", columnDefinition = "text[]")
     private String[] features;
 
+    // Onboarding completion flags
+    @Column(name = "company_details_complete", nullable = false)
+    private boolean companyDetailsComplete = false;
+
+    @Column(name = "compliance_details_complete", nullable = false)
+    private boolean complianceDetailsComplete = false;
+
+    public boolean isSetupComplete() {
+        return companyDetailsComplete && complianceDetailsComplete;
+    }
+
     // Audit fields
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
