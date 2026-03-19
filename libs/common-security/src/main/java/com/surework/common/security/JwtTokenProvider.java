@@ -34,6 +34,8 @@ public class JwtTokenProvider {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_PERMISSIONS = "permissions";
     private static final String CLAIM_TOKEN_TYPE = "tokenType";
+    private static final String CLAIM_COMPANY_DETAILS_COMPLETE = "companyDetailsComplete";
+    private static final String CLAIM_COMPLIANCE_DETAILS_COMPLETE = "complianceDetailsComplete";
 
     private final SecretKey secretKey;
     private final long accessTokenExpirationMs;
@@ -92,6 +94,58 @@ public class JwtTokenProvider {
         }
 
         return builder.signWith(secretKey, Jwts.SIG.HS512).compact();
+    }
+
+    /**
+     * Generate an access token with employee ID and tenant completion flags.
+     */
+    public String generateAccessToken(
+            UUID userId,
+            UUID tenantId,
+            String email,
+            UUID employeeId,
+            Set<String> roles,
+            Set<String> permissions,
+            boolean companyDetailsComplete,
+            boolean complianceDetailsComplete
+    ) {
+        Instant now = Instant.now();
+        Instant expiry = now.plusMillis(accessTokenExpirationMs);
+
+        var builder = Jwts.builder()
+                .subject(userId.toString())
+                .claim(CLAIM_USER_ID, userId.toString())
+                .claim(CLAIM_TENANT_ID, tenantId.toString())
+                .claim(CLAIM_USERNAME, email)
+                .claim(CLAIM_ROLES, roles)
+                .claim(CLAIM_PERMISSIONS, permissions)
+                .claim(CLAIM_TOKEN_TYPE, "ACCESS")
+                .claim(CLAIM_COMPANY_DETAILS_COMPLETE, companyDetailsComplete)
+                .claim(CLAIM_COMPLIANCE_DETAILS_COMPLETE, complianceDetailsComplete)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry));
+
+        if (employeeId != null) {
+            builder.claim(CLAIM_EMPLOYEE_ID, employeeId.toString());
+        }
+
+        return builder.signWith(secretKey, Jwts.SIG.HS512).compact();
+    }
+
+    /**
+     * Generate an access token with tenant completion flags (no employee ID).
+     */
+    public String generateAccessToken(
+            UUID userId,
+            UUID tenantId,
+            String email,
+            Set<String> roles,
+            Set<String> permissions,
+            boolean companyDetailsComplete,
+            boolean complianceDetailsComplete
+    ) {
+        return generateAccessToken(userId, tenantId, email, null, roles, permissions,
+                companyDetailsComplete, complianceDetailsComplete);
     }
 
     /**
@@ -205,5 +259,19 @@ public class JwtTokenProvider {
      */
     public long getRefreshTokenExpirationSeconds() {
         return refreshTokenExpirationMs / 1000;
+    }
+
+    /**
+     * Extract company details completion flag from claims.
+     */
+    public static boolean isCompanyDetailsComplete(Claims claims) {
+        return Boolean.TRUE.equals(claims.get(CLAIM_COMPANY_DETAILS_COMPLETE, Boolean.class));
+    }
+
+    /**
+     * Extract compliance details completion flag from claims.
+     */
+    public static boolean isComplianceDetailsComplete(Claims claims) {
+        return Boolean.TRUE.equals(claims.get(CLAIM_COMPLIANCE_DETAILS_COMPLETE, Boolean.class));
     }
 }

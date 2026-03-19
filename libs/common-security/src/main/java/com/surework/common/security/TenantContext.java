@@ -20,6 +20,8 @@ public final class TenantContext {
     private static final ThreadLocal<UUID> CURRENT_TENANT = new ThreadLocal<>();
     private static final ThreadLocal<UUID> CURRENT_USER = new ThreadLocal<>();
     private static final ThreadLocal<String> CURRENT_IP = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> COMPANY_DETAILS_COMPLETE = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> COMPLIANCE_DETAILS_COMPLETE = new ThreadLocal<>();
 
     private TenantContext() {
         // Utility class
@@ -72,6 +74,34 @@ public final class TenantContext {
     }
 
     /**
+     * Set the company details completion flag for this thread.
+     */
+    public static void setCompanyDetailsComplete(Boolean complete) {
+        COMPANY_DETAILS_COMPLETE.set(complete);
+    }
+
+    /**
+     * Check whether company details setup is complete for the current tenant.
+     */
+    public static boolean isCompanyDetailsComplete() {
+        return Boolean.TRUE.equals(COMPANY_DETAILS_COMPLETE.get());
+    }
+
+    /**
+     * Set the compliance details completion flag for this thread.
+     */
+    public static void setComplianceDetailsComplete(Boolean complete) {
+        COMPLIANCE_DETAILS_COMPLETE.set(complete);
+    }
+
+    /**
+     * Check whether compliance setup is complete for the current tenant.
+     */
+    public static boolean isComplianceDetailsComplete() {
+        return Boolean.TRUE.equals(COMPLIANCE_DETAILS_COMPLETE.get());
+    }
+
+    /**
      * Set the client IP address for audit logging.
      */
     public static void setClientIp(String ipAddress) {
@@ -93,6 +123,8 @@ public final class TenantContext {
         CURRENT_TENANT.remove();
         CURRENT_USER.remove();
         CURRENT_IP.remove();
+        COMPANY_DETAILS_COMPLETE.remove();
+        COMPLIANCE_DETAILS_COMPLETE.remove();
     }
 
     /**
