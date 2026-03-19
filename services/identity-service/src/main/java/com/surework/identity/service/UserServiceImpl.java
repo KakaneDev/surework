@@ -383,7 +383,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserDto.Response verifyCode(String email, String code) {
         var user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
 
         if (!user.isVerificationCodeValid(code)) {
             throw new ValidationException("Invalid or expired verification code");
@@ -409,7 +409,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void resendVerificationCode(String email) {
         var user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
 
         if (user.getStatus() != User.UserStatus.PENDING) {
             throw new ValidationException("User is already verified");
