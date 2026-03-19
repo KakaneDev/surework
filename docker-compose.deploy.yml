@@ -1,0 +1,558 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: surework
+      POSTGRES_PASSWORD: SW_Pr0d_S3cur3_2026
+      POSTGRES_DB: surework_identity
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/gcp-deploy/init-databases.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surework"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  eureka-server:
+    image: surework/eureka-server
+    ports:
+      - "8761:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_SECURITY_USER_NAME=eureka
+      - SPRING_SECURITY_USER_PASSWORD=eureka123
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  api-gateway:
+    image: surework/api-gateway
+    volumes:
+      - /opt/surework/config/application-docker.yml:/app/config/application-docker.yml:ro
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_ADDITIONAL_LOCATION=file:/app/config/
+      - REDIS_HOST=redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+
+  identity-service:
+    image: surework/identity-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_identity
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  tenant-service:
+    image: surework/tenant-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_tenant
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - 'SPRING_APPLICATION_JSON={"eureka": {"client": {"service-url": {"defaultZone": "http://eureka:eureka123@eureka-server:8080/eureka/"}}}}'
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  employee-service:
+    image: surework/employee-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_employee
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  hr-service:
+    image: surework/hr-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_hr
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  leave-service:
+    image: surework/leave-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_leave
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  payroll-service:
+    image: surework/payroll-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_payroll
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  accounting-service:
+    image: surework/accounting-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_accounting
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  billing-service:
+    image: surework/billing-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_billing
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  recruitment-service:
+    image: surework/recruitment-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_recruitment
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  time-attendance-service:
+    image: surework/time-attendance-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_time_attendance
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  document-service:
+    image: surework/document-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_document
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  reporting-service:
+    image: surework/reporting-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_reporting
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  support-service:
+    image: surework/support-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_support
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  notification-service:
+    image: surework/notification-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_notification
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  admin-service:
+    image: surework/admin-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_admin
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  analytics-service:
+    image: surework/analytics-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATA_REDIS_HOST=redis
+      - JWT_SECRET=0bcc18b30d26fd9fd33404357e47b498933c6329a1b08530b34a57f5ba403cca
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/surework_analytics
+      - SPRING_DATASOURCE_USERNAME=surework
+      - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+      - eureka-server
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+
+  redis:
+    image: redis:7-alpine
+    container_name: surework-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:

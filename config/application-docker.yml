@@ -1,0 +1,142 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: admin-portal-management
+        uri: http://recruitment-service:8080
+        predicates:
+        - Path=/admin-api/v1/admin/portals/**
+        filters:
+        - RewritePath=/admin-api/v1/admin/portals/(?<segment>.*), /api/admin/portals/${segment}
+      - id: tenant-signup
+        uri: http://tenant-service:8080
+        predicates:
+        - Path=/api/v1/signup/**
+        filters:
+        - StripPrefix=0
+      - id: tenant-service
+        uri: http://tenant-service:8080
+        predicates:
+        - Path=/api/v1/tenants/**
+        filters:
+        - StripPrefix=0
+      - id: admin-service
+        uri: lb://admin-service
+        predicates:
+        - Path=/api/admin/**
+        filters:
+        - StripPrefix=0
+      - id: employee-service
+        uri: http://employee-service:8080
+        predicates:
+        - Path=/api/v1/employees/**,/api/v1/departments/**
+        filters:
+        - StripPrefix=0
+      - id: leave-service
+        uri: lb://leave-service
+        predicates:
+        - Path=/api/leave/**
+        filters:
+        - StripPrefix=0
+      - id: payroll-service
+        uri: lb://payroll-service
+        predicates:
+        - Path=/api/payroll/**
+        filters:
+        - StripPrefix=0
+      - id: accounting-service
+        uri: http://accounting-service:8080
+        predicates:
+        - Path=/api/v1/accounting/**
+        filters:
+        - StripPrefix=0
+      - id: recruitment-service
+        uri: http://recruitment-service:8080
+        predicates:
+        - Path=/api/recruitment/**
+        filters:
+        - StripPrefix=0
+      - id: time-attendance-service
+        uri: lb://time-attendance-service
+        predicates:
+        - Path=/api/time/**
+        filters:
+        - StripPrefix=0
+      - id: document-service
+        uri: http://document-service:8080
+        predicates:
+        - Path=/api/documents/**
+        filters:
+        - StripPrefix=0
+      - id: reporting-service
+        uri: http://reporting-service:8080
+        predicates:
+        - Path=/api/reporting/**
+        filters:
+        - StripPrefix=0
+      - id: support-service
+        uri: http://support-service:8080
+        predicates:
+        - Path=/api/support/**
+        filters:
+        - StripPrefix=0
+      - id: notification-service
+        uri: http://notification-service:8080
+        predicates:
+        - Path=/api/notifications/**
+        filters:
+        - StripPrefix=0
+      - id: notification-websocket
+        uri: ws://notification-service:8080
+        predicates:
+        - Path=/ws/notifications/**
+        filters:
+        - StripPrefix=0
+      - id: analytics-service
+        uri: http://analytics-service:8080
+        predicates:
+        - Path=/admin-api/v1/analytics/**
+        filters:
+        - RewritePath=/admin-api/v1/analytics/(?<segment>.*), /api/v1/analytics/${segment}
+      - id: billing-service
+        uri: http://billing-service:8080
+        predicates:
+        - Path=/admin-api/v1/billing/**,/admin-api/v1/discounts/**,/admin-api/v1/payments/**,/admin-api/v1/invoices/**
+        filters:
+        - RewritePath=/admin-api/v1/(?<segment>.*), /api/v1/${segment}
+      - id: admin-tenants
+        uri: lb://admin-service
+        predicates:
+        - Path=/admin-api/v1/tenants/**
+        filters:
+        - RewritePath=/admin-api/v1/tenants/(?<segment>.*), /api/admin/tenants/${segment}
+      - id: admin-onboarding
+        uri: lb://admin-service
+        predicates:
+        - Path=/admin-api/v1/onboarding/**
+        filters:
+        - RewritePath=/admin-api/v1/onboarding/(?<segment>.*), /api/admin/onboarding/${segment}
+      - id: admin-trials
+        uri: lb://admin-service
+        predicates:
+        - Path=/admin-api/v1/trials/**
+        filters:
+        - RewritePath=/admin-api/v1/trials/(?<segment>.*), /api/admin/trials/${segment}
+      - id: admin-tickets
+        uri: lb://admin-service
+        predicates:
+        - Path=/admin-api/v1/tickets/**,/admin-api/v1/canned-responses/**
+        filters:
+        - RewritePath=/admin-api/v1/(?<segment>.*), /api/admin/${segment}
+      - id: admin-auth
+        uri: lb://admin-service
+        predicates:
+        - Path=/admin-api/v1/auth/**
+        filters:
+        - RewritePath=/admin-api/v1/auth/(?<segment>.*), /api/admin/auth/${segment}
+      - id: admin-websocket
+        uri: ws://admin-service:8080
+        predicates:
+        - Path=/ws/admin/**
+        filters:
+        - StripPrefix=0
