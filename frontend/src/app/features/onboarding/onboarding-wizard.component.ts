@@ -14,26 +14,26 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
     RouterLink
   ],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-primary-500 to-primary-800 flex items-center justify-center py-12 px-4">
-      <div class="max-w-lg w-full">
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-800 p-4 py-12">
+      <div class="w-full max-w-md">
         <!-- Logo/Brand -->
         <div class="text-center mb-8">
-          <a href="/" class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
             <span class="text-3xl font-bold text-primary-500">S</span>
-          </a>
+          </div>
           <h1 class="text-2xl font-bold text-white">Start your free trial</h1>
           <p class="text-primary-100 mt-1">Set up your SureWork account in minutes</p>
         </div>
 
         <!-- Signup Card -->
-        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
-          <form [formGroup]="signupForm" (ngSubmit)="submitSignup()" novalidate>
+        <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-xl p-8">
+          <form [formGroup]="signupForm" (ngSubmit)="submitSignup()" class="space-y-5" novalidate>
 
             <!-- First name + Last name -->
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  First name <span class="text-red-500">*</span>
+                <label for="firstName" class="sw-label">
+                  First name <span class="text-error-500">*</span>
                 </label>
                 <input
                   id="firstName"
@@ -41,18 +41,17 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                   formControlName="firstName"
                   autocomplete="given-name"
                   placeholder="Jane"
-                  class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                  [class.border-red-400]="isFieldInvalid('firstName')"
-                  [class.border-gray-300]="!isFieldInvalid('firstName')"
+                  class="sw-input"
+                  [class.sw-input-error]="isFieldInvalid('firstName')"
                 />
                 @if (isFieldInvalid('firstName')) {
-                  <p class="mt-1 text-xs text-red-500">{{ getFieldError('firstName') }}</p>
+                  <p class="sw-error-text">{{ getFieldError('firstName') }}</p>
                 }
               </div>
 
               <div>
-                <label for="lastName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Last name <span class="text-red-500">*</span>
+                <label for="lastName" class="sw-label">
+                  Last name <span class="text-error-500">*</span>
                 </label>
                 <input
                   id="lastName"
@@ -60,20 +59,19 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                   formControlName="lastName"
                   autocomplete="family-name"
                   placeholder="Smith"
-                  class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                  [class.border-red-400]="isFieldInvalid('lastName')"
-                  [class.border-gray-300]="!isFieldInvalid('lastName')"
+                  class="sw-input"
+                  [class.sw-input-error]="isFieldInvalid('lastName')"
                 />
                 @if (isFieldInvalid('lastName')) {
-                  <p class="mt-1 text-xs text-red-500">{{ getFieldError('lastName') }}</p>
+                  <p class="sw-error-text">{{ getFieldError('lastName') }}</p>
                 }
               </div>
             </div>
 
             <!-- Work email -->
-            <div class="mb-4">
-              <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Work email <span class="text-red-500">*</span>
+            <div>
+              <label for="email" class="sw-label">
+                Work email <span class="text-error-500">*</span>
               </label>
               <div class="relative">
                 <input
@@ -82,13 +80,12 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                   formControlName="email"
                   autocomplete="email"
                   placeholder="jane@company.co.za"
-                  class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                  [class.border-red-400]="isFieldInvalid('email') || emailTaken()"
-                  [class.border-green-400]="emailChecked() && !emailTaken() && signupForm.get('email')?.valid"
-                  [class.border-gray-300]="!isFieldInvalid('email') && !emailTaken() && !(emailChecked() && !emailTaken() && signupForm.get('email')?.valid)"
+                  class="sw-input pr-10"
+                  [class.sw-input-error]="isFieldInvalid('email') || emailTaken()"
+                  [class.sw-input-success]="emailChecked() && !emailTaken() && signupForm.get('email')?.valid"
                 />
                 @if (emailChecking()) {
-                  <span class="absolute right-3 top-2.5 text-gray-400">
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400">
                     <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -96,21 +93,21 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                   </span>
                 }
                 @if (!emailChecking() && emailChecked() && !emailTaken() && signupForm.get('email')?.valid) {
-                  <span class="absolute right-3 top-2.5 text-green-500 text-sm">&#10003;</span>
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 material-icons text-success-500 text-xl">check_circle</span>
                 }
               </div>
               @if (isFieldInvalid('email')) {
-                <p class="mt-1 text-xs text-red-500">{{ getFieldError('email') }}</p>
+                <p class="sw-error-text">{{ getFieldError('email') }}</p>
               }
               @if (emailTaken()) {
-                <p class="mt-1 text-xs text-red-500">This email is already registered. <a routerLink="/auth/login" class="underline">Sign in instead?</a></p>
+                <p class="sw-error-text">This email is already registered. <a routerLink="/auth/login" class="underline">Sign in instead?</a></p>
               }
             </div>
 
             <!-- Password -->
-            <div class="mb-4">
-              <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password <span class="text-red-500">*</span>
+            <div>
+              <label for="password" class="sw-label">
+                Password <span class="text-error-500">*</span>
               </label>
               <input
                 id="password"
@@ -118,12 +115,11 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                 formControlName="password"
                 autocomplete="new-password"
                 placeholder="Min. 12 characters"
-                class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                [class.border-red-400]="isFieldInvalid('password')"
-                [class.border-gray-300]="!isFieldInvalid('password')"
+                class="sw-input"
+                [class.sw-input-error]="isFieldInvalid('password')"
               />
               @if (isFieldInvalid('password')) {
-                <p class="mt-1 text-xs text-red-500">{{ getFieldError('password') }}</p>
+                <p class="sw-error-text">{{ getFieldError('password') }}</p>
               }
 
               <!-- Password strength indicator -->
@@ -133,11 +129,11 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                     @for (bar of [1,2,3,4]; track bar) {
                       <div
                         class="h-1 flex-1 rounded-full transition-colors"
-                        [class.bg-red-400]="passwordStrength() >= bar && passwordStrength() === 1"
-                        [class.bg-orange-400]="passwordStrength() >= bar && passwordStrength() === 2"
-                        [class.bg-yellow-400]="passwordStrength() >= bar && passwordStrength() === 3"
-                        [class.bg-green-400]="passwordStrength() >= bar && passwordStrength() === 4"
-                        [class.bg-gray-200]="passwordStrength() < bar"
+                        [class.bg-error-400]="passwordStrength() >= bar && passwordStrength() === 1"
+                        [class.bg-warning-400]="passwordStrength() >= bar && passwordStrength() === 2"
+                        [class.bg-warning-300]="passwordStrength() >= bar && passwordStrength() === 3"
+                        [class.bg-success-400]="passwordStrength() >= bar && passwordStrength() === 4"
+                        [class.bg-neutral-200]="passwordStrength() < bar"
                       ></div>
                     }
                   </div>
@@ -147,9 +143,9 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
             </div>
 
             <!-- Company name -->
-            <div class="mb-4">
-              <label for="companyName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Company name <span class="text-red-500">*</span>
+            <div>
+              <label for="companyName" class="sw-label">
+                Company name <span class="text-error-500">*</span>
               </label>
               <input
                 id="companyName"
@@ -157,26 +153,24 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                 formControlName="companyName"
                 autocomplete="organization"
                 placeholder="Acme (Pty) Ltd"
-                class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition"
-                [class.border-red-400]="isFieldInvalid('companyName')"
-                [class.border-gray-300]="!isFieldInvalid('companyName')"
+                class="sw-input"
+                [class.sw-input-error]="isFieldInvalid('companyName')"
               />
               @if (isFieldInvalid('companyName')) {
-                <p class="mt-1 text-xs text-red-500">{{ getFieldError('companyName') }}</p>
+                <p class="sw-error-text">{{ getFieldError('companyName') }}</p>
               }
             </div>
 
             <!-- Company type -->
-            <div class="mb-6">
-              <label for="companyType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Company type <span class="text-red-500">*</span>
+            <div>
+              <label for="companyType" class="sw-label">
+                Company type <span class="text-error-500">*</span>
               </label>
               <select
                 id="companyType"
                 formControlName="companyType"
-                class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white dark:bg-gray-900"
-                [class.border-red-400]="isFieldInvalid('companyType')"
-                [class.border-gray-300]="!isFieldInvalid('companyType')"
+                class="sw-input"
+                [class.sw-input-error]="isFieldInvalid('companyType')"
               >
                 <option value="" disabled>Select company type</option>
                 @for (type of companyTypes; track type.name) {
@@ -184,19 +178,19 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                 }
               </select>
               @if (isFieldInvalid('companyType')) {
-                <p class="mt-1 text-xs text-red-500">Please select a company type</p>
+                <p class="sw-error-text">Please select a company type</p>
               }
             </div>
 
             <!-- Terms checkbox -->
-            <div class="mb-6">
-              <label class="flex items-start gap-3 cursor-pointer">
+            <div>
+              <label class="flex items-start gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   formControlName="termsAccepted"
-                  class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                  class="mt-0.5 w-4 h-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 focus:ring-offset-0"
                 />
-                <span class="text-sm text-gray-600 dark:text-gray-400">
+                <span class="text-sm text-neutral-600 dark:text-neutral-400 group-hover:text-neutral-800 dark:group-hover:text-neutral-200 transition-colors">
                   I agree to the
                   <a href="/terms" target="_blank" class="text-primary-500 hover:text-primary-600 underline">Terms of Service</a>
                   and
@@ -204,14 +198,14 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
                 </span>
               </label>
               @if (signupForm.get('termsAccepted')?.touched && !signupForm.get('termsAccepted')?.value) {
-                <p class="mt-1 text-xs text-red-500">You must accept the terms to continue</p>
+                <p class="sw-error-text">You must accept the terms to continue</p>
               }
             </div>
 
             <!-- Error message -->
             @if (errorMessage()) {
-              <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p class="text-sm text-red-600">{{ errorMessage() }}</p>
+              <div class="p-4 bg-error-50 dark:bg-error-900/20 border border-error-200 dark:border-error-800 rounded-lg" role="alert">
+                <p class="text-sm text-error-600 dark:text-error-400">{{ errorMessage() }}</p>
               </div>
             }
 
@@ -235,7 +229,7 @@ import { catchError, of, finalize, debounceTime, distinctUntilChanged, switchMap
         </div>
 
         <!-- Already have account -->
-        <p class="text-center text-primary-100 text-sm mt-6">
+        <p class="text-center text-primary-200 text-sm mt-8">
           Already have an account?
           <a routerLink="/auth/login" class="text-white hover:underline font-medium">Sign in</a>
         </p>
@@ -315,7 +309,7 @@ export class OnboardingWizardComponent implements OnInit {
   }
 
   passwordStrengthColor(): string {
-    const colors = ['', 'text-red-500', 'text-orange-500', 'text-yellow-600', 'text-green-600'];
+    const colors = ['', 'text-error-500', 'text-warning-500', 'text-warning-600', 'text-success-600'];
     return colors[this.passwordStrength()] ?? '';
   }
 
