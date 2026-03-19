@@ -1,6 +1,8 @@
 package com.surework.tenant.service;
 
+import com.surework.common.security.JwtTokenProvider;
 import com.surework.common.web.exception.ConflictException;
+import com.surework.common.web.exception.ResourceNotFoundException;
 import com.surework.tenant.client.IdentityServiceClient;
 import com.surework.tenant.domain.Tenant;
 import com.surework.tenant.dto.SignupDto;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -39,6 +42,7 @@ public class SignupServiceImpl implements SignupService {
     private final IdentityServiceClient identityServiceClient;
     private final SchemaProvisioningService schemaProvisioningService;
     private final ApplicationEventPublisher eventPublisher;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${surework.trial.duration-days:14}")
     private int trialDurationDays;
@@ -69,7 +73,7 @@ public class SignupServiceImpl implements SignupService {
                     request.password(),
                     request.firstName(),
                     request.lastName(),
-                    request.phone(),
+                    null,
                     tenant.getId()
             );
             log.info("Created admin user for tenant: id={}", tenant.getId());
@@ -82,11 +86,8 @@ public class SignupServiceImpl implements SignupService {
             );
         }
 
-        // Phase 4: Update tenant status to TRIAL (saga completion)
-        tenant.setStatus(Tenant.TenantStatus.TRIAL);
-        tenant = tenantRepository.save(tenant);
-
-        // Phase 5: Async operations (fire and forget)
+        // Phase 4: Async operations (fire and forget)
+        // Tenant stays PENDING until the user verifies their email (verify() transitions to TRIAL)
         triggerAsyncOperations(tenant, request);
 
         log.info("Signup completed: tenantId={}, subdomain={}",
@@ -111,13 +112,6 @@ public class SignupServiceImpl implements SignupService {
             throw ConflictException.duplicate("User with email", request.email());
         }
 
-        // Check registration number uniqueness
-        if (tenantRepository.existsByRegistrationNumber(request.registrationNumber())) {
-            log.warn("Signup rejected - registration number exists: {}",
-                    PiiMasker.maskRegistrationNumber(request.registrationNumber()));
-            throw ConflictException.duplicate("Tenant with registration number", request.registrationNumber());
-        }
-
         // Check company name uniqueness
         if (tenantRepository.existsByName(request.companyName())) {
             log.warn("Signup rejected - company name exists: {}",
@@ -128,7 +122,8 @@ public class SignupServiceImpl implements SignupService {
 
     /**
      * Creates a tenant entity with PENDING status.
-     * The tenant is persisted but not yet active until user creation succeeds.
+     * The tenant is persisted but not yet active until the user verifies their email.
+     * Compliance, contact, and address details are collected post-signup via settings pages.
      */
     private Tenant createPendingTenant(SignupDto.SignupRequest request) {
         // Generate unique tenant code
@@ -138,39 +133,18 @@ public class SignupServiceImpl implements SignupService {
         Tenant tenant = new Tenant();
         tenant.setCode(code);
         tenant.setName(request.companyName());
-        tenant.setTradingName(request.tradingName());
-        tenant.setRegistrationNumber(request.registrationNumber());
-        tenant.setTaxNumber(request.taxNumber());
-        tenant.setVatNumber(normalizeOptionalField(request.vatNumber()));
-        tenant.setUifReference(request.uifReference());
-        tenant.setSdlNumber(request.sdlNumber());
-        tenant.setPayeReference(request.payeReference());
 
         // Set company type with validation
         tenant.setCompanyType(parseCompanyType(request.companyType()));
-        tenant.setIndustrySector(request.industrySector());
-
-        // Address
-        tenant.setAddressLine1(request.streetAddress());
-        tenant.setCity(request.city());
-        tenant.setProvince(request.province());
-        tenant.setPostalCode(request.postalCode());
-        tenant.setCountry("South Africa");
-
-        // Contact
-        tenant.setPhoneNumber(request.phone());
-        tenant.setEmail(request.companyEmail());
 
         // Database schema
         tenant.setDbSchema(dbSchema);
 
-        // Subscription - configurable trial period
+        // Subscription defaults — trial dates set on verify() when PENDING → TRIAL
         tenant.setSubscriptionTier(Tenant.SubscriptionTier.FREE);
-        tenant.setSubscriptionStart(LocalDate.now());
-        tenant.setSubscriptionEnd(LocalDate.now().plusDays(trialDurationDays));
         tenant.setMaxUsers(trialMaxUsers);
 
-        // Status: PENDING until user creation succeeds
+        // Status: PENDING until email verification succeeds
         tenant.setStatus(Tenant.TenantStatus.PENDING);
 
         return tenantRepository.save(tenant);
@@ -279,6 +253,55 @@ public class SignupServiceImpl implements SignupService {
         // TODO: Implement proper verification email resend via notification-service
         // For now, just log the request
         eventPublisher.publishEvent(new ResendVerificationEvent(email));
+    }
+
+    @Override
+    @Transactional
+    public SignupDto.VerifyResponse verify(SignupDto.VerifyRequest request) {
+        log.info("Processing email verification: email={}", PiiMasker.maskEmail(request.email()));
+
+        // Step 1: Call identity-service to validate code and activate user
+        var userResponse = identityServiceClient.verifyCode(request.email(), request.code());
+
+        // Step 2: Find tenant and transition PENDING → TRIAL
+        var tenant = tenantRepository.findById(userResponse.tenantId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Tenant", "id", userResponse.tenantId().toString()));
+        tenant.setStatus(Tenant.TenantStatus.TRIAL);
+        tenant.setSubscriptionStart(LocalDate.now());
+        tenant.setSubscriptionEnd(LocalDate.now().plusDays(trialDurationDays));
+        tenantRepository.save(tenant);
+        log.info("Tenant {} transitioned to TRIAL status", tenant.getId());
+
+        // Step 3: Generate JWT tokens
+        var accessToken = jwtTokenProvider.generateAccessToken(
+                userResponse.id(),
+                tenant.getId(),
+                userResponse.email(),
+                userResponse.roles(),
+                Set.of(),
+                tenant.isCompanyDetailsComplete(),
+                tenant.isComplianceDetailsComplete()
+        );
+        var refreshToken = jwtTokenProvider.generateRefreshToken(
+                userResponse.id(), tenant.getId());
+
+        // Step 4: Trigger async schema provisioning (idempotent — safe to call again)
+        schemaProvisioningService.provisionSchema(tenant.getId(), tenant.getDbSchema());
+
+        log.info("Email verification completed: tenantId={}", tenant.getId());
+
+        return new SignupDto.VerifyResponse(
+                accessToken,
+                refreshToken,
+                jwtTokenProvider.getAccessTokenExpirationSeconds()
+        );
+    }
+
+    @Override
+    public void resendCode(SignupDto.ResendCodeRequest request) {
+        log.info("Resend verification code: email={}", PiiMasker.maskEmail(request.email()));
+        identityServiceClient.resendVerificationCode(request.email());
     }
 
     /**

@@ -102,21 +102,39 @@ public class SignupController {
     }
 
     /**
-     * Resend verification email for a pending signup.
+     * Verify a one-time code sent to the user's email after signup.
+     * On success, activates the tenant trial and returns JWT tokens.
      *
      * <p>Rate limit: 5 requests per minute per IP (same as signup).
      */
-    @PostMapping("/resend-verification")
-    public ResponseEntity<Void> resendVerificationEmail(
-            @RequestParam String email,
+    @PostMapping("/verify")
+    public ResponseEntity<SignupDto.VerifyResponse> verify(
+            @RequestBody @Valid SignupDto.VerifyRequest request,
             HttpServletRequest httpRequest) {
 
         String clientIp = getClientIp(httpRequest);
-        checkRateLimit(rateLimitConfig.getSignupBucket(clientIp), "resend-verification", clientIp);
+        checkRateLimit(rateLimitConfig.getSignupBucket(clientIp), "verify", clientIp);
 
-        log.info("Resend verification requested: email={}", PiiMasker.maskEmail(email));
+        log.info("Email verification attempt for: {}", PiiMasker.maskEmail(request.email()));
+        var response = signupService.verify(request);
+        return ResponseEntity.ok(response);
+    }
 
-        signupService.resendVerificationEmail(email);
+    /**
+     * Resend a verification code to the given email address.
+     *
+     * <p>Rate limit: 5 requests per minute per IP (same as signup).
+     */
+    @PostMapping("/resend-code")
+    public ResponseEntity<Void> resendCode(
+            @RequestBody @Valid SignupDto.ResendCodeRequest request,
+            HttpServletRequest httpRequest) {
+
+        String clientIp = getClientIp(httpRequest);
+        checkRateLimit(rateLimitConfig.getSignupBucket(clientIp), "resend-code", clientIp);
+
+        log.info("Resend verification code for: {}", PiiMasker.maskEmail(request.email()));
+        signupService.resendCode(request);
         return ResponseEntity.ok().build();
     }
 

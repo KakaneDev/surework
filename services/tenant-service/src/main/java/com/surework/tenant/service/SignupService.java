@@ -38,4 +38,21 @@ public interface SignupService {
      * @param email the email to resend verification to
      */
     void resendVerificationEmail(String email);
+
+    /**
+     * Verify a one-time code sent to the user's email after signup.
+     * Activates the user in identity-service, transitions the tenant from PENDING to TRIAL,
+     * and returns JWT tokens so the user is immediately logged in.
+     *
+     * @param request the verification request containing email and 6-digit code
+     * @return JWT access token, refresh token, and expiry seconds
+     */
+    SignupDto.VerifyResponse verify(SignupDto.VerifyRequest request);
+
+    /**
+     * Resend a verification code to the given email address.
+     *
+     * @param request the resend request containing the email address
+     */
+    void resendCode(SignupDto.ResendCodeRequest request);
 }
