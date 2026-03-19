@@ -28,4 +28,9 @@ public interface EmailService {
     void sendEmailWithAttachment(String to, String subject, String template,
                                   Map<String, Object> variables, byte[] attachment,
                                   String attachmentFilename);
+
+    /**
+     * Send a pre-rendered HTML email without a template name.
+     */
+    void sendHtmlEmail(String to, String subject, String htmlBody);
 }

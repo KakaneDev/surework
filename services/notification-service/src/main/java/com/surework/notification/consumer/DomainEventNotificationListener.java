@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -37,6 +39,7 @@ public class DomainEventNotificationListener {
     private final RecipientResolver recipientResolver;
     private final com.surework.notification.service.EmailService emailService;
     private final com.surework.notification.service.ContractPdfService contractPdfService;
+    private final TemplateEngine templateEngine;
 
     @org.springframework.beans.factory.annotation.Value("${app.careers-url:http://localhost:4200/careers}")
     private String careersUrl;
@@ -45,11 +48,13 @@ public class DomainEventNotificationListener {
             NotificationService notificationService,
             RecipientResolver recipientResolver,
             com.surework.notification.service.EmailService emailService,
-            com.surework.notification.service.ContractPdfService contractPdfService) {
+            com.surework.notification.service.ContractPdfService contractPdfService,
+            TemplateEngine templateEngine) {
         this.notificationService = notificationService;
         this.recipientResolver = recipientResolver;
         this.emailService = emailService;
         this.contractPdfService = contractPdfService;
+        this.templateEngine = templateEngine;
     }
 
     /**
@@ -169,6 +174,7 @@ public class DomainEventNotificationListener {
 
             switch (event) {
                 case IdentityEvent.UserPasswordChanged e -> handlePasswordChanged(e);
+                case IdentityEvent.VerificationCodeGenerated e -> handleVerificationCode(e);
                 case IdentityEvent.UserCreated e -> log.debug("UserCreated event - no notification needed");
                 case IdentityEvent.UserActivated e -> log.debug("UserActivated event - no notification needed");
                 case IdentityEvent.UserDeactivated e -> log.debug("UserDeactivated event - no notification needed");
@@ -676,6 +682,16 @@ public class DomainEventNotificationListener {
     }
 
     // === Identity Event Handlers ===
+
+    private void handleVerificationCode(IdentityEvent.VerificationCodeGenerated event) {
+        var context = new Context();
+        context.setVariable("firstName", event.firstName());
+        context.setVariable("code", event.code());
+
+        String body = templateEngine.process("email/verification-code", context);
+        emailService.sendHtmlEmail(event.email(), "Your SureWork verification code", body);
+        log.info("Sent verification code email to {}", event.email());
+    }
 
     private void handlePasswordChanged(IdentityEvent.UserPasswordChanged event) {
         // Notify the user

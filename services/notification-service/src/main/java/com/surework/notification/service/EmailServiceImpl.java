@@ -70,6 +70,22 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendHtmlEmail(String to, String subject, String htmlBody) {
+        try {
+            var message = mailSender.createMimeMessage();
+            var helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromAddress);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            mailSender.send(message);
+            log.info("Sent email to {} with subject: {}", to, subject);
+        } catch (Exception e) {
+            log.error("Failed to send email to {}", to, e);
+        }
+    }
+
     private void sendTemplatedEmail(String to, String subject, String template, Map<String, Object> variables) {
         try {
             Context context = new Context();

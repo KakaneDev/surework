@@ -3,6 +3,7 @@ package com.surework.notification;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Notification Service - Handles email, SMS, and push notifications.
@@ -20,6 +21,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
         "com.surework.common"
 })
 @EnableAsync
+@EnableScheduling
 public class NotificationServiceApplication {
 
     public static void main(String[] args) {
