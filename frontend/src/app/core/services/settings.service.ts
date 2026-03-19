@@ -229,4 +229,18 @@ export class SettingsService {
   deactivateLeaveType(id: string): Observable<LeaveType> {
     return this.http.post<LeaveType>(`${this.hrUrl}/leave-types/${id}/deactivate`, {});
   }
+
+  // ===== Setup / Onboarding Completion =====
+
+  getComplianceDetails(): Observable<any> {
+    return this.http.get('/api/v1/tenant/setup/compliance-details');
+  }
+
+  saveComplianceDetails(data: any): Observable<any> {
+    return this.http.put('/api/v1/tenant/setup/compliance-details', data);
+  }
+
+  saveCompanySetupDetails(data: any): Observable<any> {
+    return this.http.put('/api/v1/tenant/setup/company-details', data);
+  }
 }

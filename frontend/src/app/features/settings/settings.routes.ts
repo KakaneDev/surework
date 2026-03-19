@@ -44,6 +44,11 @@ export const SETTINGS_ROUTES: Routes = [
         path: 'notification-channels',
         canActivate: [permissionGuard(['SYSTEM_ADMIN', 'TENANT_ALL', 'TENANT_MANAGE'])],
         loadComponent: () => import('./notification-channels/notification-channels.component').then(m => m.NotificationChannelsComponent)
+      },
+      {
+        path: 'compliance',
+        canActivate: [permissionGuard(['SYSTEM_ADMIN', 'TENANT_ALL'])],
+        loadComponent: () => import('./compliance/compliance.component').then(m => m.ComplianceComponent)
       }
     ]
   }

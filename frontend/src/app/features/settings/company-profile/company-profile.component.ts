@@ -6,6 +6,7 @@ import { finalize, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '@env/environment';
 import { SettingsService, CompanyProfile } from '@core/services/settings.service';
+import { AuthService } from '@core/services/auth.service';
 import { SpinnerComponent, ToastService, ButtonComponent } from '@shared/ui';
 
 @Component({
@@ -99,6 +100,37 @@ import { SpinnerComponent, ToastService, ButtonComponent } from '@shared/ui';
                     class="sw-input"
                     [placeholder]="'settings.companyProfile.placeholders.registrationNumber' | translate"
                   />
+                  <p class="sw-hint-text">{{ 'settings.companyProfile.hints.registrationNumber' | translate }}</p>
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'settings.companyProfile.fields.tradingName' | translate }}</label>
+                  <input
+                    type="text"
+                    formControlName="tradingName"
+                    class="sw-input"
+                    [placeholder]="'settings.companyProfile.placeholders.tradingName' | translate"
+                  />
+                </div>
+
+                <div>
+                  <label class="sw-label">{{ 'settings.companyProfile.fields.industrySector' | translate }}</label>
+                  <select formControlName="industrySector" class="sw-input">
+                    <option value="">{{ 'settings.companyProfile.placeholders.selectIndustrySector' | translate }}</option>
+                    <option value="AGRICULTURE">{{ 'settings.companyProfile.industrySectors.agriculture' | translate }}</option>
+                    <option value="CONSTRUCTION">{{ 'settings.companyProfile.industrySectors.construction' | translate }}</option>
+                    <option value="EDUCATION">{{ 'settings.companyProfile.industrySectors.education' | translate }}</option>
+                    <option value="FINANCE">{{ 'settings.companyProfile.industrySectors.finance' | translate }}</option>
+                    <option value="HEALTHCARE">{{ 'settings.companyProfile.industrySectors.healthcare' | translate }}</option>
+                    <option value="HOSPITALITY">{{ 'settings.companyProfile.industrySectors.hospitality' | translate }}</option>
+                    <option value="IT_TECHNOLOGY">{{ 'settings.companyProfile.industrySectors.itTechnology' | translate }}</option>
+                    <option value="MANUFACTURING">{{ 'settings.companyProfile.industrySectors.manufacturing' | translate }}</option>
+                    <option value="MINING">{{ 'settings.companyProfile.industrySectors.mining' | translate }}</option>
+                    <option value="PROFESSIONAL_SERVICES">{{ 'settings.companyProfile.industrySectors.professionalServices' | translate }}</option>
+                    <option value="RETAIL">{{ 'settings.companyProfile.industrySectors.retail' | translate }}</option>
+                    <option value="TRANSPORT">{{ 'settings.companyProfile.industrySectors.transport' | translate }}</option>
+                    <option value="OTHER">{{ 'settings.companyProfile.industrySectors.other' | translate }}</option>
+                  </select>
                 </div>
 
                 <div>
@@ -248,6 +280,7 @@ export class CompanyProfileComponent implements OnInit {
 
   private readonly fb = inject(FormBuilder);
   private readonly settingsService = inject(SettingsService);
+  private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly translate = inject(TranslateService);
 
@@ -264,6 +297,8 @@ export class CompanyProfileComponent implements OnInit {
     this.profileForm = this.fb.group({
       name: ['', Validators.required],
       registrationNumber: [''],
+      tradingName: [''],
+      industrySector: [''],
       taxNumber: [''],
       website: [''],
       email: ['', Validators.email],
@@ -297,6 +332,8 @@ export class CompanyProfileComponent implements OnInit {
         this.profileForm.patchValue({
           name: profile.name || '',
           registrationNumber: profile.registrationNumber || '',
+          tradingName: (profile as any).tradingName || '',
+          industrySector: (profile as any).industrySector || '',
           taxNumber: profile.taxNumber || '',
           website: profile.website || '',
           email: profile.email || '',
@@ -374,6 +411,12 @@ export class CompanyProfileComponent implements OnInit {
     ).subscribe(result => {
       if (result) {
         this.toast.success(this.translate.instant('settings.companyProfile.messages.saveSuccess'));
+        // Also persist to the setup/completion endpoint and refresh cached flags
+        this.settingsService.saveCompanySetupDetails(values).pipe(
+          catchError(() => of(null))
+        ).subscribe(() => {
+          this.authService.refreshSetupStatus().subscribe();
+        });
       }
     });
   }

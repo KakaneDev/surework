@@ -105,6 +105,7 @@ export class SettingsLayoutComponent {
 
   readonly adminItems: NavItem[] = [
     { labelKey: 'settings.companyProfile.label', path: '/settings/company', icon: 'business' },
+    { labelKey: 'settings.compliance.label', path: '/settings/compliance', icon: 'verified_user' },
     { labelKey: 'settings.userManagement.label', path: '/settings/users', icon: 'group' },
     { labelKey: 'settings.leavePolicies.label', path: '/settings/leave-policies', icon: 'event_available' },
     { labelKey: 'settings.notificationChannels.label', path: '/settings/notification-channels', icon: 'tune' }
