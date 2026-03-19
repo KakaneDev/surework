@@ -7,8 +7,8 @@ export const onboardingRoutes: Routes = [
       .then(m => m.OnboardingWizardComponent)
   },
   {
-    path: 'success',
-    loadComponent: () => import('./signup-success.component')
-      .then(m => m.SignupSuccessComponent)
+    path: 'verify',
+    loadComponent: () => import('./verify-code.component')
+      .then(m => m.VerifyCodeComponent)
   }
 ];

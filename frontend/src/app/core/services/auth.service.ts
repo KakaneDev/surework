@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, map } from 'rxjs';
 import { environment } from '@env/environment';
@@ -82,6 +82,11 @@ export interface CurrentUser {
   mfaEnabled: boolean;
 }
 
+export interface TenantSetupStatus {
+  companyDetailsComplete: boolean;
+  complianceDetailsComplete: boolean;
+}
+
 /**
  * Authentication service for login, logout, and token management.
  */
@@ -95,6 +100,53 @@ export class AuthService {
 
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
+
+  /** Reactive signal tracking tenant setup completion state. */
+  tenantSetupStatus = signal<TenantSetupStatus>({
+    companyDetailsComplete: false,
+    complianceDetailsComplete: false
+  });
+
+  /** Computed signal: true only when both setup gates are satisfied. */
+  isSetupComplete = computed(() => {
+    const status = this.tenantSetupStatus();
+    return status.companyDetailsComplete && status.complianceDetailsComplete;
+  });
+
+  constructor() {
+    // Hydrate setup status from any token already persisted in localStorage.
+    const existingToken = this.getAccessToken();
+    if (existingToken) {
+      this.updateSetupStatusFromToken(existingToken);
+    }
+  }
+
+  /**
+   * Parse setup-status claims from a JWT and update the signal.
+   * Silently ignores malformed tokens.
+   */
+  private updateSetupStatusFromToken(token: string): void {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      this.tenantSetupStatus.set({
+        companyDetailsComplete: payload.companyDetailsComplete ?? false,
+        complianceDetailsComplete: payload.complianceDetailsComplete ?? false
+      });
+    } catch {
+      // If token can't be parsed, leave defaults
+    }
+  }
+
+  /**
+   * Fetch setup status directly from the backend and update the signal.
+   * Call this after completing a setup step so guards re-evaluate.
+   */
+  refreshSetupStatus(): Observable<void> {
+    return this.http.get<TenantSetupStatus>('/api/v1/tenant/setup/status').pipe(
+      tap(status => this.tenantSetupStatus.set(status)),
+      map(() => void 0)
+    );
+  }
 
   /**
    * Login with email and password.
@@ -215,11 +267,12 @@ export class AuthService {
   }
 
   /**
-   * Store tokens in localStorage.
+   * Store tokens in localStorage and sync setup-status signal from new token.
    */
-  private storeTokens(accessToken: string, refreshToken: string): void {
+  storeTokens(accessToken: string, refreshToken: string): void {
     localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+    this.updateSetupStatusFromToken(accessToken);
   }
 
   /**

@@ -6,37 +6,12 @@ import { Observable } from 'rxjs';
  * Signup request matching backend SignupDto.SignupRequest
  */
 export interface SignupRequest {
-  // Account Information
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-
-  // Company Details
   companyName: string;
-  tradingName?: string;
-  registrationNumber: string;
   companyType: string;
-  industrySector: string;
-
-  // SARS Compliance
-  taxNumber: string;
-  vatNumber?: string;
-  uifReference: string;
-  sdlNumber: string;
-  payeReference: string;
-
-  // Contact Information
-  phone: string;
-  companyEmail: string;
-
-  // Address
-  streetAddress: string;
-  city: string;
-  province: string;
-  postalCode: string;
-
-  // Terms
   acceptTerms: boolean;
 }
 
@@ -47,6 +22,23 @@ export interface SignupResponse {
   tenantId: string;
   subdomain: string;
   message: string;
+}
+
+/**
+ * Verify request for code-based verification
+ */
+export interface VerifyRequest {
+  email: string;
+  code: string;
+}
+
+/**
+ * Verify response containing tokens
+ */
+export interface VerifyResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 /**
@@ -99,6 +91,20 @@ export class OnboardingService {
   }
 
   /**
+   * Verify signup code
+   */
+  verify(request: VerifyRequest): Observable<VerifyResponse> {
+    return this.http.post<VerifyResponse>(`${this.apiUrl}/verify`, request);
+  }
+
+  /**
+   * Resend verification code
+   */
+  resendCode(email: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/resend-code`, { email });
+  }
+
+  /**
    * Check if email is available
    */
   checkEmailAvailability(email: string): Observable<AvailabilityResponse> {
@@ -110,7 +116,7 @@ export class OnboardingService {
   /**
    * Check if registration number is available
    */
-  checkRegistrationNumberAvailability(registrationNumber: string): Observable<AvailabilityResponse> {
+  checkRegistrationAvailability(registrationNumber: string): Observable<AvailabilityResponse> {
     return this.http.get<AvailabilityResponse>(`${this.apiUrl}/check-registration`, {
       params: { registrationNumber }
     });
@@ -119,7 +125,7 @@ export class OnboardingService {
   /**
    * Resend verification email
    */
-  resendVerificationEmail(email: string): Observable<void> {
+  resendVerification(email: string): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/resend-verification`, null, {
       params: { email }
     });

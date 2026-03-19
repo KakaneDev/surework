@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
 import { permissionGuard } from '@core/guards/permission.guard';
+import { companyDetailsGuard, complianceGuard } from './core/guards/setup.guard';
 
 export const routes: Routes = [
   {
@@ -40,7 +41,7 @@ export const routes: Routes = [
       },
       {
         path: 'payroll',
-        canActivate: [permissionGuard(['PAYROLL_READ', 'PAYROLL_MANAGE'])],
+        canActivate: [permissionGuard(['PAYROLL_READ', 'PAYROLL_MANAGE']), complianceGuard()],
         loadChildren: () => import('./features/payroll/payroll.routes').then(m => m.PAYROLL_ROUTES)
       },
       {
@@ -92,7 +93,7 @@ export const routes: Routes = [
       },
       {
         path: 'finance',
-        canActivate: [permissionGuard(['PAYROLL_READ', 'PAYROLL_MANAGE', 'ACCOUNTING_READ', 'FINANCE_READ'])],
+        canActivate: [permissionGuard(['PAYROLL_READ', 'PAYROLL_MANAGE', 'ACCOUNTING_READ', 'FINANCE_READ']), companyDetailsGuard()],
         loadChildren: () => import('./features/finance/finance.routes').then(m => m.FINANCE_ROUTES)
       },
       {
@@ -104,6 +105,11 @@ export const routes: Routes = [
         path: 'documents',
         canActivate: [permissionGuard(['DOCUMENTS_READ', 'DOCUMENTS_MANAGE', 'EMPLOYEE_READ'])],
         loadChildren: () => import('./features/documents/documents.routes').then(m => m.DOCUMENTS_ROUTES)
+      },
+      {
+        path: 'setup-required',
+        loadComponent: () => import('./shared/components/setup-block/setup-block.component')
+          .then(m => m.SetupBlockComponent)
       }
     ]
   },

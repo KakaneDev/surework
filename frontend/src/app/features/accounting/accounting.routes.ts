@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { companyDetailsGuard, complianceGuard } from '@core/guards/setup.guard';
 
 export const ACCOUNTING_ROUTES: Routes = [
   {
@@ -66,63 +67,77 @@ export const ACCOUNTING_ROUTES: Routes = [
     path: 'banking/accounts/:bankAccountId',
     loadComponent: () => import('./banking/banking-dashboard.component').then(m => m.BankingDashboardComponent)
   },
-  // VAT201 Report Routes
+  // VAT201 Report Routes — require SARS compliance details
   {
     path: 'vat',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./vat/vat-dashboard.component').then(m => m.VatDashboardComponent)
   },
   {
     path: 'vat/new',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./vat/vat-report-form.component').then(m => m.VatReportFormComponent)
   },
   {
     path: 'vat/history',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./vat/vat-report-list.component').then(m => m.VatReportListComponent)
   },
   {
     path: 'vat/:id',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./vat/vat-report-detail.component').then(m => m.VatReportDetailComponent)
   },
-  // Invoicing Routes
+  // Invoicing Routes — require company details
   {
     path: 'invoicing',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/invoice-dashboard.component').then(m => m.InvoiceDashboardComponent)
   },
   {
     path: 'invoicing/list',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/invoice-list.component').then(m => m.InvoiceListComponent)
   },
   {
     path: 'invoicing/new',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/invoice-form.component').then(m => m.InvoiceFormComponent)
   },
   {
     path: 'invoicing/customers',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/customer-list.component').then(m => m.CustomerListComponent)
   },
   {
     path: 'invoicing/:id',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/invoice-detail.component').then(m => m.InvoiceDetailComponent)
   },
   {
     path: 'invoicing/:id/edit',
+    canActivate: [companyDetailsGuard()],
     loadComponent: () => import('./invoicing/invoice-form.component').then(m => m.InvoiceFormComponent)
   },
-  // Payroll Integration Routes
+  // Payroll Integration Routes — require SARS compliance details
   {
     path: 'payroll-integration',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./payroll-integration/payroll-integration-dashboard.component').then(m => m.PayrollIntegrationDashboardComponent)
   },
   {
     path: 'payroll-integration/mappings',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./payroll-integration/payroll-account-mappings.component').then(m => m.PayrollAccountMappingsComponent)
   },
   {
     path: 'payroll-integration/settings',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./payroll-integration/payroll-integration-settings.component').then(m => m.PayrollIntegrationSettingsComponent)
   },
   {
     path: 'payroll-integration/journals',
+    canActivate: [complianceGuard()],
     loadComponent: () => import('./payroll-integration/payroll-journals-list.component').then(m => m.PayrollJournalsListComponent)
   }
 ];
