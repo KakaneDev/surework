@@ -11,96 +11,60 @@ public sealed interface SignupDto {
 
     /**
      * Request to create a new tenant via self-service signup.
+     * Compliance, contact, and address details are collected post-signup via settings pages.
      */
     record SignupRequest(
-            // Account Information
-            @NotBlank(message = "Email is required")
-            @Email(message = "Invalid email format")
+            @NotBlank @Email @Size(max = 255)
             String email,
 
-            @NotBlank(message = "Password is required")
-            @Size(min = 12, message = "Password must be at least 12 characters")
+            @NotBlank @Size(min = 12)
             @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
-                    message = "Password must contain uppercase, lowercase, digit, and special character")
+                     message = "Password must contain uppercase, lowercase, digit, and special character")
             String password,
 
-            @NotBlank(message = "First name is required")
-            @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
+            @NotBlank @Size(min = 2, max = 50)
             String firstName,
 
-            @NotBlank(message = "Last name is required")
-            @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
+            @NotBlank @Size(min = 2, max = 50)
             String lastName,
 
-            // Company Details
-            @NotBlank(message = "Company name is required")
-            @Size(min = 2, max = 200, message = "Company name must be between 2 and 200 characters")
+            @NotBlank @Size(min = 2, max = 200)
             String companyName,
 
-            @Size(max = 200, message = "Trading name must not exceed 200 characters")
-            String tradingName,
-
-            @NotBlank(message = "Registration number is required")
-            @Pattern(regexp = "^\\d{4}/\\d{6}/\\d{2}$",
-                    message = "Registration number must be in CIPC format (YYYY/NNNNNN/NN)")
-            String registrationNumber,
-
-            @NotBlank(message = "Company type is required")
+            @NotBlank
             String companyType,
 
-            @NotBlank(message = "Industry sector is required")
-            String industrySector,
-
-            // SARS Compliance
-            @NotBlank(message = "Tax number is required")
-            @Pattern(regexp = "^\\d{10}$", message = "Tax number must be 10 digits")
-            String taxNumber,
-
-            @Pattern(regexp = "^(4\\d{9})?$", message = "VAT number must be 10 digits starting with 4")
-            String vatNumber,
-
-            @NotBlank(message = "UIF reference is required")
-            @Pattern(regexp = "^U\\d{8}$", message = "UIF reference must be U followed by 8 digits")
-            String uifReference,
-
-            @NotBlank(message = "SDL number is required")
-            @Pattern(regexp = "^L\\d{8}$", message = "SDL number must be L followed by 8 digits")
-            String sdlNumber,
-
-            @NotBlank(message = "PAYE reference is required")
-            @Pattern(regexp = "^\\d{7}/\\d{3}/\\d{4}$",
-                    message = "PAYE reference must be in format NNNNNNN/NNN/NNNN")
-            String payeReference,
-
-            // Contact Information
-            @NotBlank(message = "Phone number is required")
-            @Pattern(regexp = "^\\+27[0-9]{9}$",
-                    message = "Phone must be South African format (+27xxxxxxxxx)")
-            String phone,
-
-            @NotBlank(message = "Company email is required")
-            @Email(message = "Invalid company email format")
-            String companyEmail,
-
-            // Address
-            @NotBlank(message = "Street address is required")
-            @Size(max = 500, message = "Street address must not exceed 500 characters")
-            String streetAddress,
-
-            @NotBlank(message = "City is required")
-            @Size(max = 100, message = "City must not exceed 100 characters")
-            String city,
-
-            @NotBlank(message = "Province is required")
-            String province,
-
-            @NotBlank(message = "Postal code is required")
-            @Pattern(regexp = "^\\d{4}$", message = "Postal code must be 4 digits")
-            String postalCode,
-
-            // Terms Acceptance
-            @AssertTrue(message = "You must accept the terms and conditions")
+            @AssertTrue(message = "You must accept the terms of service")
             boolean acceptTerms
+    ) implements SignupDto {}
+
+    /**
+     * Request to verify a signup via emailed one-time code.
+     */
+    record VerifyRequest(
+            @NotBlank @Email
+            String email,
+
+            @NotBlank @Size(min = 6, max = 6)
+            @Pattern(regexp = "\\d{6}", message = "Code must be 6 digits")
+            String code
+    ) implements SignupDto {}
+
+    /**
+     * Request to resend a verification code to the given email.
+     */
+    record ResendCodeRequest(
+            @NotBlank @Email
+            String email
+    ) implements SignupDto {}
+
+    /**
+     * Response returned after successful email verification and tenant activation.
+     */
+    record VerifyResponse(
+            String accessToken,
+            String refreshToken,
+            long expiresIn
     ) implements SignupDto {}
 
     /**
