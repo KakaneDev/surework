@@ -1,4 +1,4 @@
-package com.surework.recruitment.config;
+package com.surework.accounting.config;
 
 import com.surework.common.security.JwtTokenProvider;
 import com.surework.common.security.TenantContext;
@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,16 +31,12 @@ import java.util.stream.Collectors;
  * 1. Headers forwarded by the API Gateway (X-User-* headers)
  * 2. JWT Bearer token in Authorization header (for direct service access)
  *
- * Header Mode (via API Gateway):
- * - X-User-Id: The authenticated user's ID
- * - X-User-Tenant: The user's tenant ID
- * - X-User-Roles: Comma-separated list of user roles
- *
- * JWT Mode (direct access):
- * - Authorization: Bearer <jwt-token>
- * - Parses JWT to extract sub (userId), tenantId, username, and roles claims
+ * Populates {@link TenantContext} with tenant ID and onboarding completion
+ * flags so that {@link com.surework.common.security.SetupGateFilter} can
+ * gate access to endpoints that require completed setup steps.
  */
 @Component
+@Order(10) // Must run before SetupGateFilter (order 50)
 @Slf4j
 public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
 
@@ -50,7 +47,7 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
     private static final String HEADER_AUTHORIZATION = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
 
-    @Value("${surework.admin.jwt.secret:${JWT_SECRET}}")
+    @Value("${surework.admin.jwt.secret:surework-jwt-secret-key-for-development-only-change-in-production}")
     private String jwtSecret;
 
     @Override
@@ -120,10 +117,9 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                // Set tenant context for TenantContextValidationFilter
+                // Set tenant context for multi-tenancy and SetupGateFilter
                 if (tenantId != null) {
                     TenantContext.setTenantId(UUID.fromString(tenantId));
-                    log.debug("Set tenant context: {}", tenantId);
                 }
 
                 // Populate onboarding completion flags from JWT claims
@@ -139,7 +135,7 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request, response);
         } finally {
-            // Clear context after request
+            // Clear contexts after request
             SecurityContextHolder.clearContext();
             TenantContext.clear();
         }

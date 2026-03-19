@@ -1,5 +1,7 @@
 package com.surework.admin.config;
 
+import com.surework.common.security.JwtTokenProvider;
+import com.surework.common.security.TenantContext;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -79,6 +81,7 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
             String tenantId = request.getHeader(HEADER_TENANT_ID);
             String rolesHeader = request.getHeader(HEADER_ROLES);
             String username = request.getHeader(HEADER_USERNAME);
+            Claims claims = null;
 
             // If no header auth, try JWT Bearer token
             if (!StringUtils.hasText(userId)) {
@@ -86,7 +89,7 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
                 if (StringUtils.hasText(authHeader) && authHeader.startsWith(BEARER_PREFIX)) {
                     String token = authHeader.substring(BEARER_PREFIX.length());
                     try {
-                        Claims claims = parseJwtToken(token);
+                        claims = parseJwtToken(token);
                         userId = claims.getSubject();
                         tenantId = claims.get("tenantId", String.class);
                         username = claims.get("username", String.class);
@@ -133,6 +136,19 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
+                // Set tenant context for multi-tenancy
+                if (tenantId != null) {
+                    TenantContext.setTenantId(UUID.fromString(tenantId));
+                }
+
+                // Populate onboarding completion flags from JWT claims
+                if (claims != null) {
+                    TenantContext.setCompanyDetailsComplete(
+                            JwtTokenProvider.isCompanyDetailsComplete(claims));
+                    TenantContext.setComplianceDetailsComplete(
+                            JwtTokenProvider.isComplianceDetailsComplete(claims));
+                }
+
                 log.debug("Authenticated user {} with roles: {}", userId, roles);
             }
 
@@ -140,6 +156,7 @@ public class JwtHeaderAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             // Clear context after request
             SecurityContextHolder.clearContext();
+            TenantContext.clear();
         }
     }
 

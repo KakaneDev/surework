@@ -58,6 +58,7 @@ public sealed interface UserDto {
      */
     record Response(
             UUID id,
+            UUID tenantId,
             String email,
             String firstName,
             String lastName,
@@ -79,6 +80,7 @@ public sealed interface UserDto {
 
             return new Response(
                     user.getId(),
+                    user.getTenantId(),
                     user.getEmail(),
                     user.getFirstName(),
                     user.getLastName(),

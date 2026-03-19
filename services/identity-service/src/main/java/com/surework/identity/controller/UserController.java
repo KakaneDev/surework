@@ -54,7 +54,6 @@ public class UserController {
             @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
             String lastName,
 
-            @NotBlank(message = "Phone number is required")
             @Pattern(regexp = "^\\+27[0-9]{9}$", message = "Phone must be a valid SA number (+27XXXXXXXXX)")
             String phone,
 
