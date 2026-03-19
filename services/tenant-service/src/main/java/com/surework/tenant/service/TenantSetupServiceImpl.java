@@ -92,6 +92,6 @@ public class TenantSetupServiceImpl implements TenantSetupService {
 
     private Tenant findTenant(UUID tenantId) {
         return tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found: " + tenantId));
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant", tenantId.toString()));
     }
 }

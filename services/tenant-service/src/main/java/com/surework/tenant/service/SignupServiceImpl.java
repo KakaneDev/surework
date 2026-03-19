@@ -266,7 +266,7 @@ public class SignupServiceImpl implements SignupService {
         // Step 2: Find tenant and transition PENDING → TRIAL
         var tenant = tenantRepository.findById(userResponse.tenantId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Tenant", "id", userResponse.tenantId().toString()));
+                        "Tenant", userResponse.tenantId().toString()));
         tenant.setStatus(Tenant.TenantStatus.TRIAL);
         tenant.setSubscriptionStart(LocalDate.now());
         tenant.setSubscriptionEnd(LocalDate.now().plusDays(trialDurationDays));
