@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
@@ -66,6 +68,15 @@ public class User extends BaseEntity {
     // Link to employee record (if applicable)
     private UUID employeeId;
 
+    @Column(name = "verification_code", length = 6)
+    private String verificationCode;
+
+    @Column(name = "verification_code_expiry")
+    private Instant verificationCodeExpiry;
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Duration CODE_VALIDITY = Duration.ofMinutes(10);
+
     // LAZY fetch to prevent N+1 queries - use JOIN FETCH when roles are needed
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -74,6 +85,23 @@ public class User extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
+
+    public void generateVerificationCode() {
+        this.verificationCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+        this.verificationCodeExpiry = Instant.now().plus(CODE_VALIDITY);
+    }
+
+    public boolean isVerificationCodeValid(String code) {
+        return this.verificationCode != null
+                && this.verificationCode.equals(code)
+                && this.verificationCodeExpiry != null
+                && Instant.now().isBefore(this.verificationCodeExpiry);
+    }
+
+    public void clearVerificationCode() {
+        this.verificationCode = null;
+        this.verificationCodeExpiry = null;
+    }
 
     /**
      * Check if user is currently locked out.
