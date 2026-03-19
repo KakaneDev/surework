@@ -27,10 +27,10 @@ public class Tenant {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "code", nullable = false, unique = true)
+    @Column(name = "subdomain", nullable = false, unique = true)
     private String code;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "company_name", nullable = false)
     private String name;
 
     @Column(name = "trading_name")
@@ -103,17 +103,17 @@ public class Tenant {
     private String postalCountry;
 
     // Contact
-    @Column(name = "phone_number")
+    @Column(name = "primary_contact_phone")
     private String phoneNumber;
 
-    @Column(name = "email")
+    @Column(name = "primary_contact_email")
     private String email;
 
     @Column(name = "website")
     private String website;
 
     // Database schema
-    @Column(name = "db_schema", nullable = false)
+    @Column(name = "schema_name", nullable = false)
     private String dbSchema;
 
     // Subscription
@@ -127,10 +127,10 @@ public class Tenant {
     @Column(name = "max_users")
     private Integer maxUsers = 5;
 
-    @Column(name = "subscription_start")
+    @Column(name = "subscription_start_date")
     private LocalDate subscriptionStart;
 
-    @Column(name = "subscription_end")
+    @Column(name = "subscription_end_date")
     private LocalDate subscriptionEnd;
 
     // Status
