@@ -27,6 +27,7 @@ import {
 } from '@shared/ui';
 import { HasPermissionDirective } from '@shared/directives';
 import { OrgChartWidgetComponent } from './widgets/org-chart-widget.component';
+import { SetupBannerComponent } from './widgets/setup-banner.component';
 
 @Component({
   selector: 'app-dashboard-content',
@@ -40,10 +41,14 @@ import { OrgChartWidgetComponent } from './widgets/org-chart-widget.component';
     BadgeComponent,
     ButtonComponent,
     HasPermissionDirective,
-    OrgChartWidgetComponent
+    OrgChartWidgetComponent,
+    SetupBannerComponent
   ],
   template: `
     <div class="space-y-6">
+      <!-- Setup Completion Banner -->
+      <app-setup-banner />
+
       <!-- Page Header -->
       <div class="sw-page-header">
         <div>
