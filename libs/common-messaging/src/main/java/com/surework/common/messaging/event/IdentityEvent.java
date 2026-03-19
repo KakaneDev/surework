@@ -18,7 +18,8 @@ public sealed interface IdentityEvent extends DomainEvent permits
         IdentityEvent.UserRolesChanged,
         IdentityEvent.UserLoginSucceeded,
         IdentityEvent.UserLoginFailed,
-        IdentityEvent.UserLockedOut {
+        IdentityEvent.UserLockedOut,
+        IdentityEvent.VerificationCodeGenerated {
 
     /**
      * Event raised when a new user is created.
@@ -136,5 +137,18 @@ public sealed interface IdentityEvent extends DomainEvent permits
             String email,
             int failedAttempts,
             Instant lockoutUntil
+    ) implements IdentityEvent {}
+
+    /**
+     * Event raised when a verification code is generated for a user.
+     */
+    record VerificationCodeGenerated(
+            UUID eventId,
+            UUID tenantId,
+            Instant timestamp,
+            UUID userId,
+            String email,
+            String code,
+            String firstName
     ) implements IdentityEvent {}
 }

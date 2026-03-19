@@ -45,6 +45,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/mfa/verify").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/email-available").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/signup").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/verify-code").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/resend-code").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         // All other endpoints require authentication
                         .anyRequest().authenticated()

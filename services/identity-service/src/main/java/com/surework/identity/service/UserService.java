@@ -75,4 +75,14 @@ public interface UserService {
      * Remove roles from a user.
      */
     UserDto.Response removeRoles(UUID userId, java.util.Set<String> roleNames);
+
+    /**
+     * Verify a user's email using a verification code.
+     */
+    UserDto.Response verifyCode(String email, String code);
+
+    /**
+     * Resend the email verification code to a pending user.
+     */
+    void resendVerificationCode(String email);
 }

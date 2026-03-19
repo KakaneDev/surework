@@ -5,6 +5,7 @@ import com.surework.common.messaging.event.IdentityEvent;
 import com.surework.common.security.TenantContext;
 import com.surework.common.web.exception.ConflictException;
 import com.surework.common.web.exception.ResourceNotFoundException;
+import com.surework.common.web.exception.ValidationException;
 import com.surework.identity.domain.Role;
 import com.surework.identity.domain.User;
 import com.surework.identity.dto.UserDto;
@@ -131,7 +132,7 @@ public class UserServiceImpl implements UserService {
         // TODO: Fix role lookup once schema is properly synchronized
         log.info("Skipping role assignment for signup user - schema sync issue pending");
 
-        final User savedUser = userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         // Publish event
         if (tenantId != null) {
@@ -148,6 +149,20 @@ public class UserServiceImpl implements UserService {
                     roleNames
             ));
         }
+
+        // Generate and publish verification code
+        savedUser.generateVerificationCode();
+        savedUser = userRepository.save(savedUser);
+
+        eventPublisher.publish(new IdentityEvent.VerificationCodeGenerated(
+                UUID.randomUUID(),
+                tenantId,
+                Instant.now(),
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getVerificationCode(),
+                savedUser.getFirstName()
+        ));
 
         log.info("Created signup user {} with email {} for tenant {}",
                 savedUser.getId(), savedUser.getEmail(), tenantId);
@@ -362,6 +377,58 @@ public class UserServiceImpl implements UserService {
 
         log.info("Removed roles {} from user {}", roleNames, userId);
         return UserDto.Response.fromEntity(user);
+    }
+
+    @Override
+    @Transactional
+    public UserDto.Response verifyCode(String email, String code) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.isVerificationCodeValid(code)) {
+            throw new ValidationException("Invalid or expired verification code");
+        }
+
+        user.setStatus(User.UserStatus.ACTIVE);
+        user.clearVerificationCode();
+        var saved = userRepository.save(user);
+
+        eventPublisher.publish(new IdentityEvent.UserActivated(
+                UUID.randomUUID(),
+                saved.getTenantId(),
+                Instant.now(),
+                saved.getId(),
+                saved.getEmail()
+        ));
+
+        log.info("User {} verified email successfully", saved.getId());
+        return UserDto.Response.fromEntity(saved);
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationCode(String email) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (user.getStatus() != User.UserStatus.PENDING) {
+            throw new ValidationException("User is already verified");
+        }
+
+        user.generateVerificationCode();
+        userRepository.save(user);
+
+        eventPublisher.publish(new IdentityEvent.VerificationCodeGenerated(
+                UUID.randomUUID(),
+                user.getTenantId(),
+                Instant.now(),
+                user.getId(),
+                user.getEmail(),
+                user.getVerificationCode(),
+                user.getFirstName()
+        ));
+
+        log.info("Resent verification code to {}", email);
     }
 
     private String generateTemporaryPassword() {

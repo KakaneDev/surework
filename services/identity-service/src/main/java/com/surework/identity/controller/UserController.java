@@ -202,4 +202,39 @@ public class UserController {
         UserDto.Response response = userService.removeRoles(userId, roles);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Request record for email verification code submission.
+     */
+    public record VerifyCodeRequest(
+            @NotBlank @Email String email,
+            @NotBlank @Size(min = 6, max = 6) String code
+    ) {}
+
+    /**
+     * Request record for resending an email verification code.
+     */
+    public record ResendCodeRequest(
+            @NotBlank @Email String email
+    ) {}
+
+    /**
+     * Verify a user's email address using a one-time verification code.
+     */
+    @PostMapping("/verify-code")
+    public ResponseEntity<UserDto.Response> verifyCode(
+            @RequestBody @Valid VerifyCodeRequest request) {
+        var response = userService.verifyCode(request.email(), request.code());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Resend the email verification code to a pending user.
+     */
+    @PostMapping("/resend-code")
+    public ResponseEntity<Void> resendCode(
+            @RequestBody @Valid ResendCodeRequest request) {
+        userService.resendVerificationCode(request.email());
+        return ResponseEntity.ok().build();
+    }
 }
