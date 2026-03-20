@@ -1,6 +1,7 @@
 package com.surework.identity.controller;
 
 import com.surework.common.security.TenantContext;
+import com.surework.identity.config.JwtHeaderAuthenticationFilter;
 import com.surework.identity.dto.AuthDto;
 import com.surework.identity.service.AuthenticationService;
 import jakarta.validation.Valid;
@@ -74,7 +75,18 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<AuthDto.CurrentUserResponse> getCurrentUser(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId) {
+        UUID userId = headerUserId;
+        if (userId == null) {
+            // Fallback: read from JWT authentication principal
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof JwtHeaderAuthenticationFilter.UserPrincipal principal) {
+                userId = principal.userId();
+            }
+        }
+        if (userId == null) {
+            return ResponseEntity.status(403).build();
+        }
         AuthDto.CurrentUserResponse response = authenticationService.getCurrentUser(userId);
         return ResponseEntity.ok(response);
     }
