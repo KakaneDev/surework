@@ -152,8 +152,13 @@ export class AuthEffects {
       tap(() => {
         // Only navigate if on login page (not when session is being restored)
         const currentPath = window.location.pathname;
-        if (currentPath.startsWith('/auth/')) {
-          const returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+        if (currentPath.includes('/auth/')) {
+          let returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
+          // Strip base href prefix if present (e.g. /main/dashboard -> /dashboard)
+          const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+          if (returnUrl && baseHref !== '/' && returnUrl.startsWith(baseHref)) {
+            returnUrl = returnUrl.substring(baseHref.length - 1);
+          }
           this.router.navigateByUrl(returnUrl || '/dashboard');
         }
       })
