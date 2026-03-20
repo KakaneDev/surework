@@ -129,6 +129,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=surework
       - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SUREWORK_SERVICES_IDENTITY-SERVICE_URL=http://identity-service:8080
       - 'SPRING_APPLICATION_JSON={"eureka": {"client": {"service-url": {"defaultZone": "http://eureka:eureka123@eureka-server:8080/eureka/"}}}}'
     depends_on:
       - postgres
@@ -466,6 +467,10 @@ services:
       - SPRING_DATASOURCE_PASSWORD=SW_Pr0d_S3cur3_2026
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:eureka123@eureka-server:8080/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_MAIL_HOST=surework-mailhog
+      - SPRING_MAIL_PORT=1025
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false
     depends_on:
       - postgres
       - kafka
