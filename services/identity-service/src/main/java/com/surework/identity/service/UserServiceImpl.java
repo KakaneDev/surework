@@ -128,9 +128,18 @@ public class UserServiceImpl implements UserService {
         // Use provided password
         user.setPasswordHash(passwordEncoder.encode(password));
 
-        // Skip role assignment for now due to schema mismatch issue
-        // TODO: Fix role lookup once schema is properly synchronized
-        log.info("Skipping role assignment for signup user - schema sync issue pending");
+        // Assign roles - default to TENANT_ADMIN + EMPLOYEE for signup users
+        if (roles != null && !roles.isEmpty()) {
+            Set<Role> userRoles = roles.stream()
+                    .map(roleName -> roleRepository.findByCode(roleName)
+                            .or(() -> roleRepository.findByName(roleName))
+                            .orElseGet(() -> createRole(roleName)))
+                    .collect(java.util.stream.Collectors.toSet());
+            user.setRoles(userRoles);
+        } else {
+            roleRepository.findByCode("TENANT_ADMIN")
+                    .ifPresent(role -> user.setRoles(Set.of(role)));
+        }
 
         User savedUser = userRepository.save(user);
 

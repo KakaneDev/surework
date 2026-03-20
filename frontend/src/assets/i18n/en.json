@@ -274,8 +274,8 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "Welcome back! Here's an overview of your organization.",
-    "welcome": "Welcome back",
+    "subtitle": "Here's an overview of your organization.",
+    "welcome": "Welcome",
     "quickStats": "Quick Stats",
     "recentActivity": "Recent Activity",
     "upcomingEvents": "Upcoming Events",
