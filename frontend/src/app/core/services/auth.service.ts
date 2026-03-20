@@ -152,13 +152,11 @@ export class AuthService {
    * Login with email and password.
    */
   login(request: LoginRequest): Observable<LoginResponse> {
-    // Transform to backend format (uses username field for email)
-    const backendRequest: BackendLoginRequest = {
-      username: request.email,
+    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, {
+      email: request.email,
       password: request.password,
       mfaCode: request.mfaCode
-    };
-    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, backendRequest).pipe(
+    }).pipe(
       tap(response => {
         if (response.accessToken) {
           this.storeTokens(response.accessToken, response.refreshToken!);
