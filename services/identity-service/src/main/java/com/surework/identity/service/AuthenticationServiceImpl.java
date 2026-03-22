@@ -204,14 +204,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // Use role code (e.g., HR_MANAGER) for authorization, not display name
-        Set<String> roles = user.getRoles().stream()
-                .map(r -> r.getCode())
-                .collect(Collectors.toSet());
-
-        Set<String> permissions = user.getRoles().stream()
-                .flatMap(r -> r.getPermissions().stream())
-                .collect(Collectors.toSet());
+        // Build role responses with nested permissions (matches frontend BackendRoleResponse)
+        List<AuthDto.RoleResponse> roleResponses = user.getRoles().stream()
+                .map(r -> new AuthDto.RoleResponse(
+                        r.getCode(),
+                        r.getName(),
+                        r.getPermissions() != null
+                                ? r.getPermissions().stream()
+                                        .map(p -> new AuthDto.PermissionResponse(p))
+                                        .toList()
+                                : List.of()
+                ))
+                .toList();
 
         return new AuthDto.CurrentUserResponse(
                 userId.toString(),
@@ -220,8 +224,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getFullName(),
-                roles,
-                permissions,
+                roleResponses,
                 user.isMfaEnabled()
         );
     }
@@ -502,26 +505,34 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private void publishLoginSucceeded(User user, UUID tenantId) {
-        String clientIp = TenantContext.getClientIp().orElse("unknown");
-        eventPublisher.publish(new IdentityEvent.UserLoginSucceeded(
-                UUID.randomUUID(),
-                tenantId,
-                Instant.now(),
-                user.getId(),
-                clientIp,
-                "unknown"
-        ));
+        try {
+            String clientIp = TenantContext.getClientIp().orElse("unknown");
+            eventPublisher.publish(new IdentityEvent.UserLoginSucceeded(
+                    UUID.randomUUID(),
+                    tenantId,
+                    Instant.now(),
+                    user.getId(),
+                    clientIp,
+                    "unknown"
+            ));
+        } catch (Exception e) {
+            log.warn("Failed to publish login succeeded event: {}", e.getMessage());
+        }
     }
 
     private void publishLoginFailed(UUID tenantId, String email, String reason) {
-        String clientIp = TenantContext.getClientIp().orElse("unknown");
-        eventPublisher.publish(new IdentityEvent.UserLoginFailed(
-                UUID.randomUUID(),
-                tenantId,
-                Instant.now(),
-                email,
-                clientIp,
-                reason
-        ));
+        try {
+            String clientIp = TenantContext.getClientIp().orElse("unknown");
+            eventPublisher.publish(new IdentityEvent.UserLoginFailed(
+                    UUID.randomUUID(),
+                    tenantId,
+                    Instant.now(),
+                    email,
+                    clientIp,
+                    reason
+            ));
+        } catch (Exception e) {
+            log.warn("Failed to publish login failed event: {}", e.getMessage());
+        }
     }
 }

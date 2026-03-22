@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, type CanActivateFn } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { filter, take, timeout, catchError, map } from 'rxjs/operators';
+import { filter, take, timeout, catchError, map, first, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
@@ -23,19 +23,24 @@ export const authGuard: CanActivateFn = () => {
     return false;
   }
 
-  // Dispatch checkSession to ensure user data is loaded
-  store.dispatch(checkSession());
-
-  // Wait for user data to be loaded (with 5s timeout)
+  // Only dispatch checkSession if user is not already loaded (prevents infinite loop)
   return store.select(selectCurrentUser).pipe(
-    filter(user => user !== null && user !== undefined),
-    take(1),
-    timeout(5000),
-    map(() => true),
-    catchError(() => {
-      // On timeout, still allow navigation - component handles loading state
-      console.warn('Auth guard: Timeout waiting for user data');
-      return of(true);
+    first(),
+    switchMap(user => {
+      if (user) {
+        return of(true);
+      }
+      store.dispatch(checkSession());
+      return store.select(selectCurrentUser).pipe(
+        filter(u => u !== null && u !== undefined),
+        take(1),
+        timeout(5000),
+        map(() => true),
+        catchError(() => {
+          console.warn('Auth guard: Timeout waiting for user data');
+          return of(true);
+        })
+      );
     })
   );
 };

@@ -4,6 +4,15 @@ import path from 'path';
 // Storage state file for authenticated sessions
 const authFile = path.join(__dirname, 'e2e/.auth/admin.json');
 
+// When PLAYWRIGHT_BASE_URL is set, skip global setup and webServer
+// (tests that need auth will handle their own login)
+const isExternalUrl = !!process.env.PLAYWRIGHT_BASE_URL;
+
+// Ensure baseURL has trailing slash so relative page.goto() paths resolve correctly
+// e.g. baseURL 'http://host/main/' + goto('auth/login') → 'http://host/main/auth/login'
+const rawBaseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:4200';
+const baseURL = rawBaseURL.endsWith('/') ? rawBaseURL : rawBaseURL + '/';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 90000,
@@ -20,10 +29,11 @@ export default defineConfig({
   ],
 
   // Global setup - runs once before all tests to authenticate
-  globalSetup: require.resolve('./e2e/global-setup'),
+  // Skipped when running against an external URL
+  ...(isExternalUrl ? {} : { globalSetup: require.resolve('./e2e/global-setup') }),
 
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL,
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
@@ -34,12 +44,14 @@ export default defineConfig({
     storageState: authFile,
   },
 
-  webServer: {
-    command: 'npm start',
-    url: 'http://localhost:4200',
-    reuseExistingServer: true,
-    timeout: 180000,
-  },
+  ...(isExternalUrl ? {} : {
+    webServer: {
+      command: 'npm start',
+      url: 'http://localhost:4200',
+      reuseExistingServer: true,
+      timeout: 180000,
+    },
+  }),
 
   projects: [
     {

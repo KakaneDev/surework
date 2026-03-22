@@ -16,6 +16,11 @@
     <description>Employee Management Service for SureWork ERP - SA ID Validation, Tax Numbers, Employment History</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

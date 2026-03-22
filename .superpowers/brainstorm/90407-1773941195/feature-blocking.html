@@ -1,0 +1,103 @@
+<h2>Feature Blocking Overlays</h2>
+<p class="subtitle">Full-page overlays shown when users access gated features before completing setup</p>
+
+<div class="section">
+  <h3>Two Gate Tiers</h3>
+  <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0;">
+    <div style="flex: 1; min-width: 260px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 16px;">
+      <div style="font-weight: 700; color: #92400e; margin-bottom: 8px;">🏢 Company Details Gate</div>
+      <div style="font-size: 13px; color: #78350f; margin-bottom: 8px;">Requires: registration number, address, contact info, industry sector</div>
+      <div style="font-size: 12px; color: #92400e;">
+        <strong>Blocks:</strong> Invoicing, Invoice Dashboard, Customer List, Formal Reports, Finance Reports
+      </div>
+    </div>
+    <div style="flex: 1; min-width: 260px; background: #fce7f3; border: 1px solid #ec4899; border-radius: 12px; padding: 16px;">
+      <div style="font-weight: 700; color: #9d174d; margin-bottom: 8px;">📋 Compliance Gate</div>
+      <div style="font-size: 13px; color: #831843; margin-bottom: 8px;">Requires: tax number, VAT, UIF, SDL, PAYE reference</div>
+      <div style="font-size: 12px; color: #9d174d;">
+        <strong>Blocks:</strong> Payroll Runs, Payslips, VAT Reports, Accounting Journals, Payroll Integration
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Company Details Gate — e.g. Invoicing page</div>
+    <div class="mockup-body" style="padding: 0; position: relative; min-height: 400px;">
+      <!-- Faded background to suggest the page exists -->
+      <div style="opacity: 0.06; padding: 24px;">
+        <div style="height: 32px; background: #cbd5e1; border-radius: 6px; width: 40%; margin-bottom: 16px;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+        </div>
+        <div style="height: 200px; background: #cbd5e1; border-radius: 8px;"></div>
+      </div>
+      <!-- Overlay -->
+      <div style="position: absolute; inset: 0; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; max-width: 360px; padding: 32px;">
+          <div style="width: 64px; height: 64px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px;">🏢</div>
+          <div style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Complete your company details</div>
+          <div style="font-size: 14px; color: #64748b; margin-bottom: 24px; line-height: 1.5;">
+            Invoicing requires your company registration number, address, and contact information. This takes about 2 minutes.
+          </div>
+          <button style="background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px 32px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;">
+            Go to Company Settings
+          </button>
+          <div style="margin-top: 12px; font-size: 12px; color: #94a3b8;">
+            Settings → Company Profile
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Compliance Gate — e.g. Payroll page</div>
+    <div class="mockup-body" style="padding: 0; position: relative; min-height: 400px;">
+      <!-- Faded background -->
+      <div style="opacity: 0.06; padding: 24px;">
+        <div style="height: 32px; background: #cbd5e1; border-radius: 6px; width: 40%; margin-bottom: 16px;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+          <div style="height: 80px; background: #cbd5e1; border-radius: 8px;"></div>
+        </div>
+        <div style="height: 200px; background: #cbd5e1; border-radius: 8px;"></div>
+      </div>
+      <!-- Overlay -->
+      <div style="position: absolute; inset: 0; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; max-width: 360px; padding: 32px;">
+          <div style="width: 64px; height: 64px; background: #fce7f3; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px;">📋</div>
+          <div style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">SARS compliance details required</div>
+          <div style="font-size: 14px; color: #64748b; margin-bottom: 24px; line-height: 1.5;">
+            Payroll requires your tax number, UIF reference, SDL number, and PAYE reference to generate compliant payslips.
+          </div>
+          <button style="background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px 32px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;">
+            Go to Compliance Settings
+          </button>
+          <div style="margin-top: 12px; font-size: 12px; color: #94a3b8;">
+            Settings → Compliance
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Immediately Available (No Gate)</h3>
+  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Dashboard</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Employees</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Leave Management</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Recruitment</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Documents</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Support Tickets</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Settings</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">HR</span>
+    <span style="background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;">Profile</span>
+  </div>
+</div>

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -123,14 +124,23 @@ public sealed interface AuthDto {
      * Current user info response.
      */
     record CurrentUserResponse(
-            String userId,
+            String id,
             String employeeId,
             String email,
             String firstName,
             String lastName,
             String fullName,
-            Set<String> roles,
-            Set<String> permissions,
+            List<RoleResponse> roles,
             boolean mfaEnabled
+    ) implements AuthDto {}
+
+    record RoleResponse(
+            String code,
+            String name,
+            List<PermissionResponse> permissions
+    ) implements AuthDto {}
+
+    record PermissionResponse(
+            String code
     ) implements AuthDto {}
 }

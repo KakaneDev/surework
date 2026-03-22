@@ -2,7 +2,7 @@
 # Generic Dockerfile for SureWork Spring Boot Microservices
 # Usage: docker build -t surework/<service-name> --build-arg SERVICE_NAME=<name> .
 # =============================================================================
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 ARG SERVICE_NAME
 ARG JAR_FILE=target/*.jar
