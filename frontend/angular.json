@@ -36,7 +36,12 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              "src/manifest.webmanifest"
+              "src/manifest.webmanifest",
+              {
+                "glob": "**/*",
+                "input": "src/landing",
+                "output": "/landing"
+              }
             ],
             "styles": [
               "src/styles.scss"

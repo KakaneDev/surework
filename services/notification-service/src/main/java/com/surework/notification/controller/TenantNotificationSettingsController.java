@@ -61,6 +61,8 @@ public class TenantNotificationSettingsController {
     ) {
         UUID tenantId = getTenantId(user);
         log.debug("Getting tenant settings for tenant {}", tenantId);
+        // Auto-initialize for new tenants before fetching
+        settingsServiceImpl.ensureSettingsInitialized(tenantId);
         return ResponseEntity.ok(settingsService.getTenantSettings(tenantId));
     }
 

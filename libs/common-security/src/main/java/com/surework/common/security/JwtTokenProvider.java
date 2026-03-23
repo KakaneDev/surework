@@ -42,7 +42,7 @@ public class JwtTokenProvider {
     private final long refreshTokenExpirationMs;
 
     public JwtTokenProvider(
-            @Value("${surework.security.jwt.secret:surework-jwt-secret-key-for-development-only-change-in-production-min32chars}") String jwtSecret,
+            @Value("${surework.security.jwt.secret:${JWT_SECRET:surework-jwt-secret-key-change-in-production-must-be-at-least-256-bits}}") String jwtSecret,
             @Value("${surework.security.jwt.access-token-expiration-ms:900000}") long accessTokenExpirationMs,
             @Value("${surework.security.jwt.refresh-token-expiration-ms:604800000}") long refreshTokenExpirationMs
     ) {

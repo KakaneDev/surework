@@ -28,6 +28,27 @@ if (process.env.NODE_ENV === 'production') {
   );
 }
 
+/**
+ * Extract user claims from JWT and set X-User-* headers for services that
+ * expect the API Gateway to have done this. In dev, the proxy acts as the gateway.
+ */
+function setHeadersFromJwt(proxyReq, req) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.split('.')[1];
+      const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+      if (payload.userId || payload.sub) proxyReq.setHeader('X-User-Id', payload.userId || payload.sub);
+      if (payload.tenantId) proxyReq.setHeader('X-User-Tenant', payload.tenantId);
+      if (payload.username) proxyReq.setHeader('X-User-Username', payload.username);
+      if (payload.roles) proxyReq.setHeader('X-User-Roles', Array.isArray(payload.roles) ? payload.roles.join(',') : payload.roles);
+      if (payload.employeeId) proxyReq.setHeader('X-Employee-Id', payload.employeeId);
+      return true; // JWT headers set
+    } catch (e) { /* ignore parse errors */ }
+  }
+  return false; // no JWT
+}
+
 const PROXY_CONFIG = [
   {
     // Route accounting APIs directly to accounting-service
@@ -36,8 +57,8 @@ const PROXY_CONFIG = [
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
-      // If request has Authorization header (JWT), don't override with mock headers
-      if (!req.headers.authorization) {
+      // If request has JWT, extract claims into X-User-* headers; else use mock headers
+      if (!setHeadersFromJwt(proxyReq, req)) {
         proxyReq.setHeader('X-User-Id', '00000000-0000-0000-0000-000000000100');
         proxyReq.setHeader('X-User-Tenant', '00000000-0000-0000-0000-000000000001');
         proxyReq.setHeader('X-User-Roles', 'SUPER_ADMIN,ACCOUNTANT,FINANCE_MANAGER');
@@ -52,8 +73,8 @@ const PROXY_CONFIG = [
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
-      // If request has Authorization header (JWT), don't override with mock headers
-      if (!req.headers.authorization) {
+      // If request has JWT, extract claims into X-User-* headers; else use mock headers
+      if (!setHeadersFromJwt(proxyReq, req)) {
         proxyReq.setHeader('X-User-Id', '00000000-0000-0000-0000-000000000100');
         proxyReq.setHeader('X-User-Tenant', '00000000-0000-0000-0000-000000000099');
         proxyReq.setHeader('X-User-Roles', 'SUPER_ADMIN,HR_MANAGER,REPORTS_ADMIN');
@@ -104,14 +125,14 @@ const PROXY_CONFIG = [
   {
     // Public careers API — no auth required (public-facing job listings)
     context: ['/api/public'],
-    target: 'http://localhost:8086',
+    target: 'http://localhost:8075',
     secure: false,
     changeOrigin: true
   },
   {
-    // Route recruitment APIs directly to recruitment-service with mock auth headers
+    // Route recruitment APIs directly to recruitment-service (Docker host port 8075)
     context: ['/api/recruitment'],
-    target: 'http://localhost:8086',
+    target: 'http://localhost:8075',
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
@@ -122,9 +143,9 @@ const PROXY_CONFIG = [
     }
   },
   {
-    // Route document APIs directly to document-service
+    // Route document APIs directly to document-service (Docker host port 8089)
     context: ['/api/documents'],
-    target: 'http://localhost:8087',
+    target: 'http://localhost:8089',
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
@@ -142,8 +163,8 @@ const PROXY_CONFIG = [
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
-      // If request has Authorization header (JWT), don't override with mock headers
-      if (!req.headers.authorization) {
+      // If request has JWT, extract claims into X-User-* headers; else use mock headers
+      if (!setHeadersFromJwt(proxyReq, req)) {
         proxyReq.setHeader('X-User-Id', '00000000-0000-0000-0000-000000000100');
         proxyReq.setHeader('X-User-Tenant', '00000000-0000-0000-0000-000000000001');
         proxyReq.setHeader('X-User-Roles', 'SUPER_ADMIN,HR_MANAGER,SUPPORT_ADMIN');
@@ -152,10 +173,10 @@ const PROXY_CONFIG = [
     }
   },
   {
-    // Route admin APIs to admin-service (runs on port 8087)
+    // Route admin APIs to admin-service (runs on port 8088 via Docker)
     // Includes auth endpoints (login/refresh) and all admin management endpoints
     context: ['/api/admin'],
-    target: 'http://localhost:8087',
+    target: 'http://localhost:8088',
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
@@ -163,9 +184,9 @@ const PROXY_CONFIG = [
       const publicPaths = ['/api/admin/auth/login', '/api/admin/auth/refresh'];
       const isPublicPath = publicPaths.some(path => req.url.startsWith(path));
 
-      // If request has Authorization header (JWT), don't override with mock headers
-      // For public paths, skip adding mock headers entirely
-      if (!req.headers.authorization && !isPublicPath) {
+      // If request has JWT, extract claims into headers; else use mock headers
+      // For public paths, skip adding any headers
+      if (!isPublicPath && !setHeadersFromJwt(proxyReq, req)) {
         proxyReq.setHeader('X-User-Id', '00000000-0000-0000-0000-000000000100');
         proxyReq.setHeader('X-User-Tenant', '00000000-0000-0000-0000-000000000099'); // Test Company tenant
         proxyReq.setHeader('X-User-Roles', 'SUPER_ADMIN,TENANT_ADMIN,HR_MANAGER');
@@ -180,8 +201,8 @@ const PROXY_CONFIG = [
     secure: false,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
-      // If request has Authorization header (JWT), don't override with mock headers
-      if (!req.headers.authorization) {
+      // If request has JWT, extract claims into X-User-* headers; else use mock headers
+      if (!setHeadersFromJwt(proxyReq, req)) {
         proxyReq.setHeader('X-User-Id', '00000000-0000-0000-0000-000000000100');
         proxyReq.setHeader('X-User-Tenant', '00000000-0000-0000-0000-000000000001');
         proxyReq.setHeader('X-User-Roles', 'SUPER_ADMIN,HR_MANAGER');

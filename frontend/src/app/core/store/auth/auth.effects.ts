@@ -113,7 +113,8 @@ export class AuthEffects {
               fullName: `${user.firstName} ${user.lastName}`,
               roles: user.roles.map((r: { code: string }) => r.code),
               permissions,
-              mfaEnabled: user.mfaEnabled ?? false
+              mfaEnabled: user.mfaEnabled ?? false,
+              mustChangePassword: (user as any).mustChangePassword ?? false
             }
           });
         }
@@ -149,10 +150,18 @@ export class AuthEffects {
   loadCurrentUserSuccess$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadCurrentUserSuccess),
-      tap(() => {
+      tap((action) => {
         // Only navigate if on login page (not when session is being restored)
         const currentPath = window.location.pathname;
         if (currentPath.includes('/auth/')) {
+          // Check if user must change password (invited users on first login)
+          if (action.user?.mustChangePassword) {
+            this.router.navigate(['/settings/security'], {
+              queryParams: { changePassword: true }
+            });
+            return;
+          }
+
           let returnUrl = new URLSearchParams(window.location.search).get('returnUrl');
           // Strip base href prefix if present (e.g. /main/dashboard -> /dashboard)
           const baseHref = document.querySelector('base')?.getAttribute('href') || '/';

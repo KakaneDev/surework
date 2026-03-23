@@ -80,6 +80,7 @@ export interface CurrentUser {
   roles: string[];
   permissions: string[];
   mfaEnabled: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface TenantSetupStatus {
@@ -153,7 +154,7 @@ export class AuthService {
    */
   login(request: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, {
-      email: request.email,
+      username: request.email,
       password: request.password,
       mfaCode: request.mfaCode
     }).pipe(
@@ -229,7 +230,8 @@ export class AuthService {
       fullName: `${user.firstName} ${user.lastName}`,
       roles: user.roles.map(r => r.code),
       permissions,
-      mfaEnabled: user.mfaEnabled ?? false
+      mfaEnabled: user.mfaEnabled ?? false,
+      mustChangePassword: (user as any).mustChangePassword ?? false
     };
   }
 

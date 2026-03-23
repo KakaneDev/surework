@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,9 +43,16 @@ public class AdminServiceImpl implements AdminService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserSessionRepository userSessionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
 
     @Value("${surework.admin.jwt.secret}")
     private String jwtSecret;
+
+    @Value("${app.mail.from:noreply@surework.co.za}")
+    private String mailFrom;
+
+    @Value("${app.frontend.url:http://localhost:4200}")
+    private String frontendUrl;
 
     @Value("${surework.admin.jwt.expiration-hours:8}")
     private int jwtExpirationHours;
@@ -61,7 +70,8 @@ public class AdminServiceImpl implements AdminService {
             AuditLogRepository auditLogRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             UserSessionRepository userSessionRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            JavaMailSender mailSender) {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -69,6 +79,7 @@ public class AdminServiceImpl implements AdminService {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.userSessionRepository = userSessionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.mailSender = mailSender;
     }
 
     // ==================== Tenant Management ====================
@@ -218,9 +229,15 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public UserResponse createUser(UUID tenantId, CreateUserRequest request, UUID createdBy) {
-        log.info("Creating user: {} for tenant: {}", request.username(), tenantId);
+        // Username is always the email
+        String username = request.email();
+        // Auto-generate a temporary password for invited users
+        String tempPassword = request.password() != null && !request.password().isBlank()
+                ? request.password() : UUID.randomUUID().toString() + "!Aa1";
 
-        if (userRepository.existsByUsername(request.username())) {
+        log.info("Creating/inviting user: {} for tenant: {}", username, tenantId);
+
+        if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username already exists");
         }
         if (userRepository.existsByEmail(request.email())) {
@@ -229,17 +246,18 @@ public class AdminServiceImpl implements AdminService {
 
         User user = new User();
         user.setTenantId(tenantId);
-        user.setUsername(request.username());
+        user.setUsername(username);
         user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(tempPassword));
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
-        user.setDisplayName(request.displayName() != null ? 
+        user.setDisplayName(request.displayName() != null ?
                 request.displayName() : request.firstName() + " " + request.lastName());
         user.setPhoneNumber(request.phoneNumber());
         user.setMobileNumber(request.mobileNumber());
         user.setEmployeeId(request.employeeId());
         user.setStatus(User.UserStatus.PENDING);
+        user.setMustChangePassword(true);  // Force password change on first login
         user.setCreatedBy(createdBy);
 
         if (request.roleIds() != null && !request.roleIds().isEmpty()) {
@@ -248,7 +266,74 @@ public class AdminServiceImpl implements AdminService {
         }
 
         user = userRepository.save(user);
+
+        // Generate password reset token and send invitation email
+        sendInvitationEmail(user, tenantId);
+
         return mapToUserResponse(user);
+    }
+
+    /**
+     * Sends an invitation email with a "Set Your Password" link.
+     */
+    private void sendInvitationEmail(User user, UUID tenantId) {
+        try {
+            // Create password reset token for the invitation link
+            String token = UUID.randomUUID().toString();
+            PasswordResetToken resetToken = new PasswordResetToken();
+            resetToken.setTokenHash(passwordEncoder.encode(token)); // BCrypt hash for secure storage
+            resetToken.setUserId(user.getId());
+            resetToken.setExpiresAt(LocalDateTime.now().plusHours(72)); // 3 days for invitation
+            passwordResetTokenRepository.save(resetToken);
+
+            String resetLink = frontendUrl + "/auth/reset-password?token=" + token;
+            String tenantName = tenantRepository.findById(tenantId)
+                    .map(Tenant::getName).orElse("your organization");
+
+            String html = """
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+                  <div style="text-align: center; margin-bottom: 32px;">
+                    <div style="display: inline-block; background: #14b8a6; color: white; font-weight: bold; font-size: 24px; width: 48px; height: 48px; line-height: 48px; border-radius: 12px;">SW</div>
+                  </div>
+                  <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 8px;">You've been invited!</h1>
+                  <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+                    Hi %s, you've been invited to join <strong>%s</strong> on SureWork.
+                  </p>
+                  <p style="color: #475569; font-size: 16px; line-height: 1.6;">
+                    Click the button below to set your password and access the platform.
+                  </p>
+                  <div style="text-align: center; margin: 32px 0;">
+                    <a href="%s" style="display: inline-block; background: #14b8a6; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      Set Your Password
+                    </a>
+                  </div>
+                  <p style="color: #94a3b8; font-size: 14px;">This link expires in 72 hours. If you didn't expect this invitation, you can ignore this email.</p>
+                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 32px 0;">
+                  <p style="color: #94a3b8; font-size: 12px; text-align: center;">SureWork - South African SME ERP Platform</p>
+                </div>
+                """.formatted(user.getFirstName(), tenantName, resetLink);
+
+            jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(user.getEmail());
+            helper.setSubject("You've been invited to " + tenantName + " on SureWork");
+            helper.setText(html, true);
+            mailSender.send(message);
+
+            log.info("Invitation email sent to {} for tenant {}", user.getEmail(), tenantId);
+        } catch (Exception e) {
+            log.error("Failed to send invitation email to {}: {}", user.getEmail(), e.getMessage());
+            // Don't fail user creation if email fails
+        }
+    }
+
+    @Override
+    public void resendInvitation(UUID tenantId, UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        sendInvitationEmail(user, tenantId);
+        log.info("Resent invitation to {} for tenant {}", user.getEmail(), tenantId);
     }
 
     @Override
@@ -669,21 +754,34 @@ public class AdminServiceImpl implements AdminService {
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
-            int remainingAttempts = 5 - user.getFailedLoginAttempts();
-            if (user.getFailedLoginAttempts() >= 5) {
-                user.setStatus(User.UserStatus.LOCKED);
-                user.setLockedUntil(LocalDateTime.now().plusMinutes(30));
-                remainingAttempts = 0;
-            }
-            userRepository.save(user);
+            // For users created via signup, password is managed by identity-service.
+            // Sync the password hash on first successful login via identity-service.
+            if ("IDENTITY_SERVICE_MANAGED".equals(user.getPasswordHash())) {
+                if (authenticateViaIdentityService(request.username(), request.password(), user.getTenantId())) {
+                    // Sync password hash so future logins work directly
+                    user.setPasswordHash(passwordEncoder.encode(request.password()));
+                    userRepository.save(user);
+                    log.info("Synced password hash from identity-service for user: {}", user.getUsername());
+                } else {
+                    log.warn("Identity-service authentication failed for user: {}", request.username());
+                    return new LoginResponse(null, null, "Bearer", 0, null, false, null, null);
+                }
+            } else {
+                user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
+                int remainingAttempts = 5 - user.getFailedLoginAttempts();
+                if (user.getFailedLoginAttempts() >= 5) {
+                    user.setStatus(User.UserStatus.LOCKED);
+                    user.setLockedUntil(LocalDateTime.now().plusMinutes(30));
+                    remainingAttempts = 0;
+                }
+                userRepository.save(user);
 
-            // Return response with remaining attempts for frontend display
-            log.warn("Failed login attempt for user: {}, remaining attempts: {}", request.username(), remainingAttempts);
-            return new LoginResponse(
-                    null, null, "Bearer", 0, null, false, null,
-                    remainingAttempts > 0 ? remainingAttempts : null
-            );
+                log.warn("Failed login attempt for user: {}, remaining attempts: {}", request.username(), remainingAttempts);
+                return new LoginResponse(
+                        null, null, "Bearer", 0, null, false, null,
+                        remainingAttempts > 0 ? remainingAttempts : null
+                );
+            }
         }
 
         // Check MFA if enabled
@@ -905,11 +1003,84 @@ public class AdminServiceImpl implements AdminService {
                     .getPayload();
 
             UUID userId = UUID.fromString(claims.getSubject());
-            return getUser(userId);
+            Optional<UserResponse> existing = getUser(userId);
+            if (existing.isPresent()) {
+                return existing;
+            }
+
+            // Also check by email — admin DB may have a different UUID
+            String email = claims.get("username", String.class);
+            if (email != null) {
+                Optional<UserResponse> byEmail = getUserByEmail(email);
+                if (byEmail.isPresent()) {
+                    return byEmail;
+                }
+            }
+
+            // User exists in identity-service but not in admin-service (e.g. after signup).
+            // Auto-provision them here so the frontend can load permissions.
+            return Optional.of(provisionUserFromClaims(claims));
         } catch (Exception e) {
-            log.warn("Failed to parse token: {}", e.getMessage());
+            log.error("Failed to get current user from token: {}", e.getMessage(), e);
             return Optional.empty();
         }
+    }
+
+    /**
+     * Creates a user record in the admin database from JWT claims.
+     * Called when a user authenticated via identity-service accesses admin-service for the first time.
+     * Does NOT set ID manually — lets JPA generate it to avoid @GeneratedValue conflicts.
+     */
+    private UserResponse provisionUserFromClaims(io.jsonwebtoken.Claims claims) {
+        String tenantIdStr = claims.get("tenantId", String.class);
+        String email = claims.get("username", String.class);
+        UUID tenantId = UUID.fromString(tenantIdStr);
+
+        // Ensure tenant exists in admin DB (foreign key constraint on users.tenant_id).
+        // Use native INSERT to set the exact tenant ID from identity-service
+        // (JPA @GeneratedValue would override a manually-set ID).
+        if (!tenantRepository.existsById(tenantId)) {
+            String code = "TENANT-" + tenantId.toString().substring(0, 8).toUpperCase();
+            String tenantName = email.split("@")[0] + "'s Company";
+            String dbSchema = "tenant_" + tenantId.toString().replace("-", "_");
+            tenantRepository.insertTenantWithId(tenantId, code, tenantName, dbSchema, "TRIAL", "FREE", 10);
+            log.info("Auto-provisioned tenant {} in admin-service", tenantId);
+        }
+
+        // Extract role codes from JWT
+        @SuppressWarnings("unchecked")
+        List<String> roleCodes = claims.get("roles", List.class);
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            roleCodes = List.of("TENANT_ADMIN");
+        }
+
+        User user = new User();
+        // Do NOT set ID — let JPA generate it to avoid @GeneratedValue conflicts
+        user.setTenantId(tenantId);
+        user.setEmail(email);
+        user.setUsername(email);
+        user.setPasswordHash("IDENTITY_SERVICE_MANAGED");
+        user.setFirstName(email.split("@")[0]);
+        user.setLastName("");
+        user.setDisplayName(email.split("@")[0]);
+        user.setStatus(User.UserStatus.ACTIVE);
+        user.setEmailVerified(true);
+
+        // Assign roles from JWT claims
+        Set<Role> roles = new HashSet<>();
+        for (String roleCode : roleCodes) {
+            roleRepository.findByCode(roleCode).ifPresent(roles::add);
+        }
+        // Fallback: ensure at least TENANT_ADMIN for signup users
+        if (roles.isEmpty()) {
+            roleRepository.findByCode("TENANT_ADMIN").ifPresent(roles::add);
+        }
+        user.setRoles(roles);
+
+        user = userRepository.save(user);
+        log.info("Auto-provisioned user {} ({}) in admin-service for tenant {}", user.getId(), email, tenantId);
+
+        return mapToUserResponse(user);
     }
 
     /**
@@ -1128,6 +1299,11 @@ public class AdminServiceImpl implements AdminService {
         // Update password
         user.changePassword(newPasswordHash, 90, 5);
         user.setMustChangePassword(false);
+        // Activate user if pending (invited users setting password for first time)
+        if (user.getStatus() == User.UserStatus.PENDING) {
+            user.setStatus(User.UserStatus.ACTIVE);
+            user.setEmailVerified(true);
+        }
         userRepository.save(user);
 
         // Mark token as used
@@ -1481,6 +1657,38 @@ public class AdminServiceImpl implements AdminService {
         return new UserStats((int) total, 0, 0, 0, 0, 0);
     }
 
+    // ==================== Identity Service Integration ====================
+
+    @Value("${surework.services.identity-service.url:http://localhost:8085}")
+    private String identityServiceUrl;
+
+    /**
+     * Authenticates a user via the identity-service when the admin-service
+     * does not have the user's password (e.g., signup-created users).
+     */
+    private boolean authenticateViaIdentityService(String email, String password, UUID tenantId) {
+        try {
+            var restTemplate = new org.springframework.web.client.RestTemplate();
+            var headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.set("X-Tenant-Id", tenantId.toString());
+
+            var body = Map.of("email", email, "password", password);
+            var entity = new org.springframework.http.HttpEntity<>(body, headers);
+
+            var response = restTemplate.exchange(
+                    identityServiceUrl + "/api/v1/auth/login",
+                    org.springframework.http.HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.debug("Identity-service authentication failed for {}: {}", email, e.getMessage());
+            return false;
+        }
+    }
+
     // ==================== Helper Methods ====================
 
     private String generateAccessToken(User user) {
@@ -1614,6 +1822,7 @@ public class AdminServiceImpl implements AdminService {
                 user.getStatus(),
                 user.isEmailVerified(),
                 user.isMfaEnabled(),
+                user.isMustChangePassword(),
                 user.getLastLoginAt(),
                 user.getTimezone(),
                 user.getLanguage(),

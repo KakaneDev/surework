@@ -4,6 +4,7 @@ import com.surework.admin.domain.Tenant;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -61,4 +62,13 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
     @Query("SELECT t FROM Tenant t WHERE t.status = 'ACTIVE' " +
            "AND t.maxUsers IS NOT NULL")
     List<Tenant> findActiveTenantsWithUserLimit();
+
+    @Modifying
+    @Query(value = "INSERT INTO tenants (id, code, name, db_schema, status, subscription_tier, max_users, created_at) " +
+                   "VALUES (:id, :code, :name, :dbSchema, :status, :tier, :maxUsers, NOW()) ON CONFLICT (id) DO NOTHING",
+           nativeQuery = true)
+    void insertTenantWithId(@Param("id") UUID id, @Param("code") String code,
+                            @Param("name") String name, @Param("dbSchema") String dbSchema,
+                            @Param("status") String status,
+                            @Param("tier") String tier, @Param("maxUsers") int maxUsers);
 }

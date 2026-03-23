@@ -44,11 +44,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u WHERE u.tenantId = :tenantId " +
            "AND (:status IS NULL OR u.status = :status) " +
-           "AND (:searchTerm IS NULL OR " +
-           "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+           "AND (:searchTerm IS NULL OR (" +
+           "LOWER(CAST(u.username AS string)) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS string), '%')) OR " +
+           "LOWER(CAST(u.email AS string)) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS string), '%')) OR " +
+           "LOWER(CAST(u.firstName AS string)) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS string), '%')) OR " +
+           "LOWER(CAST(u.lastName AS string)) LIKE LOWER(CONCAT('%', CAST(:searchTerm AS string), '%'))))")
     Page<User> searchUsers(@Param("tenantId") UUID tenantId,
                            @Param("status") User.UserStatus status,
                            @Param("searchTerm") String searchTerm,

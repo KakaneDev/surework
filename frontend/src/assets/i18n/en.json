@@ -3473,6 +3473,9 @@
       "currentSession": "Current",
       "lastActive": "Last active",
       "revokeSession": "Sign out this session"
+    },
+    "compliance": {
+      "label": "SARS Compliance"
     }
   },
   "notifications": {

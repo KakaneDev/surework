@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { finalize, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { environment } from '@env/environment';
+import { getTenantId } from '@core/utils/tenant.util';
 import { SettingsService, Role, TenantUser } from '@core/services/settings.service';
 import { SpinnerComponent, ToastService } from '@shared/ui';
 
@@ -173,7 +173,7 @@ import { SpinnerComponent, ToastService } from '@shared/ui';
 })
 export class EditRolesDialogComponent implements OnInit, AfterViewInit {
   @Input({ required: true }) user!: TenantUser;
-  @Input() tenantId = environment.tenantId;
+  @Input() tenantId = getTenantId();
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<TenantUser>();
 

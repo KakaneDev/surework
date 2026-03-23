@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { environment } from '@env/environment';
+import { getTenantId } from '@core/utils/tenant.util';
 import {
   getReportStatusConfig,
   getStatusHexColors,
@@ -389,7 +390,7 @@ export interface ExecutiveDashboard {
 export class ReportsService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/api/reporting`;
-  private readonly tenantId = environment.tenantId;
+  private readonly tenantId = getTenantId();
 
   // === Analytics Methods ===
 

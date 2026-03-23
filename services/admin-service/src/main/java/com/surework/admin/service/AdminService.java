@@ -61,6 +61,8 @@ public interface AdminService {
 
     void resetPassword(UUID userId, ResetPasswordRequest request, UUID resetBy);
 
+    void resendInvitation(UUID tenantId, UUID userId);
+
     UserResponse assignRoles(UUID userId, AssignRolesRequest request, UUID assignedBy);
 
     /**

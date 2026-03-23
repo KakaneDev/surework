@@ -184,8 +184,20 @@ public class UserServiceImpl implements UserService {
         role.setName(roleName);
         role.setCode(roleName);  // Use name as code
         role.setDescription("Auto-created role: " + roleName);
-        role.setPermissions(List.of());  // Empty permissions list
+        role.setSystemRole(true);
+        // Assign appropriate permissions for known system roles
+        role.setPermissions(getDefaultPermissionsForRole(roleName));
         return roleRepository.save(role);
+    }
+
+    private List<String> getDefaultPermissionsForRole(String roleCode) {
+        return switch (roleCode) {
+            case "TENANT_ADMIN" -> List.of("TENANT_ALL");
+            case "HR_MANAGER" -> List.of("EMPLOYEE_READ", "EMPLOYEE_MANAGE", "LEAVE_APPROVE", "LEAVE_MANAGE", "DOCUMENTS_READ", "DOCUMENTS_MANAGE");
+            case "FINANCE_MANAGER" -> List.of("PAYROLL_READ", "PAYROLL_MANAGE", "ACCOUNTING_READ", "FINANCE_READ", "FINANCE_REPORTS");
+            case "EMPLOYEE" -> List.of("LEAVE_REQUEST");
+            default -> List.of();
+        };
     }
 
     @Override

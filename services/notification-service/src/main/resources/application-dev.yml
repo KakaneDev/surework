@@ -37,7 +37,7 @@ spring:
 surework:
   admin:
     jwt:
-      secret: surework-dev-jwt-secret-key-for-development-only
+      secret: ${JWT_SECRET:surework-jwt-secret-key-change-in-production-must-be-at-least-256-bits}
 
 app:
   mail:

@@ -6,8 +6,8 @@ import { companyDetailsGuard, complianceGuard } from './core/guards/setup.guard'
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    loadComponent: () => import('./features/landing/landing.component').then(m => m.LandingComponent)
   },
   {
     path: 'auth',

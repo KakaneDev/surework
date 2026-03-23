@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { finalize, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { environment } from '@env/environment';
+import { getTenantId } from '@core/utils/tenant.util';
 import { SettingsService, Role, TenantUser, InviteUserRequest } from '@core/services/settings.service';
 import { SpinnerComponent, ToastService, ButtonComponent } from '@shared/ui';
 
@@ -149,7 +149,7 @@ import { SpinnerComponent, ToastService, ButtonComponent } from '@shared/ui';
   `
 })
 export class UserInviteDialogComponent implements OnInit {
-  @Input() tenantId = environment.tenantId;
+  @Input() tenantId = getTenantId();
   @Output() close = new EventEmitter<void>();
   @Output() invited = new EventEmitter<TenantUser>();
 

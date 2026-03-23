@@ -101,9 +101,9 @@ public sealed interface AdminDto {
     // ==================== User DTOs ====================
 
     record CreateUserRequest(
-            @NotBlank String username,
+            String username,
             @NotBlank @Email String email,
-            @NotBlank String password,
+            String password,
             @NotBlank String firstName,
             @NotBlank String lastName,
             String displayName,
@@ -145,6 +145,7 @@ public sealed interface AdminDto {
             User.UserStatus status,
             boolean emailVerified,
             boolean mfaEnabled,
+            boolean mustChangePassword,
             LocalDateTime lastLoginAt,
             String timezone,
             String language,

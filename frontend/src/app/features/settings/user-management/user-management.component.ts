@@ -5,7 +5,7 @@ import { debounceTime, distinctUntilChanged, finalize, catchError } from 'rxjs/o
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { environment } from '@env/environment';
+import { getTenantId } from '@core/utils/tenant.util';
 import { SettingsService, TenantUser, PageResponse } from '@core/services/settings.service';
 import { SpinnerComponent, ToastService, ButtonComponent, BadgeComponent, DropdownComponent, DropdownItemComponent, DropdownDividerComponent, PaginationComponent } from '@shared/ui';
 import { UserInviteDialogComponent } from './user-invite-dialog.component';
@@ -248,7 +248,7 @@ export class UserManagementComponent implements OnInit {
     LOCKED: 'Locked'
   };
 
-  readonly tenantId = environment.tenantId;
+  readonly tenantId = getTenantId();
 
   loading = signal(true);
   users = signal<TenantUser[]>([]);
@@ -396,10 +396,10 @@ export class UserManagementComponent implements OnInit {
       catchError(err => {
         console.error('Error resending invitation:', err);
         this.toast.error(this.translate.instant('settings.userManagement.errorResendingInvitation'));
-        return of(null);
+        return of('ERROR');
       })
     ).subscribe(result => {
-      if (result !== null) {
+      if (result !== 'ERROR') {
         this.toast.success(this.translate.instant('settings.userManagement.invitationResentSuccess'));
       }
     });

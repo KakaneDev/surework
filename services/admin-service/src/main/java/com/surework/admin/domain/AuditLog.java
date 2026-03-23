@@ -1,6 +1,8 @@
 package com.surework.admin.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -73,12 +75,15 @@ public class AuditLog {
     private String requestId;
 
     // Change tracking
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "old_value", columnDefinition = "jsonb")
     private String oldValue;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "new_value", columnDefinition = "jsonb")
     private String newValue;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "changes", columnDefinition = "jsonb")
     private String changes;  // Summary of what changed
 
@@ -100,6 +105,7 @@ public class AuditLog {
     private Long durationMs;
 
     // Additional context
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "context", columnDefinition = "jsonb")
     private String context;
 

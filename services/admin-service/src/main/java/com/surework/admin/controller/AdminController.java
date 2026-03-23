@@ -169,8 +169,10 @@ public class AdminController {
     public ResponseEntity<UserResponse> createUser(
             @PathVariable @NotNull UUID tenantId,
             @Valid @RequestBody CreateUserRequest request,
-            @RequestParam UUID createdBy) {
-        UserResponse response = adminService.createUser(tenantId, request, createdBy);
+            @RequestParam(required = false) UUID createdBy,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        UUID creator = createdBy != null ? createdBy : (principal != null ? principal.userId() : null);
+        UserResponse response = adminService.createUser(tenantId, request, creator);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -268,6 +270,15 @@ public class AdminController {
             @Valid @RequestBody ResetPasswordRequest request,
             @RequestParam UUID resetBy) {
         adminService.resetPassword(userId, request, resetBy);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/tenants/{tenantId}/users/{userId}/resend-invitation")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'TENANT_ADMIN')")
+    public ResponseEntity<Void> resendInvitation(
+            @PathVariable @NotNull UUID tenantId,
+            @PathVariable @NotNull UUID userId) {
+        adminService.resendInvitation(tenantId, userId);
         return ResponseEntity.ok().build();
     }
 

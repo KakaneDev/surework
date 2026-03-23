@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { finalize, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { environment } from '@env/environment';
+import { getTenantId } from '@core/utils/tenant.util';
 import { SettingsService, CompanyProfile } from '@core/services/settings.service';
 import { AuthService } from '@core/services/auth.service';
 import { SpinnerComponent, ToastService, ButtonComponent } from '@shared/ui';
@@ -284,7 +284,7 @@ export class CompanyProfileComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly translate = inject(TranslateService);
 
-  private readonly tenantId = environment.tenantId;
+  private readonly tenantId = getTenantId();
 
   loading = signal(true);
   saving = signal(false);
