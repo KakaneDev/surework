@@ -338,11 +338,20 @@ sudo certbot renew --dry-run  # Test
 
 ### 8.2 Service Health Dashboard
 
+In production, only the API gateway port (8080) is exposed. Use `docker exec` to check individual services:
+
 ```bash
-# Quick health check all services
-for port in 8080 8085 8081 8088 8082 8083 8084 8090; do
-  status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$port/actuator/health)
-  echo "Port $port: $status"
+# Check all containers are running
+docker ps --format 'table {{.Names}}\t{{.Status}}' | grep surework | sort
+
+# Check API gateway (the only externally exposed service)
+curl -s http://localhost:8080/actuator/health | jq .status
+
+# Check individual services via docker exec
+for svc in surework-admin surework-identity surework-tenant surework-employee \
+           surework-leave surework-payroll surework-notification; do
+  status=$(docker exec $svc wget -qO- http://localhost:$(docker exec $svc printenv SERVER_PORT 2>/dev/null || echo 8080)/actuator/health 2>/dev/null | grep -o '"status":"[^"]*"' || echo '"status":"UNKNOWN"')
+  echo "$svc: $status"
 done
 ```
 
@@ -462,22 +471,41 @@ sudo cp -r frontend/dist/surework/browser/* /opt/surework/frontend/dist/
 
 ```
 Internet → Nginx (80/443)
-              ├── / → Angular SPA (static files)
-              ├── /landing → Landing page (static HTML)
-              ├── /api/* → API Gateway (8080)
-              │     ├── /api/v1/signup → Tenant Service (8081)
-              │     ├── /api/admin/* → Admin Service (8088)
-              │     ├── /api/v1/auth/* → Identity Service (8085)
-              │     ├── /api/v1/employees/* → Employee Service (8071)
-              │     ├── /api/v1/leave/* → Leave Service (8082)
-              │     ├── /api/v1/payroll/* → Payroll Service (8083)
-              │     └── ... (14 more microservices)
-              └── /admin-api/* → API Gateway → Admin Service
+              ├── /              → Angular SPA (static files)
+              ├── /landing       → Landing page (static HTML)
+              ├── /api/*         → API Gateway (:8080) → Eureka service discovery
+              │     ├── /api/v1/signup/**      → tenant-service       (:8081)
+              │     ├── /api/v1/auth/**        → identity-service     (:8085)
+              │     ├── /api/admin/**          → admin-service        (:8087)
+              │     ├── /api/v1/employees/**   → employee-service     (:8081)
+              │     ├── /api/v1/leave/**       → leave-service        (:8082)
+              │     ├── /api/v1/payroll/**     → payroll-service      (:8083)
+              │     ├── /api/v1/accounting/**  → accounting-service   (:8084)
+              │     ├── /api/recruitment/**    → recruitment-service  (:8086)
+              │     ├── /api/documents/**      → document-service     (:8087)
+              │     ├── /api/notifications/**  → notification-service (:8090)
+              │     ├── /api/reporting/**      → reporting-service    (:8091)
+              │     ├── /api/v1/time/**        → time-attendance      (:8086)
+              │     ├── analytics-service      → analytics-service    (:8092)
+              │     └── billing-service        → billing-service      (:8093)
+              └── /admin-api/*   → API Gateway → admin-service
+
+Note: In production, all services communicate via Docker internal network.
+Only Nginx (80/443) and optionally PostgreSQL (5432) are exposed externally.
+The ports above are INTERNAL container ports, not host ports.
+
+Docker Host Port Mappings (development only):
+  admin-service:       8088 → :8087 (container)
+  employee-service:    8071 → :8081 (container)
+  recruitment-service: 8075 → :8086 (container)
+  document-service:    8089 → :8087 (container)
+  All others:          same port on host and container
 
 Infrastructure:
-  PostgreSQL (14 databases) ← All services
-  Redis ← Identity, Notification (caching, rate limits)
-  Kafka ← Event bus (all services)
-  MinIO ← Document storage
-  Eureka ← Service discovery
+  PostgreSQL 16 (14 databases) ← All services
+  Redis 7        ← Identity, Notification (caching, sessions, rate limits)
+  Kafka + ZK     ← Event bus (domain events across services)
+  MinIO          ← S3-compatible document storage
+  Eureka         ← Service discovery and load balancing
+  MailHog        ← Dev-only email capture (replace with real SMTP in prod)
 ```
