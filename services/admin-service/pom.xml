@@ -90,6 +90,13 @@
             <version>8.7.0</version>
         </dependency>
 
+        <!-- SureWork Common Libraries -->
+        <dependency>
+            <groupId>com.surework</groupId>
+            <artifactId>common-security</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Kafka for Event Publishing -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

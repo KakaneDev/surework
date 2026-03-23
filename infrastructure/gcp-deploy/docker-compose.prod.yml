@@ -76,6 +76,64 @@ services:
     networks:
       - surework-net
 
+  redis:
+    image: redis:7-alpine
+    container_name: surework-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - surework-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: surework-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - surework-net
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: surework-mailhog
+    restart: always
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - surework-net
+
   # ===========================================================================
   # SPRING CLOUD INFRASTRUCTURE
   # ===========================================================================
@@ -90,14 +148,16 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8761
+      EUREKA_USERNAME: admin
+      EUREKA_PASSWORD: surework
     ports:
       - "8761:8761"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 30s
       timeout: 10s
-      start_period: 60s
-      retries: 3
+      start_period: 300s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -119,19 +179,25 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8080
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      CORS_ALLOWED_ORIGINS: "http://136.116.141.75,http://localhost"
     ports:
       - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
-      start_period: 90s
-      retries: 3
+      start_period: 300s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -163,7 +229,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_identity
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       JWT_SECRET: ${JWT_SECRET}
     deploy:
@@ -191,12 +257,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_tenant
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -220,12 +287,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_employee
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -249,12 +317,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_hr
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -278,12 +347,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_leave
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -307,12 +377,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_time_attendance
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -336,12 +407,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_payroll
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -365,12 +437,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_accounting
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -394,12 +467,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_billing
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -417,18 +491,25 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
+      minio:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8090
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_recruitment
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+      S3_BUCKET: surework
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -444,19 +525,27 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8091
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_document
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: surework-documents
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
     volumes:
       - document-storage:/app/documents
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -480,12 +569,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_notification
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -501,18 +591,25 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8093
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_admin
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -536,12 +633,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_support
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -563,12 +661,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_analytics
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -584,18 +683,28 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SERVER_PORT: 8096
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/surework_reporting
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://admin:surework@eureka-server:8761/eureka/
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EMPLOYEE_SERVICE_URL: http://employee-service:8083
+      PAYROLL_SERVICE_URL: http://payroll-service:8087
+      LEAVE_SERVICE_URL: http://leave-service:8085
+      TIME_ATTENDANCE_SERVICE_URL: http://time-attendance-service:8086
+      RECRUITMENT_SERVICE_URL: http://recruitment-service:8090
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 768M
     networks:
       - surework-net
 
@@ -610,6 +719,10 @@ volumes:
   zookeeper-data:
     driver: local
   document-storage:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
     driver: local
 
 # ===========================================================================
