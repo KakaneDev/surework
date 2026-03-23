@@ -1,0 +1,32 @@
+spring:
+  main:
+    lazy-initialization: true
+    banner-mode: off
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        temp.use_jdbc_metadata_defaults: false
+  datasource:
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 5
+      initialization-fail-timeout: -1
+  jackson:
+    default-property-inclusion: non_null
+
+eureka:
+  client:
+    initial-instance-info-replication-interval-seconds: 5
+    instance-info-replication-interval-seconds: 10
+  instance:
+    lease-renewal-interval-in-seconds: 10
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.type: WARN
+    org.springframework.boot.autoconfigure: WARN
+    com.netflix: WARN
